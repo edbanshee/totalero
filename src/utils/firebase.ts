@@ -8,6 +8,7 @@ import {
   User as FirebaseUser
 } from 'firebase/auth';
 import { 
+  initializeFirestore,
   getFirestore, 
   doc, 
   getDoc, 
@@ -15,11 +16,29 @@ import {
   deleteDoc, 
   getDocFromServer 
 } from 'firebase/firestore';
-import firebaseConfig from '../../firebase-applet-config.json';
+import firebaseAppletConfig from '../../firebase-applet-config.json';
 import { MonthData, CreditLine } from '../types/finance';
 
-const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+// Read config from Vite environment variables (if configured in GitHub secrets / .env)
+// with full fallback to firebase-applet-config.json
+const resolvedFirebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || firebaseAppletConfig.apiKey,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || firebaseAppletConfig.authDomain,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || firebaseAppletConfig.projectId,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || firebaseAppletConfig.storageBucket,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseAppletConfig.messagingSenderId,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || firebaseAppletConfig.appId,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || firebaseAppletConfig.measurementId,
+};
+
+const app = initializeApp(resolvedFirebaseConfig);
+
+const customDbId = (import.meta.env.VITE_FIREBASE_DATABASE_ID || firebaseAppletConfig.firestoreDatabaseId || '').trim();
+// In Firestore Spark plan (free tier), the database name is typically '(default)'.
+export const db = (customDbId && customDbId !== '(default)')
+  ? initializeFirestore(app, { experimentalAutoDetectLongPolling: true }, customDbId)
+  : initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
+
 export const auth = getAuth(app);
 
 const googleProvider = new GoogleAuthProvider();
@@ -52,8 +71,17 @@ export interface FirestoreErrorInfo {
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errCode = (error as { code?: string })?.code;
+  const errMsg = error instanceof Error ? error.message : String(error);
+
+  // If the error is network unavailability or client offline, handle gracefully
+  if (errCode === 'unavailable' || errMsg.includes('unavailable') || errMsg.includes('could not be completed') || errMsg.includes('client is offline')) {
+    console.warn(`Firestore operation ${operationType} temporarily unavailable on ${path}: ${errMsg}. Operating in local/offline mode.`);
+    return;
+  }
+
   const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
+    error: errMsg,
     authInfo: {
       userId: auth.currentUser?.uid,
       email: auth.currentUser?.email,
@@ -75,21 +103,40 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 // Test connection on boot
 export async function testFirestoreConnection() {
   try {
-    await getDocFromServer(doc(db, 'users', 'test-connection'));
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.warn("Client is offline, working with cached data.");
+    await getDocFromServer(doc(db, 'test', 'connection'));
+  } catch (error: any) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    if (error?.code === 'unavailable' || errMsg.includes('offline') || errMsg.includes('could not be completed')) {
+      console.warn("Firestore operating in offline/cached mode.");
     }
   }
 }
 
 // Google Sign In
-export async function signInWithGoogle(): Promise<FirebaseUser> {
+export async function signInWithGoogle(): Promise<FirebaseUser | null> {
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
-  } catch (error) {
-    console.error('Error signing in with Google:', error);
+  } catch (error: any) {
+    const errCode = error?.code || '';
+    const errMsg = error instanceof Error ? error.message : String(error);
+
+    // Normal cancellation by user or multiple popup click: handle gracefully without throwing console.error
+    if (
+      errCode === 'auth/popup-closed-by-user' ||
+      errMsg.includes('popup-closed-by-user') ||
+      errCode === 'auth/cancelled-popup-request' ||
+      errMsg.includes('cancelled-popup-request')
+    ) {
+      return null;
+    }
+
+    if (errCode === 'auth/popup-blocked' || errMsg.includes('popup-blocked')) {
+      console.warn('Popup blocked by browser. Please enable popups for this site.');
+      throw new Error('POPUP_BLOCKED');
+    }
+
+    console.warn('Google sign-in could not be completed:', errMsg);
     throw error;
   }
 }

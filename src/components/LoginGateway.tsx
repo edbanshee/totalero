@@ -50,6 +50,10 @@ export const LoginGateway: React.FC<LoginGatewayProps> = ({
     setCloudError(null);
     try {
       const user = await signInWithGoogle();
+      if (!user) {
+        // User closed or cancelled the sign-in popup - do not treat as an error
+        return;
+      }
       onLoginCloudSuccess({
         isLoggedIn: true,
         userMode: 'cloud',
@@ -57,10 +61,19 @@ export const LoginGateway: React.FC<LoginGatewayProps> = ({
         displayName: user.displayName || user.email?.split('@')[0] || 'Usuario'
       }, startFromScratch);
     } catch (err: unknown) {
-      console.error('Google sign in error:', err);
       const msg = err instanceof Error ? err.message : String(err);
-      if (!msg.includes('popup-closed-by-user')) {
-        setCloudError(isEs ? 'Error al autenticar con Google. Inténtalo de nuevo.' : 'Error signing in with Google. Please retry.');
+      if (msg === 'POPUP_BLOCKED') {
+        setCloudError(
+          isEs
+            ? 'Las ventanas emergentes están bloqueadas en tu navegador. Por favor permite popups para iniciar sesión con Google.'
+            : 'Popups are blocked by your browser. Please allow popups to sign in with Google.'
+        );
+      } else if (!msg.includes('popup-closed-by-user') && !msg.includes('cancelled-popup-request')) {
+        setCloudError(
+          isEs 
+            ? 'No se pudo iniciar sesión con Google. Puedes intentarlo de nuevo o usar el Modo Local.' 
+            : 'Could not sign in with Google. You can retry or use Local Mode.'
+        );
       }
     } finally {
       setIsLoadingGoogle(false);

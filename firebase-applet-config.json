@@ -1,12 +1,10 @@
 {
-  "projectId": "inlaid-domain-cmn89",
-  "appId": "1:566237534898:web:7bcdea6b1953d0d17947ab",
-  "apiKey": "AIzaSyDjfa5wns9-ulaAz44C6XQuAqCiITldMAs",
-  "authDomain": "inlaid-domain-cmn89.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-totaleroflujodec-3c5ddadb-ffdc-4ef5-9309-a51413f77e6f",
-  "storageBucket": "inlaid-domain-cmn89.firebasestorage.app",
-  "messagingSenderId": "566237534898",
-  "measurementId": "",
-  "oAuthClientId": "566237534898-85plo0l78qg0h2vj00a30ie6ku1299kh.apps.googleusercontent.com",
-  "recaptchaSiteKey": ""
+  "projectId": "oceiros-totalero",
+  "appId": "1:1002830356973:web:93b0d6beab100c4890c7e4",
+  "apiKey": "AIzaSyDj-EhzyQoy-B5KJsByQ2Kuyc60SKTWRiQ",
+  "authDomain": "oceiros-totalero.firebaseapp.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "oceiros-totalero.firebasestorage.app",
+  "messagingSenderId": "1002830356973",
+  "measurementId": "G-WCWEL612EM"
 }
