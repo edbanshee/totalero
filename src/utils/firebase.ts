@@ -19,16 +19,26 @@ import {
 import firebaseAppletConfig from '../../firebase-applet-config.json';
 import { MonthData, CreditLine } from '../types/finance';
 
+const getSafeConfig = (envVal: unknown, jsonVal: unknown): string => {
+  if (typeof envVal === 'string' && envVal.trim().length > 0 && envVal.trim() !== 'undefined' && envVal.trim() !== 'null') {
+    return envVal.trim();
+  }
+  if (typeof jsonVal === 'string' && jsonVal.trim().length > 0) {
+    return jsonVal.trim();
+  }
+  return '';
+};
+
 // Read config from Vite environment variables (if configured in GitHub secrets / .env)
 // with full fallback to firebase-applet-config.json
 const resolvedFirebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || firebaseAppletConfig.apiKey,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || firebaseAppletConfig.authDomain,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || firebaseAppletConfig.projectId,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || firebaseAppletConfig.storageBucket,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseAppletConfig.messagingSenderId,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || firebaseAppletConfig.appId,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || firebaseAppletConfig.measurementId,
+  apiKey: getSafeConfig(import.meta.env.VITE_FIREBASE_API_KEY, firebaseAppletConfig.apiKey),
+  authDomain: getSafeConfig(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN, firebaseAppletConfig.authDomain),
+  projectId: getSafeConfig(import.meta.env.VITE_FIREBASE_PROJECT_ID, firebaseAppletConfig.projectId),
+  storageBucket: getSafeConfig(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET, firebaseAppletConfig.storageBucket),
+  messagingSenderId: getSafeConfig(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID, firebaseAppletConfig.messagingSenderId),
+  appId: getSafeConfig(import.meta.env.VITE_FIREBASE_APP_ID, firebaseAppletConfig.appId),
+  measurementId: getSafeConfig(import.meta.env.VITE_FIREBASE_MEASUREMENT_ID, firebaseAppletConfig.measurementId),
 };
 
 const app = initializeApp(resolvedFirebaseConfig);

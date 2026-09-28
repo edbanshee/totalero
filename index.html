@@ -12,6 +12,31 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script>
+      // 1. Ensure directory URLs have a trailing slash so relative paths (./assets/...) resolve properly
+      (function() {
+        var path = window.location.pathname;
+        if (!path.endsWith('/') && !path.split('/').pop().includes('.')) {
+          window.location.replace(path + '/' + window.location.search + window.location.hash);
+        }
+      })();
+
+      // 2. Global error boundary for loading scripts
+      window.addEventListener('error', function(e) {
+        var root = document.getElementById('root');
+        if (root && root.children.length === 0) {
+          var target = e.target || {};
+          var src = target.src || target.href || '';
+          var msg = e.message || (src ? 'Error al cargar recurso: ' + src : 'Error al inicializar la aplicación');
+          root.innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0a0a0a;color:#f43f5e;font-family:sans-serif;padding:24px;text-align:center;">' +
+            '<div style="max-width:500px;background:#18181b;padding:32px;border-radius:12px;border:1px solid #27272a;">' +
+            '<h2 style="margin:0 0 12px;font-size:20px;color:#fff;">Totalero</h2>' +
+            '<p style="color:#ef4444;font-size:14px;margin-bottom:16px;">' + msg + '</p>' +
+            '<button onclick="window.location.reload()" style="background:#10b981;color:#fff;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-weight:bold;">Recargar</button>' +
+            '</div></div>';
+        }
+      }, true);
+    </script>
   </head>
   <body class="bg-neutral-950 text-neutral-100 antialiased font-sans">
     <div id="root"></div>
