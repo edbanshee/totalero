@@ -1,0 +1,6 @@
+{
+  "name": "Totalero - Flujo de Caja y Finanzas",
+  "description": "Aplicación web moderna de Gestión Financiera y Flujo de Caja Mensual Proyectado estilo hoja de cálculo inteligente.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

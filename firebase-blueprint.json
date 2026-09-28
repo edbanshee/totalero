@@ -1,0 +1,68 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Information about the authenticated user.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The unique Firebase Auth identifier for the user."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user email address."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last time user updated data."
+        }
+      },
+      "required": ["uid", "email"]
+    },
+    "FinancialData": {
+      "title": "Financial Data Document",
+      "description": "All months, transactions, credit cards, and credit lines for a user.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner user ID."
+        },
+        "months": {
+          "type": "object",
+          "description": "Dictionary of month data keyed by year-month."
+        },
+        "creditLines": {
+          "type": "array",
+          "description": "List of available credit lines."
+        },
+        "selectedYear": {
+          "type": "number",
+          "description": "Currently selected year."
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp of the last sync."
+        }
+      },
+      "required": ["userId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile document."
+    },
+    "/users/{userId}/financialData/{docId}": {
+      "schema": "FinancialData",
+      "description": "User financial ledger, cash flow months, cards, and lines."
+    }
+  }
+}
