@@ -1,8 +1,8 @@
 {
   "projectId": "oceiros-totalero",
   "appId": "1:1002830356973:web:93b0d6beab100c4890c7e4",
-  "apiKey": "AIzaSyDj-EhzyQoy-B5KJsByQ2Kuyc60SKTWRiQ",
-  "authDomain": "oceiros-totalero.firebaseapp.com",
+  "apiKey": "AIzaSyDj-EHzyQoy-B5KJsByQ2Kuyc60SKTWRiQ",
+  "authDomain": "totalero.oceiros.com",
   "firestoreDatabaseId": "(default)",
   "storageBucket": "oceiros-totalero.firebasestorage.app",
   "messagingSenderId": "1002830356973",

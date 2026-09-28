@@ -68,6 +68,12 @@ export const LoginGateway: React.FC<LoginGatewayProps> = ({
             ? 'Las ventanas emergentes están bloqueadas en tu navegador. Por favor permite popups para iniciar sesión con Google.'
             : 'Popups are blocked by your browser. Please allow popups to sign in with Google.'
         );
+      } else if (msg.includes('api-key-not-valid')) {
+        setCloudError(
+          isEs
+            ? 'Firebase Authentication aún no está activado en tu proyecto "oceiros-totalero". Ve a Firebase Console > Authentication > clic en "Comenzar" > pestaña Sign-in method > activa el proveedor Google.'
+            : 'Firebase Authentication is not yet activated on your "oceiros-totalero" project. Go to Firebase Console > Authentication > click "Get Started" > Sign-in method > enable Google.'
+        );
       } else if (!msg.includes('popup-closed-by-user') && !msg.includes('cancelled-popup-request')) {
         setCloudError(
           isEs 

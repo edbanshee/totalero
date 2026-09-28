@@ -11,7 +11,7 @@ A continuación tienes la lista exacta de lo que ya está listo en el código y 
 1. **Credenciales de Firebase migradas**:
    - `firebase-applet-config.json` y `src/utils/firebase.ts` ahora apuntan directamente a tu nuevo proyecto Spark:
      - Project ID: `oceiros-totalero`
-     - Auth Domain: `oceiros-totalero.firebaseapp.com`
+     - Auth Domain: `totalero.oceiros.com`
      - Storage Bucket: `oceiros-totalero.firebasestorage.app`
      - App ID: `1:1002830356973:web:93b0d6beab100c4890c7e4`
      - Database: `(default)` (El estándar del plan gratuito Spark)
@@ -102,8 +102,8 @@ service cloud.firestore {
 
 ### (Opcional) Variables Secrets en GitHub
 Como las credenciales de tu proyecto ya están incluidas de forma segura en `firebase-applet-config.json` en el frontend, el workflow compilará de inmediato sin necesidad de Secrets obligatorios. Sin embargo, si prefieres sobreescribirlas mediante Secrets en el futuro, puedes agregar en **Settings > Secrets and variables > Actions**:
-- `VITE_FIREBASE_API_KEY`: `AIzaSyDj-EhzyQoy-B5KJsByQ2Kuyc60SKTWRiQ`
-- `VITE_FIREBASE_AUTH_DOMAIN`: `oceiros-totalero.firebaseapp.com`
+- `VITE_FIREBASE_API_KEY`: `AIzaSyDj-EHzyQoy-B5KJsByQ2Kuyc60SKTWRiQ`
+- `VITE_FIREBASE_AUTH_DOMAIN`: `totalero.oceiros.com`
 - `VITE_FIREBASE_PROJECT_ID`: `oceiros-totalero`
 - `VITE_FIREBASE_STORAGE_BUCKET`: `oceiros-totalero.firebasestorage.app`
 - `VITE_FIREBASE_MESSAGING_SENDER_ID`: `1002830356973`
