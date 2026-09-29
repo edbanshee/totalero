@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { X, Download, Upload, RefreshCw, AlertTriangle } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { X, Download, Upload, RefreshCw, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Language, MonthData, CreditLine } from '../types/finance';
 import { TRANSLATIONS } from '../utils/translations';
 
@@ -24,12 +24,13 @@ export const BackupModal: React.FC<BackupModalProps> = ({
 }) => {
   const t = TRANSLATIONS[language];
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   if (!isOpen) return null;
 
   const handleExport = () => {
     const exportPayload = {
-      version: '1.0',
+      version: '2.0',
       exportedAt: new Date().toISOString(),
       months: monthsData,
       creditLines: creditLines
@@ -48,19 +49,58 @@ export const BackupModal: React.FC<BackupModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setFeedback(null);
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        const json = JSON.parse(event.target?.result as string);
-        if (json.months && json.creditLines) {
-          onImportData(json.months, json.creditLines);
-          alert(language === 'es' ? '¡Datos restaurados con éxito!' : 'Data successfully restored!');
-          onClose();
+        const rawContent = event.target?.result as string;
+        const json = JSON.parse(rawContent);
+
+        let parsedMonths: Record<string, MonthData> | null = null;
+        let parsedLines: CreditLine[] = [];
+
+        if (json && typeof json === 'object') {
+          if (json.months && typeof json.months === 'object') {
+            parsedMonths = json.months;
+            parsedLines = Array.isArray(json.creditLines) ? json.creditLines : [];
+          } else if (json.data && typeof json.data === 'object') {
+            parsedMonths = json.data.months || json.data;
+            parsedLines = Array.isArray(json.data.creditLines) ? json.data.creditLines : [];
+          } else {
+            // Check if root object keys match MonthData (e.g., '2026-0', etc.)
+            const keys = Object.keys(json);
+            const hasMonthKeys = keys.some(k => k.includes('-'));
+            if (hasMonthKeys) {
+              parsedMonths = json as Record<string, MonthData>;
+              parsedLines = [];
+            }
+          }
+        }
+
+        if (parsedMonths && Object.keys(parsedMonths).length > 0) {
+          onImportData(parsedMonths, parsedLines);
+          setFeedback({
+            type: 'success',
+            message: language === 'es' ? '¡Datos importados y guardados con éxito!' : 'Data successfully imported and saved!'
+          });
+          setTimeout(() => {
+            onClose();
+          }, 1200);
         } else {
-          alert(language === 'es' ? 'Archivo no compatible.' : 'Invalid file format.');
+          setFeedback({
+            type: 'error',
+            message: language === 'es' ? 'Archivo no compatible. Debe ser un respaldo JSON válido de Totalero.' : 'Invalid file format. Must be a valid Totalero JSON backup.'
+          });
         }
       } catch (err) {
-        alert(language === 'es' ? 'Error al leer el archivo JSON.' : 'Error reading JSON file.');
+        setFeedback({
+          type: 'error',
+          message: language === 'es' ? 'Error al leer el archivo JSON.' : 'Error reading JSON file.'
+        });
+      } finally {
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
       }
     };
     reader.readAsText(file);
@@ -83,6 +123,22 @@ export const BackupModal: React.FC<BackupModalProps> = ({
         {/* Content */}
         <div className="p-5 flex flex-col gap-4">
           
+          {/* Feedback banner */}
+          {feedback && (
+            <div className={`p-3 rounded-xl border flex items-center gap-2.5 animate-in fade-in duration-150 ${
+              feedback.type === 'success' 
+                ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300' 
+                : 'bg-rose-950/40 border-rose-500/40 text-rose-300'
+            }`}>
+              {feedback.type === 'success' ? (
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+              ) : (
+                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
+              )}
+              <span className="text-xs font-semibold">{feedback.message}</span>
+            </div>
+          )}
+
           {/* Exportar */}
           <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-800 flex flex-col gap-2">
             <span className="font-bold text-white text-xs flex items-center gap-1.5">

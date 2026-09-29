@@ -30,6 +30,17 @@ import {
   deleteCloudFinancialData,
   testFirestoreConnection 
 } from './utils/firebase';
+import { 
+  purgeLegacyStorageKeys, 
+  getLocalSnapshot, 
+  saveLocalData, 
+  atomicWipeLocal, 
+  loadLocalDemoData,
+  saveCloudLocalMirror,
+  getCloudLocalMirror, 
+  CANONICAL_LOCAL_DATA_KEY, 
+  CANONICAL_SESSION_KEY 
+} from './utils/storageManager';
 import { onAuthStateChanged } from 'firebase/auth';
 
 import { Header } from './components/Header';
@@ -46,8 +57,8 @@ import { BackupModal } from './components/BackupModal';
 import { SyncPromptModal } from './components/SyncPromptModal';
 import { DangerZoneModal } from './components/DangerZoneModal';
 
-const STORAGE_LOCAL_KEY = 'totalero_local_workspace_v2';
-const STORAGE_SESSION_KEY = 'totalero_session_v2';
+const STORAGE_LOCAL_KEY = CANONICAL_LOCAL_DATA_KEY;
+const STORAGE_SESSION_KEY = CANONICAL_SESSION_KEY;
 
 export default function App() {
   // App Preferences
@@ -92,9 +103,10 @@ export default function App() {
   const [isSyncPromptOpen, setIsSyncPromptOpen] = useState(false);
   const [pendingCloudUser, setPendingCloudUser] = useState<{ uid: string; email: string } | null>(null);
 
-  // 1. Initial boot: Test Firestore connection and load session
+  // 1. Initial boot: Test Firestore connection, purge legacy storage, and load session
   useEffect(() => {
     testFirestoreConnection();
+    purgeLegacyStorageKeys();
 
     // Check saved session
     try {
@@ -103,7 +115,7 @@ export default function App() {
         const parsedSession: UserSession = JSON.parse(savedSession);
         if (parsedSession.userMode === 'local' && parsedSession.isLoggedIn) {
           setUserSession(parsedSession);
-          // Load local workspace
+          // Load local workspace strictly from snapshot
           loadLocalWorkspace();
         }
       }
@@ -132,10 +144,12 @@ export default function App() {
         // If not in firebase, check if in local mode
         const savedSession = localStorage.getItem(STORAGE_SESSION_KEY);
         if (savedSession) {
-          const parsed = JSON.parse(savedSession);
-          if (parsed.userMode === 'cloud') {
-            setUserSession({ isLoggedIn: false, userMode: 'local' });
-          }
+          try {
+            const parsed = JSON.parse(savedSession);
+            if (parsed.userMode === 'cloud') {
+              setUserSession({ isLoggedIn: false, userMode: 'local' });
+            }
+          } catch (e) {}
         }
       }
     });
@@ -143,74 +157,75 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Helper to load local workspace
+  // Helper to load local workspace strictly (never demo fallback on null)
   const loadLocalWorkspace = () => {
-    try {
-      const savedData = localStorage.getItem(STORAGE_LOCAL_KEY);
-      if (savedData) {
-        const parsed = JSON.parse(savedData);
-        if (parsed.months) setMonths(parsed.months);
-        if (parsed.creditLines) setCreditLines(parsed.creditLines);
-        if (parsed.selectedYear) setSelectedYear(parsed.selectedYear);
-        return;
-      }
-    } catch (e) {
-      console.error('Error loading local data:', e);
+    const localSnap = getLocalSnapshot();
+    if (localSnap.hasLocalData) {
+      setMonths(localSnap.months);
+      setCreditLines(localSnap.creditLines);
+      if (localSnap.selectedYear) setSelectedYear(localSnap.selectedYear);
+      return;
     }
-    // Default sample template
-    setMonths(createInitialSampleMonths(2026));
-    setCreditLines(DEFAULT_CREDIT_LINES);
+    // Clean empty template (0 elements)
+    const empty = createEmptyMonths(selectedYear);
+    setMonths(empty);
+    setCreditLines([]);
   };
 
   // Helper to resolve cloud data when user signs into Google
   const handleCloudDataResolution = async (userId: string, email: string, forceScratch: boolean = false) => {
     try {
       const cloudData = await loadCloudFinancialData(userId);
-      if (cloudData && cloudData.months && Object.keys(cloudData.months).length > 0 && !forceScratch) {
-        // Cloud has existing data -> use it directly
-        setMonths(cloudData.months);
-        setCreditLines(cloudData.creditLines || []);
-        if (cloudData.selectedYear) setSelectedYear(cloudData.selectedYear);
-      } else {
-        // Cloud is empty!
-        // Check if there is local data in this browser
-        const localSaved = localStorage.getItem(STORAGE_LOCAL_KEY);
-        let hasLocalContent = false;
-        if (localSaved) {
-          try {
-            const parsed = JSON.parse(localSaved);
-            const stats = countDataStats(parsed.months || {}, parsed.creditLines || []);
-            if (stats.transactions > 0 || stats.cards > 0 || stats.loans > 0) {
-              hasLocalContent = true;
-            }
-          } catch (err) {}
-        }
+      const cloudStats = countDataStats(cloudData?.months || {}, cloudData?.creditLines || []);
+      const cloudHasData = (cloudStats.transactions + cloudStats.loans + cloudStats.cards + cloudStats.creditLines) > 0;
 
-        if (hasLocalContent && !forceScratch) {
-          // Open the Sync Prompt modal shown in Image 1!
-          setPendingCloudUser({ uid: userId, email });
-          setIsSyncPromptOpen(true);
-          // Temporary preview with local data
-          loadLocalWorkspace();
-        } else {
-          // If user specifically requested startFromScratch or no local data exists:
-          if (forceScratch) {
-            const empty = createEmptyMonths(selectedYear);
-            setMonths(empty);
-            setCreditLines([]);
-            await saveCloudFinancialData(userId, email, empty, [], selectedYear);
-          } else {
-            // Initialize cloud with sample template
-            const sample = createInitialSampleMonths(selectedYear);
-            setMonths(sample);
-            setCreditLines(DEFAULT_CREDIT_LINES);
-            await saveCloudFinancialData(userId, email, sample, DEFAULT_CREDIT_LINES, selectedYear);
-          }
-        }
+      if (cloudHasData && !forceScratch) {
+        // Cloud has existing data -> use it directly and never prompt
+        setMonths(cloudData!.months);
+        setCreditLines(cloudData!.creditLines || []);
+        if (cloudData!.selectedYear) setSelectedYear(cloudData!.selectedYear);
+        setIsSyncPromptOpen(false);
+        setPendingCloudUser(null);
+        return;
+      }
+
+      // Cloud is empty!
+      // Check local storage snapshot (STRICT: no demo fallback)
+      const localSnap = getLocalSnapshot();
+      const hasLocalData = localSnap.hasLocalData && !forceScratch;
+
+      if (hasLocalData) {
+        // Open the Sync Prompt modal with real local stats (> 0 elements)
+        setPendingCloudUser({ uid: userId, email });
+        setIsSyncPromptOpen(true);
+        // Preview local data in state
+        setMonths(localSnap.months);
+        setCreditLines(localSnap.creditLines);
+        if (localSnap.selectedYear) setSelectedYear(localSnap.selectedYear);
+      } else {
+        // BOTH Cloud and Local are empty (0 elements, or user forced scratch)
+        // SILENT AND CLEAN INITIALIZATION: No modal, no prompt!
+        setIsSyncPromptOpen(false);
+        setPendingCloudUser(null);
+
+        const empty = createEmptyMonths(selectedYear);
+        setMonths(empty);
+        setCreditLines([]);
+        await saveCloudFinancialData(userId, email, empty, [], selectedYear);
       }
     } catch (error) {
       console.error('Error resolving cloud data:', error);
-      loadLocalWorkspace();
+      // Offline fallback: check offline mirror for this user first
+      const mirror = getCloudLocalMirror(userId);
+      if (mirror && Object.keys(mirror.months).length > 0) {
+        setMonths(mirror.months);
+        setCreditLines(mirror.creditLines);
+        if (mirror.selectedYear) setSelectedYear(mirror.selectedYear);
+      } else {
+        const localSnap = getLocalSnapshot();
+        setMonths(localSnap.hasLocalData ? localSnap.months : createEmptyMonths(selectedYear));
+        setCreditLines(localSnap.creditLines);
+      }
     }
   };
 
@@ -219,7 +234,10 @@ export default function App() {
     if (Object.keys(months).length === 0) return;
 
     if (userSession.userMode === 'cloud' && auth.currentUser) {
-      // Auto-save to Firestore (debounced)
+      // Keep instant local mirror for immediate offline reliability
+      saveCloudLocalMirror(auth.currentUser.uid, months, creditLines, selectedYear);
+
+      // Auto-save to Firestore with IndexedDB persistent offline cache (debounced)
       const timer = setTimeout(() => {
         saveCloudFinancialData(
           auth.currentUser!.uid,
@@ -231,17 +249,8 @@ export default function App() {
       }, 800);
       return () => clearTimeout(timer);
     } else if (userSession.userMode === 'local') {
-      // Save to localStorage
-      try {
-        const payload = {
-          months,
-          creditLines,
-          selectedYear
-        };
-        localStorage.setItem(STORAGE_LOCAL_KEY, JSON.stringify(payload));
-      } catch (e) {
-        console.error('Local auto-save error:', e);
-      }
+      // Save to localStorage cleanly
+      saveLocalData(months, creditLines, selectedYear);
     }
   }, [months, creditLines, selectedYear, userSession.userMode]);
 
@@ -284,14 +293,7 @@ export default function App() {
 
   // Local storage stats (for sync prompt)
   const localStats = useMemo(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_LOCAL_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return countDataStats(parsed.months || {}, parsed.creditLines || []);
-      }
-    } catch (e) {}
-    return { transactions: 0, loans: 0, cards: 0, creditLines: 0 };
+    return getLocalSnapshot().stats;
   }, [isSyncPromptOpen]);
 
   // Ensure current active month exists
@@ -355,18 +357,22 @@ export default function App() {
     localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(session));
 
     if (startFromScratch) {
-      // Iniciar de cero: vacía transacciones, tarjetas y líneas de crédito
-      const empty = createEmptyMonths(selectedYear);
+      // Iniciar de cero: vacía transacciones, tarjetas y líneas de crédito de forma atómica
+      const empty = atomicWipeLocal(selectedYear);
       setMonths(empty);
       setCreditLines([]);
-      localStorage.setItem(STORAGE_LOCAL_KEY, JSON.stringify({
-        months: empty,
-        creditLines: [],
-        selectedYear
-      }));
     } else {
-      // Cargar local existente o datos de muestra
-      loadLocalWorkspace();
+      // Cargar local existente o datos de muestra si es primer uso
+      const snap = getLocalSnapshot();
+      if (snap.hasLocalData) {
+        setMonths(snap.months);
+        setCreditLines(snap.creditLines);
+        if (snap.selectedYear) setSelectedYear(snap.selectedYear);
+      } else {
+        const demo = loadLocalDemoData(selectedYear);
+        setMonths(demo.months);
+        setCreditLines(demo.creditLines);
+      }
     }
   };
 
@@ -379,7 +385,7 @@ export default function App() {
     }
   };
 
-  // Logout
+  // Logout (Problem 4: Leaves local guest data completely intact)
   const handleLogout = async () => {
     if (userSession.userMode === 'cloud') {
       await signOutCloud();
@@ -390,21 +396,27 @@ export default function App() {
     };
     setUserSession(loggedOut);
     localStorage.removeItem(STORAGE_SESSION_KEY);
+
+    // Restore guest local workspace completely untouched by the cloud session
+    const localSnap = getLocalSnapshot();
+    if (localSnap.hasLocalData) {
+      setMonths(localSnap.months);
+      setCreditLines(localSnap.creditLines);
+      if (localSnap.selectedYear) setSelectedYear(localSnap.selectedYear);
+    } else {
+      const empty = createEmptyMonths(selectedYear);
+      setMonths(empty);
+      setCreditLines([]);
+    }
   };
 
   // Sincronizar e importar datos locales a la nube (Image 1 - Option 1)
   const handleSyncLocalToCloud = async () => {
     if (!pendingCloudUser) return;
     try {
-      const localSaved = localStorage.getItem(STORAGE_LOCAL_KEY);
-      let monthsToSync = months;
-      let linesToSync = creditLines;
-
-      if (localSaved) {
-        const parsed = JSON.parse(localSaved);
-        if (parsed.months) monthsToSync = parsed.months;
-        if (parsed.creditLines) linesToSync = parsed.creditLines;
-      }
+      const localSnap = getLocalSnapshot();
+      const monthsToSync = localSnap.hasLocalData ? localSnap.months : months;
+      const linesToSync = localSnap.hasLocalData ? localSnap.creditLines : creditLines;
 
       setMonths(monthsToSync);
       setCreditLines(linesToSync);
@@ -432,6 +444,7 @@ export default function App() {
       setMonths(empty);
       setCreditLines([]);
 
+      // Saves empty workspace to cloud - local guest storage remains untouched!
       await saveCloudFinancialData(
         pendingCloudUser.uid,
         pendingCloudUser.email,
@@ -447,21 +460,19 @@ export default function App() {
     }
   };
 
-  // Purge data (from Danger Zone Modal)
+  // Purge data (from Danger Zone Modal - Problem 4: Atomic Wipe)
   const handlePurgeData = async () => {
     const empty = createEmptyMonths(selectedYear);
     setMonths(empty);
     setCreditLines([]);
 
     if (userSession.userMode === 'cloud' && auth.currentUser) {
+      // Cloud mode: wipes user's cloud document ONLY. Local storage is untouched!
       await deleteCloudFinancialData(auth.currentUser.uid);
       await saveCloudFinancialData(auth.currentUser.uid, auth.currentUser.email || '', empty, [], selectedYear);
     } else {
-      localStorage.setItem(STORAGE_LOCAL_KEY, JSON.stringify({
-        months: empty,
-        creditLines: [],
-        selectedYear
-      }));
+      // Local mode: atomic wipe canonical and legacy keys
+      atomicWipeLocal(selectedYear);
     }
   };
 
@@ -474,11 +485,7 @@ export default function App() {
     if (userSession.userMode === 'cloud' && auth.currentUser) {
       await saveCloudFinancialData(auth.currentUser.uid, auth.currentUser.email || '', demo, DEFAULT_CREDIT_LINES, selectedYear);
     } else {
-      localStorage.setItem(STORAGE_LOCAL_KEY, JSON.stringify({
-        months: demo,
-        creditLines: DEFAULT_CREDIT_LINES,
-        selectedYear
-      }));
+      loadLocalDemoData(selectedYear);
     }
   };
 
@@ -1152,10 +1159,26 @@ export default function App() {
     setCreditLines(prev => prev.filter(l => l.id !== id));
   };
 
-  // Import JSON backup
-  const handleImportData = (importedMonths: Record<string, MonthData>, importedLines: CreditLine[]) => {
+  // Import JSON backup with immediate persistence
+  const handleImportData = async (importedMonths: Record<string, MonthData>, importedLines: CreditLine[]) => {
     setMonths(importedMonths);
     setCreditLines(importedLines);
+
+    if (userSession.userMode === 'cloud' && auth.currentUser) {
+      try {
+        await saveCloudFinancialData(
+          auth.currentUser.uid,
+          auth.currentUser.email || '',
+          importedMonths,
+          importedLines,
+          selectedYear
+        );
+      } catch (err) {
+        console.error('Error persisting imported data to cloud:', err);
+      }
+    } else {
+      saveLocalData(importedMonths, importedLines, selectedYear);
+    }
   };
 
   // If user is not logged in, show initial Login / Welcome Gateway screen

@@ -14,7 +14,9 @@ import {
   getDoc, 
   setDoc, 
   deleteDoc, 
-  getDocFromServer 
+  getDocFromServer,
+  persistentLocalCache,
+  persistentMultipleTabManager
 } from 'firebase/firestore';
 import firebaseAppletConfig from '../../firebase-applet-config.json';
 import { MonthData, CreditLine } from '../types/finance';
@@ -33,10 +35,30 @@ const resolvedFirebaseConfig = {
 const app = initializeApp(resolvedFirebaseConfig);
 
 const customDbId = (firebaseAppletConfig.firestoreDatabaseId || '').trim();
-// In Firestore Spark plan (free tier), the database name is typically '(default)'.
-export const db = (customDbId && customDbId !== '(default)')
-  ? initializeFirestore(app, { experimentalAutoDetectLongPolling: true }, customDbId)
-  : initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
+
+// Initialize Firestore with robust IndexedDB persistent disk cache.
+// Writes and reads are persisted to disk locally so the user can close the app
+// without internet connection and their data will automatically sync upon reconnecting.
+function createPersistentFirestore() {
+  const cacheSettings = {
+    localCache: persistentLocalCache({
+      tabManager: persistentMultipleTabManager()
+    })
+  };
+
+  try {
+    return (customDbId && customDbId !== '(default)')
+      ? initializeFirestore(app, cacheSettings, customDbId)
+      : initializeFirestore(app, cacheSettings);
+  } catch (err) {
+    console.warn('Persistent IndexedDB cache initialization fell back to memory:', err);
+    return (customDbId && customDbId !== '(default)')
+      ? initializeFirestore(app, { experimentalAutoDetectLongPolling: true }, customDbId)
+      : initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
+  }
+}
+
+export const db = createPersistentFirestore();
 
 export const auth = getAuth(app);
 

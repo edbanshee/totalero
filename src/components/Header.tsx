@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -11,7 +11,8 @@ import {
   LogOut, 
   WalletCards,
   Calendar,
-  ShieldAlert
+  ShieldAlert,
+  WifiOff
 } from 'lucide-react';
 import { Language, ThemeMode, UserSession } from '../types/finance';
 import { TRANSLATIONS, MONTH_NAMES } from '../utils/translations';
@@ -55,6 +56,21 @@ export const Header: React.FC<HeaderProps> = ({
   const currentTitle = monthTitle || `${displayMonthName} (${year})`;
 
   const quickYears = [2024, 2025, 2026, 2027, 2028];
+
+  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? (navigator.onLine ?? true) : true);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const handleStartEditTitle = () => {
     setTempTitle(currentTitle);
@@ -226,8 +242,20 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="text-xs font-semibold text-neutral-200">
                   {userSession.displayName || (userSession.userMode === 'cloud' ? userSession.email : 'Modo Local')}
                 </span>
-                <span className="text-[10px] text-emerald-400 font-mono">
-                  {userSession.userMode === 'cloud' ? 'Sincronizado' : 'LocalStorage OK'}
+                <span className="text-[10px] font-mono flex items-center justify-end gap-1">
+                  {!isOnline ? (
+                    <span className="text-amber-400 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                      {language === 'es' ? 'Offline (Guardado en Disco)' : 'Offline (Saved to Disk)'}
+                    </span>
+                  ) : (
+                    <span className="text-emerald-400 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                      {userSession.userMode === 'cloud' 
+                        ? (language === 'es' ? 'Sincronizado Nube' : 'Cloud Synced') 
+                        : 'LocalStorage OK'}
+                    </span>
+                  )}
                 </span>
               </div>
               <button

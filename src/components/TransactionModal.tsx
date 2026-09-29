@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, 
   Plus, 
@@ -96,8 +96,27 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const [calcInterestSaved, setCalcInterestSaved] = useState<number>(0);
   const [payoffDiscountRaw, setPayoffDiscountRaw] = useState<string>('');
 
-  // Pre-fill if editing
+  // Lifecycle protection refs to prevent involuntary resetting when options or props change
+  const hasInitializedRef = useRef<boolean>(false);
+  const lastEditIdRef = useRef<string | null>(null);
+
+  // Pre-fill if editing with lifecycle guard
   useEffect(() => {
+    if (!isOpen) {
+      hasInitializedRef.current = false;
+      lastEditIdRef.current = null;
+      return;
+    }
+
+    const currentEditId = initialData?.id || 'new';
+    if (hasInitializedRef.current && lastEditIdRef.current === currentEditId) {
+      // Form already initialized in this session: DO NOT reset user typed fields
+      return;
+    }
+
+    hasInitializedRef.current = true;
+    lastEditIdRef.current = currentEditId;
+
     if (initialData) {
       setLabel(initialData.label);
       setConcept(initialData.concept);
