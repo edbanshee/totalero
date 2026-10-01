@@ -7,7 +7,10 @@ import {
   Language, 
   ThemeMode, 
   FilterType, 
-  UserSession 
+  PeriodView,
+  UserSession,
+  MIN_CATALOG_YEAR,
+  MAX_CATALOG_YEAR
 } from './types/finance';
 import { 
   createInitialSampleMonths, 
@@ -19,6 +22,8 @@ import {
 import { 
   computeMonthTotals, 
   cascadeAccumulatedBalances, 
+  sanitizeAndDeduplicateMonths,
+  getPreviousMonthTotals,
   getDateString,
   computePayoffAndSavings 
 } from './utils/calculations';
@@ -42,6 +47,7 @@ import {
   CANONICAL_SESSION_KEY 
 } from './utils/storageManager';
 import { onAuthStateChanged } from 'firebase/auth';
+import { MONTH_NAMES } from './utils/translations';
 
 import { Header } from './components/Header';
 import { MonthBar } from './components/MonthBar';
@@ -63,7 +69,15 @@ const STORAGE_SESSION_KEY = CANONICAL_SESSION_KEY;
 export default function App() {
   // App Preferences
   const [language, setLanguage] = useState<Language>('es');
-  const [theme, setTheme] = useState<ThemeMode>('dark');
+  const [theme, setTheme] = useState<ThemeMode>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('totalero_theme');
+        if (saved === 'light' || saved === 'dark') return saved;
+      } catch {}
+    }
+    return 'light';
+  });
   const [userSession, setUserSession] = useState<UserSession>({
     isLoggedIn: false,
     userMode: 'local',
@@ -79,6 +93,7 @@ export default function App() {
   // Table Controls
   const [pinAccumulated, setPinAccumulated] = useState<boolean>(true);
   const [filter, setFilter] = useState<FilterType>('all');
+  const [periodView, setPeriodView] = useState<PeriodView>('month');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Modals
@@ -89,15 +104,6 @@ export default function App() {
   const [deletingLoanTx, setDeletingLoanTx] = useState<Transaction | null>(null);
   const [isBackupOpen, setIsBackupOpen] = useState(false);
   const [isDangerZoneOpen, setIsDangerZoneOpen] = useState(false);
-
-  // Sync light/dark class on <html> element
-  useEffect(() => {
-    if (theme === 'light') {
-      document.documentElement.classList.add('light');
-    } else {
-      document.documentElement.classList.remove('light');
-    }
-  }, [theme]);
 
   // Sync Prompt Modal (when logging into empty cloud with local data)
   const [isSyncPromptOpen, setIsSyncPromptOpen] = useState(false);
@@ -161,7 +167,8 @@ export default function App() {
   const loadLocalWorkspace = () => {
     const localSnap = getLocalSnapshot();
     if (localSnap.hasLocalData) {
-      setMonths(localSnap.months);
+      const cleanMonths = cascadeAccumulatedBalances(localSnap.months, 2024, 0, language);
+      setMonths(cleanMonths);
       setCreditLines(localSnap.creditLines);
       if (localSnap.selectedYear) setSelectedYear(localSnap.selectedYear);
       return;
@@ -181,7 +188,8 @@ export default function App() {
 
       if (cloudHasData && !forceScratch) {
         // Cloud has existing data -> use it directly and never prompt
-        setMonths(cloudData!.months);
+        const cleanMonths = cascadeAccumulatedBalances(cloudData!.months, 2024, 0, language);
+        setMonths(cleanMonths);
         setCreditLines(cloudData!.creditLines || []);
         if (cloudData!.selectedYear) setSelectedYear(cloudData!.selectedYear);
         setIsSyncPromptOpen(false);
@@ -199,7 +207,8 @@ export default function App() {
         setPendingCloudUser({ uid: userId, email });
         setIsSyncPromptOpen(true);
         // Preview local data in state
-        setMonths(localSnap.months);
+        const cleanMonths = cascadeAccumulatedBalances(localSnap.months, 2024, 0, language);
+        setMonths(cleanMonths);
         setCreditLines(localSnap.creditLines);
         if (localSnap.selectedYear) setSelectedYear(localSnap.selectedYear);
       } else {
@@ -218,12 +227,14 @@ export default function App() {
       // Offline fallback: check offline mirror for this user first
       const mirror = getCloudLocalMirror(userId);
       if (mirror && Object.keys(mirror.months).length > 0) {
-        setMonths(mirror.months);
+        const cleanMonths = cascadeAccumulatedBalances(mirror.months, 2024, 0, language);
+        setMonths(cleanMonths);
         setCreditLines(mirror.creditLines);
         if (mirror.selectedYear) setSelectedYear(mirror.selectedYear);
       } else {
         const localSnap = getLocalSnapshot();
-        setMonths(localSnap.hasLocalData ? localSnap.months : createEmptyMonths(selectedYear));
+        const baseMonths = localSnap.hasLocalData ? localSnap.months : createEmptyMonths(selectedYear);
+        setMonths(cascadeAccumulatedBalances(baseMonths, 2024, 0, language));
         setCreditLines(localSnap.creditLines);
       }
     }
@@ -266,6 +277,33 @@ export default function App() {
     }
   }, [theme]);
 
+  // 5. Auto-healing / Sanitization for corrupted or duplicate Acumulado rows
+  useEffect(() => {
+    if (Object.keys(months).length === 0) return;
+
+    let needsHealing = false;
+    for (const [key, mData] of Object.entries(months)) {
+      if (!mData?.transactions) continue;
+      const parts = key.split('-');
+      const m = Number(parts[1]);
+      const accList = mData.transactions.filter(t => t.isAutoAccumulated || t.concept.trim().toLowerCase() === 'acumulado');
+      if (accList.length > 1) {
+        needsHealing = true;
+        break;
+      }
+      // Checar si hay algún acumulado con fecha que no corresponde a este mes (ej: 01-oct en agosto)
+      const stray = accList.find(t => t.dateString && !t.dateString.includes(getDateString(1, m, 'es').split('-')[1]) && !t.dateString.includes(getDateString(1, m, 'en').split('-')[1]));
+      if (stray) {
+        needsHealing = true;
+        break;
+      }
+    }
+
+    if (needsHealing) {
+      setMonths(prev => cascadeAccumulatedBalances(prev, 2024, 0, language));
+    }
+  }, [months, language]);
+
   // Active month data
   const currentKey = `${selectedYear}-${selectedMonth}`;
   const currentMonthData = months[currentKey] || {
@@ -296,19 +334,44 @@ export default function App() {
     return getLocalSnapshot().stats;
   }, [isSyncPromptOpen]);
 
-  // Ensure current active month exists
+  // Ensure current active month exists with smart lazy carry-forward
   useEffect(() => {
     if (Object.keys(months).length === 0) return;
     if (!months[currentKey]) {
       let prevBalance = 0;
-      if (selectedMonth > 0) {
-        const prevKey = `${selectedYear}-${selectedMonth - 1}`;
-        if (months[prevKey]) {
-          const prevTotals = computeMonthTotals(months[prevKey].transactions);
+      let lastPopulatedMonthData: MonthData | null = null;
+
+      // 1. Buscar mes previo inmediato (incluso del año anterior si selectedMonth === 0)
+      const immediatePrevKey = selectedMonth > 0 
+        ? `${selectedYear}-${selectedMonth - 1}` 
+        : `${selectedYear - 1}-11`;
+
+      let prevTotals: ReturnType<typeof computeMonthTotals> | null = null;
+      if (months[immediatePrevKey]) {
+        prevTotals = computeMonthTotals(months[immediatePrevKey].transactions);
+        prevBalance = prevTotals.endOfMonthTotal;
+        lastPopulatedMonthData = months[immediatePrevKey];
+      } else {
+        // Buscar el mes anterior más cercano cronológicamente
+        const allPrecedingKeys = Object.keys(months).filter(k => {
+          const [y, m] = k.split('-').map(Number);
+          return y < selectedYear || (y === selectedYear && m < selectedMonth);
+        });
+
+        if (allPrecedingKeys.length > 0) {
+          allPrecedingKeys.sort((a, b) => {
+            const [yA, mA] = a.split('-').map(Number);
+            const [yB, mB] = b.split('-').map(Number);
+            return (yA * 12 + mA) - (yB * 12 + mB);
+          });
+          const closestKey = allPrecedingKeys[allPrecedingKeys.length - 1];
+          prevTotals = computeMonthTotals(months[closestKey].transactions);
           prevBalance = prevTotals.endOfMonthTotal;
+          lastPopulatedMonthData = months[closestKey];
         }
       }
 
+      // 2. Fila 1: Acumulado
       const initialAccumulated: Transaction = {
         id: `acc-${selectedYear}-${selectedMonth}`,
         label: 'Neto',
@@ -317,19 +380,44 @@ export default function App() {
         day: 1,
         dateString: getDateString(1, selectedMonth, language),
         isRecurring: false,
-        isDone: false,
-        actualAmount: null,
+        isDone: prevTotals ? (prevTotals.doneCount > 0 || prevTotals.totalActual !== 0) : false,
+        actualAmount: prevTotals ? prevTotals.totalActual : null,
         highlight: 'none',
         isAutoAccumulated: true
       };
+
+      const monthTitle = `${MONTH_NAMES[language][selectedMonth]} (${selectedYear})`;
+
+      // 3. Arrastre de recurrentes continuos del último mes poblado
+      const inheritedTransactions: Transaction[] = [initialAccumulated];
+      if (lastPopulatedMonthData) {
+        lastPopulatedMonthData.transactions.forEach(oldTx => {
+          // Solo heredamos transacciones recurrentes continuas (sin préstamos y NUNCA Acumulados)
+          if (oldTx.isRecurring && !oldTx.loanDetails && !oldTx.isAutoAccumulated && oldTx.concept.trim().toLowerCase() !== 'acumulado') {
+            const cleanBaseId = oldTx.id.replace(/^tx-fwd-\d+-\d+-/, '');
+            inheritedTransactions.push({
+              id: `tx-fwd-${selectedYear}-${selectedMonth}-${cleanBaseId}`,
+              label: oldTx.label,
+              concept: oldTx.concept,
+              amount: oldTx.amount,
+              day: oldTx.day,
+              dateString: getDateString(oldTx.day, selectedMonth, language),
+              isRecurring: true,
+              isDone: false,
+              actualAmount: null,
+              highlight: oldTx.highlight
+            });
+          }
+        });
+      }
 
       setMonths(prev => ({
         ...prev,
         [currentKey]: {
           year: selectedYear,
           month: selectedMonth,
-          title: undefined,
-          transactions: [initialAccumulated],
+          title: monthTitle,
+          transactions: inheritedTransactions,
           creditCards: createDefaultCreditCards(selectedMonth),
           hasUserActivity: false
         }
@@ -343,7 +431,13 @@ export default function App() {
   };
 
   const handleThemeToggle = () => {
-    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
+    setTheme(prev => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      try {
+        localStorage.setItem('totalero_theme', next);
+      } catch {}
+      return next;
+    });
   };
 
   // Login Local
@@ -544,13 +638,36 @@ export default function App() {
 
       let txList = [...monthData.transactions];
 
-      const newId = editingTx ? editingTx.id : `tx-${Date.now()}`;
+      const isAccumulated = !!(
+        txData.isAutoAccumulated || 
+        (editingTx && (editingTx.isAutoAccumulated || editingTx.concept.trim().toLowerCase() === 'acumulado' || editingTx.id.startsWith('acc-'))) ||
+        txData.concept.trim().toLowerCase() === 'acumulado'
+      );
+
+      const newId = isAccumulated ? `acc-${selectedYear}-${selectedMonth}` : (editingTx ? editingTx.id : `tx-${Date.now()}`);
       const newTx: Transaction = {
         ...txData,
-        id: newId
+        id: newId,
+        label: isAccumulated ? 'Neto' : txData.label,
+        concept: isAccumulated ? 'Acumulado' : txData.concept,
+        day: isAccumulated ? 1 : txData.day,
+        dateString: isAccumulated ? getDateString(1, selectedMonth, language) : txData.dateString,
+        isRecurring: isAccumulated ? false : txData.isRecurring,
+        isAutoAccumulated: isAccumulated ? true : undefined,
+        hasCustomActual: isAccumulated ? (txData.actualAmount !== null && txData.actualAmount !== undefined) : undefined
       };
 
-      if (editingTx) {
+      if (isAccumulated) {
+        // Encontrar si ya hay un acumulado en txList
+        const accIdx = txList.findIndex(t => t.isAutoAccumulated || t.concept.trim().toLowerCase() === 'acumulado' || t.id.startsWith('acc-'));
+        if (accIdx >= 0) {
+          txList[accIdx] = newTx;
+        } else {
+          txList.unshift(newTx);
+        }
+        // Filtrar cualquier duplicado residual
+        txList = [newTx, ...txList.filter(t => t.id !== newTx.id && !t.isAutoAccumulated && t.concept.trim().toLowerCase() !== 'acumulado')];
+      } else if (editingTx) {
         const index = txList.findIndex(t => t.id === editingTx.id);
         if (index >= 0) {
           txList[index] = newTx;
@@ -723,33 +840,58 @@ export default function App() {
             };
           }
         }
-      } else if (txData.isRecurring) {
-        // Gasto / Ingreso recurrente regular proyectado en los meses futuros del año
-        for (let m = selectedMonth + 1; m < 12; m++) {
-          const nextKey = `${selectedYear}-${m}`;
+      } else if (txData.isRecurring && !isAccumulated) {
+        // Gasto / Ingreso recurrente regular proyectado en los meses futuros (hasta 5 años / 60 meses o MAX_CATALOG_YEAR 2050)
+        const totalMonthsToProject = Math.min(60, (MAX_CATALOG_YEAR - selectedYear) * 12 + (11 - selectedMonth));
+
+        for (let step = 1; step <= totalMonthsToProject; step++) {
+          const rawM = selectedMonth + step;
+          const nextM = rawM % 12;
+          const nextY = selectedYear + Math.floor(rawM / 12);
+          if (nextY > MAX_CATALOG_YEAR) break;
+
+          const nextKey = `${nextY}-${nextM}`;
           if (!updatedMonths[nextKey]) {
+            const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
             updatedMonths[nextKey] = {
-              year: selectedYear,
-              month: m,
+              year: nextY,
+              month: nextM,
+              title: `${monthNames[nextM]} (${nextY})`,
               transactions: [],
-              creditCards: createDefaultCreditCards(m),
+              creditCards: createDefaultCreditCards(nextM),
               hasUserActivity: true
             };
           }
 
           const forwardTxList = [...updatedMonths[nextKey].transactions];
-          forwardTxList.push({
-            id: `tx-fwd-${m}-${newId}`,
+          
+          // Buscar si ya existe la proyección de esta transacción
+          const existingIdx = forwardTxList.findIndex(t => 
+            t.id === `tx-fwd-${nextY}-${nextM}-${newId}` ||
+            (editingTx && (
+              t.id === `tx-fwd-${nextY}-${nextM}-${editingTx.id}` || 
+              (t.concept.trim().toLowerCase() === editingTx.concept.trim().toLowerCase() && t.isRecurring && !t.loanDetails)
+            ))
+          );
+
+          const fwdTx: Transaction = {
+            id: `tx-fwd-${nextY}-${nextM}-${newId}`,
             label: txData.label,
             concept: txData.concept,
             amount: txData.amount,
             day: txData.day,
-            dateString: getDateString(txData.day, m, language),
+            dateString: getDateString(txData.day, nextM, language),
             isRecurring: true,
             isDone: false,
             actualAmount: null,
             highlight: txData.highlight
-          });
+          };
+
+          if (existingIdx >= 0) {
+            forwardTxList[existingIdx] = fwdTx;
+          } else {
+            forwardTxList.push(fwdTx);
+          }
 
           updatedMonths[nextKey] = {
             ...updatedMonths[nextKey],
@@ -818,14 +960,37 @@ export default function App() {
       const monthData = updatedMonths[currentKey];
       if (!monthData) return prev;
 
-      const txList = monthData.transactions.filter(t => t.id !== id);
+      const targetTx = monthData.transactions.find(t => t.id === id);
+      const isPrimaryAcc = targetTx && (targetTx.id === `acc-${selectedYear}-${selectedMonth}`);
+
+      let txList = monthData.transactions.filter(t => t.id !== id);
+
+      // Si intentó borrar el acumulado legítimo de este mes, reseteamos su actualAmount y status pero mantenemos la fila viva
+      if (isPrimaryAcc) {
+        const closestTotals = getPreviousMonthTotals(updatedMonths, selectedYear, selectedMonth);
+        const resetAcc: Transaction = {
+          id: `acc-${selectedYear}-${selectedMonth}`,
+          label: 'Neto',
+          concept: 'Acumulado',
+          amount: closestTotals ? closestTotals.endOfMonthTotal : 0,
+          day: 1,
+          dateString: getDateString(1, selectedMonth, language),
+          isRecurring: false,
+          isDone: false,
+          actualAmount: null,
+          hasCustomActual: false,
+          highlight: 'none',
+          isAutoAccumulated: true
+        };
+        txList = [resetAcc, ...txList.filter(t => !t.isAutoAccumulated && t.concept.trim().toLowerCase() !== 'acumulado')];
+      }
 
       updatedMonths[currentKey] = {
         ...monthData,
         transactions: txList
       };
 
-      return cascadeAccumulatedBalances(updatedMonths, selectedYear, selectedMonth);
+      return cascadeAccumulatedBalances(updatedMonths, selectedYear, selectedMonth, language);
     });
   };
 
@@ -1013,6 +1178,10 @@ export default function App() {
   };
 
   const handleDuplicateTransaction = (tx: Transaction) => {
+    if (tx.isAutoAccumulated || tx.concept.trim().toLowerCase() === 'acumulado' || tx.id.startsWith('acc-')) {
+      return;
+    }
+
     setMonths(prev => {
       let updatedMonths = { ...prev };
       const monthData = updatedMonths[currentKey];
@@ -1031,7 +1200,7 @@ export default function App() {
         transactions: [...monthData.transactions, duplicated]
       };
 
-      return cascadeAccumulatedBalances(updatedMonths, selectedYear, selectedMonth);
+      return cascadeAccumulatedBalances(updatedMonths, selectedYear, selectedMonth, language);
     });
   };
 
@@ -1196,42 +1365,50 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col selection:bg-emerald-500 selection:text-neutral-950 transition-colors duration-200">
+    <div className="min-h-screen bg-slate-100 dark:bg-neutral-950 text-slate-900 dark:text-neutral-100 flex flex-col selection:bg-emerald-500 selection:text-white transition-colors duration-200">
       
-      {/* 1. Header Global con Navegador de Año, Título, Idioma y Tema */}
-      <Header
-        year={selectedYear}
-        month={selectedMonth}
-        monthTitle={currentMonthData.title}
-        onYearChange={setSelectedYear}
-        onUpdateMonthTitle={handleUpdateMonthTitle}
-        language={language}
-        onLanguageToggle={handleLanguageToggle}
-        theme={theme}
-        onThemeToggle={handleThemeToggle}
-        userSession={userSession}
-        onLogout={handleLogout}
-        onOpenBackup={() => setIsBackupOpen(true)}
-        onOpenDangerZone={() => setIsDangerZoneOpen(true)}
-      />
+      {/* 1. Header Global y Barra de 12 Meses Fija en el Scrolling (Sticky top-0) */}
+      <div className="sticky top-0 z-30 bg-white/95 dark:bg-neutral-950/95 border-b border-slate-200 dark:border-neutral-800 backdrop-blur-md transition-colors shadow-xs">
+        <Header
+          year={selectedYear}
+          month={selectedMonth}
+          monthTitle={currentMonthData.title}
+          onYearChange={setSelectedYear}
+          onUpdateMonthTitle={handleUpdateMonthTitle}
+          language={language}
+          onLanguageToggle={handleLanguageToggle}
+          theme={theme}
+          onThemeToggle={handleThemeToggle}
+          userSession={userSession}
+          onLogout={handleLogout}
+          onOpenBackup={() => setIsBackupOpen(true)}
+          onOpenDangerZone={() => setIsDangerZoneOpen(true)}
+        />
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 pb-2.5 pt-0.5">
+          <MonthBar
+            year={selectedYear}
+            selectedMonth={selectedMonth}
+            monthsData={months}
+            onSelectMonth={setSelectedMonth}
+            language={language}
+          />
+        </div>
+      </div>
 
       {/* Main Viewport */}
       <main className="flex-1 max-w-[1600px] w-full mx-auto px-3 sm:px-6 py-4 flex flex-col gap-5">
         
-        {/* 2. Barra de los 12 Meses con Indicadores Visuales */}
-        <MonthBar
-          year={selectedYear}
-          selectedMonth={selectedMonth}
-          monthsData={months}
-          onSelectMonth={setSelectedMonth}
-          language={language}
-        />
-
-        {/* 3. Tarjetas de Métricas Resumen (5 en fila) */}
+        {/* 2. Tarjetas de Métricas Resumen y Diagnóstico Quincenal */}
         <MetricCards
           totals={currentTotals}
           totalLiquidity={totalLiquidity}
+          transactions={currentMonthData.transactions}
+          month={selectedMonth}
+          year={selectedYear}
           language={language}
+          periodView={periodView}
+          onPeriodViewChange={setPeriodView}
+          onFilterTableQuincena={(q) => setFilter(q === 1 ? 'q1' : 'q2')}
         />
 
         {/* 4. Tabla de Flujo de Caja Inteligente */}
@@ -1312,6 +1489,7 @@ export default function App() {
         selectedMonth={selectedMonth}
         year={selectedYear}
         language={language}
+        prevMonthTotals={getPreviousMonthTotals(months, selectedYear, selectedMonth)}
       />
 
       {/* Modal Simulador de Amortización y Ahorro */}

@@ -45,10 +45,11 @@ interface TransactionModalProps {
   selectedMonth: number;
   year: number;
   language: Language;
+  prevMonthTotals?: { endOfMonthTotal: number; totalActual: number; hasData: boolean } | null;
 }
 
 const LABELS: TransactionLabel[] = [
-  'Ingreso', 'Gasto', 'Servicio', 'Neto', 'Coppel', 'Préstamo', 'Otro'
+  'Ingreso', 'Gasto', 'Servicio', 'Neto', 'Préstamo', 'Crédito', 'Otro'
 ];
 
 export const TransactionModal: React.FC<TransactionModalProps> = ({
@@ -58,9 +59,16 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   initialData,
   selectedMonth,
   year,
-  language
+  language,
+  prevMonthTotals
 }) => {
   const t = TRANSLATIONS[language];
+
+  const isAccumulatedTx = !!(
+    initialData?.isAutoAccumulated || 
+    initialData?.concept?.trim().toLowerCase() === 'acumulado' || 
+    initialData?.id?.startsWith('acc-')
+  );
 
   // Form states
   const [label, setLabel] = useState<TransactionLabel>('Gasto');
@@ -118,31 +126,52 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     lastEditIdRef.current = currentEditId;
 
     if (initialData) {
-      setLabel(initialData.label);
-      setConcept(initialData.concept);
-      const isNegative = initialData.amount < 0;
-      setSign(isNegative ? 'expense' : 'income');
-      setAmountRaw(Math.abs(initialData.amount).toString());
-      setDay(initialData.day || 15);
-      setIsRecurring(initialData.isRecurring || false);
-      setIsDone(initialData.isDone || false);
-      setActualAmountRaw(initialData.actualAmount !== null && initialData.actualAmount !== undefined ? Math.abs(initialData.actualAmount).toString() : '');
-      setHighlight(initialData.highlight || 'none');
-
-      if (initialData.loanDetails) {
-        setHasLoan(true);
-        setLoanInstitution(initialData.loanDetails.institutionName);
-        setTotalTerm(initialData.loanDetails.totalTermMonths || 12);
-        setCurrentTerm(initialData.loanDetails.currentTermMonth || 1);
-        setOriginalPrincipal(initialData.loanDetails.originalPrincipal || 0);
-        setInitialDebt(initialData.loanDetails.initialDebt || 0);
-        setCalcMode(initialData.loanDetails.mode || 'totalPay');
-        setTotalToPay(initialData.loanDetails.totalToPay || 0);
-        setAnnualRate(initialData.loanDetails.annualInterestRate || 36);
-        setPayoffDiscountRaw(initialData.loanDetails.payoffDiscount ? initialData.loanDetails.payoffDiscount.toString() : '');
-      } else {
+      if (isAccumulatedTx) {
+        setLabel('Neto');
+        setConcept('Acumulado');
+        setSign('income');
+        setAmountRaw(Math.abs(initialData.amount).toString());
+        setDay(1);
+        setIsRecurring(false);
         setHasLoan(false);
-        setPayoffDiscountRaw('');
+        setHighlight('none');
+        if (initialData.actualAmount !== null && initialData.actualAmount !== undefined) {
+          setIsDone(!!initialData.isDone);
+          setActualAmountRaw(Math.abs(initialData.actualAmount).toString());
+        } else if (prevMonthTotals && prevMonthTotals.hasData && (prevMonthTotals.totalActual !== 0)) {
+          setIsDone(true);
+          setActualAmountRaw(Math.abs(prevMonthTotals.totalActual).toString());
+        } else {
+          setIsDone(!!initialData.isDone);
+          setActualAmountRaw('');
+        }
+      } else {
+        setLabel(initialData.label);
+        setConcept(initialData.concept);
+        const isNegative = initialData.amount < 0;
+        setSign(isNegative ? 'expense' : 'income');
+        setAmountRaw(Math.abs(initialData.amount).toString());
+        setDay(initialData.day || 15);
+        setIsRecurring(initialData.isRecurring || false);
+        setIsDone(initialData.isDone || false);
+        setActualAmountRaw(initialData.actualAmount !== null && initialData.actualAmount !== undefined ? Math.abs(initialData.actualAmount).toString() : '');
+        setHighlight(initialData.highlight || 'none');
+
+        if (initialData.loanDetails) {
+          setHasLoan(true);
+          setLoanInstitution(initialData.loanDetails.institutionName);
+          setTotalTerm(initialData.loanDetails.totalTermMonths || 12);
+          setCurrentTerm(initialData.loanDetails.currentTermMonth || 1);
+          setOriginalPrincipal(initialData.loanDetails.originalPrincipal || 0);
+          setInitialDebt(initialData.loanDetails.initialDebt || 0);
+          setCalcMode(initialData.loanDetails.mode || 'totalPay');
+          setTotalToPay(initialData.loanDetails.totalToPay || 0);
+          setAnnualRate(initialData.loanDetails.annualInterestRate || 36);
+          setPayoffDiscountRaw(initialData.loanDetails.payoffDiscount ? initialData.loanDetails.payoffDiscount.toString() : '');
+        } else {
+          setHasLoan(false);
+          setPayoffDiscountRaw('');
+        }
       }
     } else {
       // Default new transaction
@@ -370,16 +399,18 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     }
 
     onSave({
-      label,
-      concept: concept.trim() || (hasLoan ? `${loanInstitution} ${currentTerm} de ${totalTerm}` : 'Transacción'),
-      amount: finalAmount,
-      day,
-      dateString: dateStr,
-      isRecurring,
+      label: isAccumulatedTx ? 'Neto' : label,
+      concept: isAccumulatedTx ? 'Acumulado' : (concept.trim() || (hasLoan ? `${loanInstitution} ${currentTerm} de ${totalTerm}` : 'Transacción')),
+      amount: isAccumulatedTx ? Math.abs(finalAmount) : finalAmount,
+      day: isAccumulatedTx ? 1 : day,
+      dateString: isAccumulatedTx ? getDateString(1, selectedMonth, language) : dateStr,
+      isRecurring: isAccumulatedTx ? false : isRecurring,
       isDone,
       actualAmount: parsedActual,
       highlight,
-      loanDetails: loanDetailsObj
+      isAutoAccumulated: isAccumulatedTx ? true : undefined,
+      hasCustomActual: isAccumulatedTx ? (parsedActual !== null) : undefined,
+      loanDetails: isAccumulatedTx ? undefined : loanDetailsObj
     }, termAdjustment);
 
     onClose();
@@ -388,22 +419,22 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const computedDatePreview = getDateString(day, selectedMonth, language);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden my-auto max-h-[95vh] flex flex-col">
+    <div className="fixed inset-0 z-50 bg-slate-900/50 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden my-auto max-h-[95vh] flex flex-col text-slate-900 dark:text-neutral-100 transition-colors">
         
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-neutral-800 bg-neutral-950/60">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 dark:border-neutral-800 bg-slate-50 dark:bg-neutral-950/60">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
               <Sparkles className="w-4 h-4" />
             </div>
-            <h3 className="text-base font-bold text-white tracking-tight">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
               {initialData ? t.modalEditTitle : t.modalAddTitle}
             </h3>
           </div>
           <button
             onClick={onClose}
-            className="text-neutral-400 hover:text-white p-1 rounded-lg hover:bg-neutral-800 transition-colors"
+            className="text-slate-400 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-neutral-800 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -414,68 +445,94 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           
           {/* 1. Etiqueta / Tipo (Chips) */}
           <div>
-            <label className="text-neutral-300 font-semibold mb-1.5 block">
+            <label className="text-slate-700 dark:text-neutral-300 font-semibold mb-1.5 block">
               {t.fieldLabel}
             </label>
-            <div className="flex flex-wrap gap-1.5">
-              {LABELS.map(lbl => (
-                <button
-                  key={lbl}
-                  type="button"
-                  onClick={() => setLabel(lbl)}
-                  className={`px-3 py-1.5 rounded-lg font-medium text-xs transition-all border ${
-                    label === lbl
-                      ? 'bg-emerald-500 text-neutral-950 font-bold border-emerald-400 shadow-sm'
-                      : 'bg-neutral-950/80 text-neutral-400 hover:text-white border-neutral-800 hover:border-neutral-700'
-                  }`}
-                >
-                  {lbl}
-                </button>
-              ))}
-            </div>
+            {isAccumulatedTx ? (
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1.5 rounded-lg font-bold text-xs bg-emerald-600 dark:bg-emerald-500 text-white dark:text-neutral-950 border border-emerald-600 dark:border-emerald-400 shadow-xs">
+                  Neto
+                </span>
+                <span className="text-[11px] text-slate-500 dark:text-neutral-400">
+                  {language === 'es' ? '(Fila 1: Arrastre de balance mensual acumulado)' : '(Row 1: Accumulated monthly balance carryover)'}
+                </span>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {LABELS.map(lbl => (
+                  <button
+                    key={lbl}
+                    type="button"
+                    onClick={() => setLabel(lbl)}
+                    className={`px-3 py-1.5 rounded-lg font-medium text-xs transition-all border ${
+                      label === lbl
+                        ? 'bg-emerald-600 dark:bg-emerald-500 text-white dark:text-neutral-950 font-bold border-emerald-600 dark:border-emerald-400 shadow-xs'
+                        : 'bg-slate-50 dark:bg-neutral-950/80 text-slate-700 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white border-slate-200 dark:border-neutral-800 hover:border-slate-300 dark:hover:border-neutral-700'
+                    }`}
+                  >
+                    {lbl}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* 2. Concepto & 3. Monto con Signo */}
           <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
             <div className="sm:col-span-7">
-              <label className="text-neutral-300 font-semibold mb-1 block">
+              <label className="text-slate-700 dark:text-neutral-300 font-semibold mb-1 block">
                 {t.fieldConcept}
               </label>
               <input
                 type="text"
                 required
+                readOnly={isAccumulatedTx}
                 value={concept}
-                onChange={e => setConcept(e.target.value)}
+                onChange={e => !isAccumulatedTx && setConcept(e.target.value)}
                 placeholder={t.fieldConceptPlaceholder}
-                className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-2 text-white placeholder-neutral-500 focus:outline-none focus:border-emerald-500 text-xs"
+                className={`w-full border rounded-lg px-3 py-2 text-xs transition-colors ${
+                  isAccumulatedTx
+                    ? 'bg-slate-100 dark:bg-neutral-900 border-slate-300 dark:border-neutral-800 text-slate-700 dark:text-neutral-300 font-bold cursor-not-allowed'
+                    : 'bg-slate-50 dark:bg-neutral-950 border-slate-300 dark:border-neutral-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-neutral-500 focus:outline-none focus:border-emerald-500 focus:bg-white dark:focus:bg-neutral-900'
+                }`}
               />
+              {isAccumulatedTx && prevMonthTotals?.hasData && (
+                <p className="text-[10px] text-slate-500 dark:text-neutral-400 mt-1">
+                  {language === 'es' ? 'Saldo final proyectado del mes anterior:' : 'Projected end balance from previous month:'}{' '}
+                  <strong className="text-emerald-700 dark:text-emerald-400 font-semibold tabular-nums">
+                    {formatCurrency(prevMonthTotals.endOfMonthTotal)}
+                  </strong>
+                </p>
+              )}
             </div>
 
             <div className="sm:col-span-5">
-              <label className="text-neutral-300 font-semibold mb-1 block">
+              <label className="text-slate-700 dark:text-neutral-300 font-semibold mb-1 block">
                 {t.fieldAmount}
               </label>
               <div className="flex items-center gap-1.5">
                 {/* Selector de signo */}
-                <div className="flex bg-neutral-950 border border-neutral-800 rounded-lg p-0.5 shrink-0">
+                <div className="flex bg-slate-100 dark:bg-neutral-950 border border-slate-300 dark:border-neutral-800 rounded-lg p-0.5 shrink-0">
                   <button
                     type="button"
+                    disabled={isAccumulatedTx}
                     onClick={() => setSign('expense')}
                     className={`px-2 py-1.5 rounded text-[11px] font-bold transition-all ${
                       sign === 'expense'
-                        ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40'
-                        : 'text-neutral-400 hover:text-white'
+                        ? 'bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400 border border-rose-300 dark:border-rose-500/40 font-bold'
+                        : 'text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
                     -
                   </button>
                   <button
                     type="button"
+                    disabled={isAccumulatedTx}
                     onClick={() => setSign('income')}
                     className={`px-2 py-1.5 rounded text-[11px] font-bold transition-all ${
                       sign === 'income'
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                        : 'text-neutral-400 hover:text-white'
+                        ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-500/40 font-bold'
+                        : 'text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
                     +
@@ -489,18 +546,18 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   value={amountRaw}
                   onChange={e => setAmountRaw(e.target.value)}
                   placeholder="0.00"
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-slate-50 dark:bg-neutral-950 border border-slate-300 dark:border-neutral-800 rounded-lg px-3 py-2 text-slate-900 dark:text-white tabular-nums text-xs focus:outline-none focus:border-emerald-500 focus:bg-white dark:focus:bg-neutral-900 transition-colors"
                 />
               </div>
             </div>
           </div>
 
           {/* 4. Fecha y 5. Recurrente */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center bg-neutral-950/60 p-3 rounded-xl border border-neutral-800/80">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center bg-slate-50 dark:bg-neutral-950/60 p-3 rounded-xl border border-slate-200 dark:border-neutral-800/80">
             <div>
-              <label className="text-neutral-300 font-semibold mb-1 flex items-center justify-between">
+              <label className="text-slate-700 dark:text-neutral-300 font-semibold mb-1 flex items-center justify-between">
                 <span>{t.fieldDay}</span>
-                <span className="font-mono text-emerald-400 text-[11px]">
+                <span className="text-emerald-700 dark:text-emerald-400 text-[11px] font-bold">
                   {t.fieldDateComputed}: <strong>{computedDatePreview}</strong>
                 </span>
               </label>
@@ -510,68 +567,85 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   min={1}
                   max={31}
                   required
-                  value={day}
-                  onChange={e => setDay(Math.max(1, Math.min(31, parseInt(e.target.value) || 1)))}
-                  className="w-24 bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-1.5 text-white font-mono focus:outline-none focus:border-emerald-500 text-xs"
+                  disabled={isAccumulatedTx}
+                  value={isAccumulatedTx ? 1 : day}
+                  onChange={e => !isAccumulatedTx && setDay(Math.max(1, Math.min(31, parseInt(e.target.value) || 1)))}
+                  className={`w-24 border rounded-lg px-3 py-1.5 tabular-nums text-xs ${
+                    isAccumulatedTx
+                      ? 'bg-slate-100 dark:bg-neutral-900 border-slate-300 dark:border-neutral-800 text-slate-600 dark:text-neutral-400 cursor-not-allowed'
+                      : 'bg-white dark:bg-neutral-900 border border-slate-300 dark:border-neutral-800 text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500'
+                  }`}
                 />
-                <span className="text-[11px] text-neutral-400">
-                  (del mes activo)
+                <span className="text-[11px] text-slate-500 dark:text-neutral-400">
+                  {isAccumulatedTx ? (language === 'es' ? '(Día 1 de inicio)' : '(Day 1 start)') : '(del mes activo)'}
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-2.5 pt-2 sm:pt-0">
-              <input
-                type="checkbox"
-                id="isRecurring"
-                checked={isRecurring}
-                onChange={e => setIsRecurring(e.target.checked)}
-                className="w-4 h-4 rounded border-neutral-700 text-emerald-500 focus:ring-emerald-500 accent-emerald-500"
-              />
-              <label htmlFor="isRecurring" className="text-neutral-300 select-none cursor-pointer">
-                <span className="font-semibold block">{t.fieldRecurring}</span>
-                <span className="text-[10px] text-neutral-400 block">{t.fieldRecurringHelp}</span>
-              </label>
-            </div>
+            {isAccumulatedTx ? (
+              <div className="p-2 rounded-lg bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-500/20 text-emerald-900 dark:text-emerald-300 text-[11px] flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span>
+                  {language === 'es'
+                    ? 'Arrastre automático de mes a mes. No es un gasto recurrente manual.'
+                    : 'Automatic carryover month to month. Not a manual recurring expense.'}
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2.5 pt-2 sm:pt-0">
+                <input
+                  type="checkbox"
+                  id="isRecurring"
+                  checked={isRecurring}
+                  onChange={e => setIsRecurring(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 dark:border-neutral-700 text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
+                />
+                <label htmlFor="isRecurring" className="text-slate-700 dark:text-neutral-300 select-none cursor-pointer">
+                  <span className="font-semibold block text-slate-900 dark:text-neutral-100">{t.fieldRecurring}</span>
+                  <span className="text-[10px] text-slate-500 dark:text-neutral-400 block">{t.fieldRecurringHelp}</span>
+                </label>
+              </div>
+            )}
           </div>
 
-          {/* 6. ¿Vincular a Préstamo / Deuda a Plazos? */}
-          <div className="border border-neutral-800 rounded-xl bg-neutral-950/40">
+          {/* 6. ¿Vincular a Préstamo / Deuda a Plazos? (Solo transacciones regulares) */}
+          {!isAccumulatedTx && (
+            <div className="border border-slate-200 dark:border-neutral-800 rounded-xl bg-slate-50/50 dark:bg-neutral-950/40 overflow-hidden">
             <button
               type="button"
               onClick={() => setHasLoan(!hasLoan)}
-              className="w-full flex items-center justify-between p-3.5 bg-neutral-900/80 hover:bg-neutral-800/60 transition-colors text-left rounded-t-xl"
+              className="w-full flex items-center justify-between p-3.5 bg-slate-100/90 dark:bg-neutral-900/80 hover:bg-slate-200/80 dark:hover:bg-neutral-800/60 transition-colors text-left"
             >
               <div className="flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-amber-400" />
-                <span className="font-bold text-white text-xs">
+                <Building2 className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                <span className="font-bold text-slate-900 dark:text-white text-xs">
                   {t.fieldLinkLoan}
                 </span>
               </div>
-              <span className={`text-[11px] px-2.5 py-0.5 rounded font-mono font-semibold ${
+              <span className={`text-[11px] px-2.5 py-0.5 rounded font-bold ${
                 hasLoan 
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' 
-                  : 'bg-neutral-800 text-neutral-400'
+                  ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30' 
+                  : 'bg-slate-200 dark:bg-neutral-800 text-slate-700 dark:text-neutral-400'
               }`}>
                 {hasLoan ? 'ACTIVO' : 'NO'}
               </span>
             </button>
 
             {hasLoan && (
-              <div className="p-4 sm:p-5 flex flex-col gap-4 bg-neutral-950/80 border-t border-neutral-800">
+              <div className="p-4 sm:p-5 flex flex-col gap-4 bg-white dark:bg-neutral-950/80 border-t border-slate-200 dark:border-neutral-800">
                 
                 {/* Banner informativo cuando la cuota actual es mayor a 1 */}
                 {currentTerm > 1 && (
-                  <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex flex-col gap-2">
+                  <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/30 text-amber-900 dark:text-amber-300 text-xs flex flex-col gap-2">
                     <div className="flex items-start gap-2.5">
-                      <Sparkles className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                      <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                       <div>
-                        <span className="font-bold block text-sm">
+                        <span className="font-bold block text-sm text-slate-900 dark:text-amber-200">
                           {language === 'es' 
                             ? `Registro desde la cuota ${currentTerm} de ${totalTerm}` 
                             : `Registering from installment ${currentTerm} of ${totalTerm}`}
                         </span>
-                        <p className="text-[11px] text-neutral-300 mt-0.5 leading-relaxed">
+                        <p className="text-[11px] text-slate-700 dark:text-neutral-300 mt-0.5 leading-relaxed">
                           {language === 'es'
                             ? `Totalero creará automáticamente las ${currentTerm - 1} cuota(s) previa(s) en los meses anteriores (con sus saldos de deuda y pagos correspondientes calculados en reversa y marcadas como pagadas), además de proyectar las ${totalTerm - currentTerm} cuotas futuras restantes.`
                             : `Totalero will automatically backfill the ${currentTerm - 1} previous installment(s) in earlier months (with retroactive balances and marked as paid), plus project the remaining ${totalTerm - currentTerm} installments forward.`}
@@ -580,16 +654,16 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                     </div>
 
                     {/* Timeline pills */}
-                    <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[10px] font-mono border-t border-amber-500/20">
-                      <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-200 border border-amber-500/40">
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[10px] border-t border-amber-300/60 dark:border-amber-500/20">
+                      <span className="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-500/40 font-semibold">
                         {language === 'es' ? `← Meses previos: Cuotas 1 a ${currentTerm - 1}` : `← Prior months: 1 to ${currentTerm - 1}`}
                       </span>
-                      <span className="text-neutral-500">→</span>
-                      <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
+                      <span className="text-slate-400 dark:text-neutral-500">→</span>
+                      <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/40 font-bold">
                         {language === 'es' ? `Mes activo: Cuota ${currentTerm}` : `Active month: ${currentTerm}`}
                       </span>
-                      <span className="text-neutral-500">→</span>
-                      <span className="px-2 py-0.5 rounded bg-neutral-800 text-neutral-300 border border-neutral-700">
+                      <span className="text-slate-400 dark:text-neutral-500">→</span>
+                      <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300 border border-slate-300 dark:border-neutral-700">
                         {language === 'es' ? `Futuro: Cuotas ${currentTerm + 1} a ${totalTerm}` : `Future: ${currentTerm + 1} to ${totalTerm}`}
                       </span>
                     </div>
@@ -599,7 +673,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 {/* Institución, Plazo y Cuota */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="text-neutral-300 font-semibold mb-1 block">
+                    <label className="text-slate-700 dark:text-neutral-300 font-semibold mb-1 block">
                       {t.fieldLoanInstitution}
                     </label>
                     <input
@@ -608,13 +682,13 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                       value={loanInstitution}
                       onChange={e => setLoanInstitution(e.target.value)}
                       onBlur={handleInstitutionBlur}
-                      placeholder="ej. BanCoppel, Coppel, Nu"
-                      className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-amber-500"
+                      placeholder="ej. Banco Principal, Financiera, Tarjeta Oro"
+                      className="w-full bg-slate-50 dark:bg-neutral-900 border border-slate-300 dark:border-neutral-800 rounded-lg px-2.5 py-1.5 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-amber-500 focus:bg-white dark:focus:bg-neutral-900"
                     />
                   </div>
 
                   <div>
-                    <label className="text-neutral-300 font-semibold mb-1 block">
+                    <label className="text-slate-700 dark:text-neutral-300 font-semibold mb-1 block">
                       {t.fieldTotalTerm}
                     </label>
                     <input
@@ -623,12 +697,12 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                       max={120}
                       value={totalTerm}
                       onChange={e => setTotalTerm(parseInt(e.target.value) || 12)}
-                      className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-white font-mono text-xs focus:outline-none focus:border-amber-500"
+                      className="w-full bg-slate-50 dark:bg-neutral-900 border border-slate-300 dark:border-neutral-800 rounded-lg px-2.5 py-1.5 text-slate-900 dark:text-white tabular-nums text-xs focus:outline-none focus:border-amber-500 focus:bg-white dark:focus:bg-neutral-900"
                     />
                   </div>
 
                   <div>
-                    <label className="text-neutral-300 font-semibold mb-1 block">
+                    <label className="text-slate-700 dark:text-neutral-300 font-semibold mb-1 block">
                       {t.fieldCurrentTerm}
                     </label>
                     <input
@@ -637,20 +711,20 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                       max={totalTerm}
                       value={currentTerm}
                       onChange={e => setCurrentTerm(parseInt(e.target.value) || 1)}
-                      className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-white font-mono text-xs focus:outline-none focus:border-amber-500"
+                      className="w-full bg-slate-50 dark:bg-neutral-900 border border-slate-300 dark:border-neutral-800 rounded-lg px-2.5 py-1.5 text-slate-900 dark:text-white tabular-nums text-xs focus:outline-none focus:border-amber-500 focus:bg-white dark:focus:bg-neutral-900"
                     />
                   </div>
                 </div>
 
                 {/* Calculadora de Intereses con 2 modos (Completa, sin recortes) */}
-                <div className="bg-neutral-900 border border-amber-500/30 rounded-xl p-4 flex flex-col gap-3.5 shadow-sm">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-neutral-800 gap-2">
+                <div className="bg-slate-50 dark:bg-neutral-900 border border-amber-300 dark:border-amber-500/30 rounded-xl p-4 flex flex-col gap-3.5 shadow-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-slate-200 dark:border-neutral-800 gap-2">
                     <div>
-                      <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
-                        <Calculator className="w-4 h-4 text-amber-400" />
+                      <span className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                        <Calculator className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                         {t.calculatorModeTitle}
                       </span>
-                      <p className="text-[10px] text-neutral-400 mt-0.5">
+                      <p className="text-[10px] text-slate-500 dark:text-neutral-400 mt-0.5">
                         {language === 'es'
                           ? 'Calcula la tasa de interés anual (APR), interés total y mensualidad sin cortes'
                           : 'Compute APR, total interest charges, and monthly payments'}
@@ -658,14 +732,14 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                     </div>
 
                     {/* Selector de modo */}
-                    <div className="flex bg-neutral-950 p-0.5 rounded-lg border border-neutral-800 self-start sm:self-auto">
+                    <div className="flex bg-slate-200/80 dark:bg-neutral-950 p-0.5 rounded-lg border border-slate-300 dark:border-neutral-800 self-start sm:self-auto">
                       <button
                         type="button"
                         onClick={() => setCalcMode('totalPay')}
                         className={`px-3 py-1 rounded text-[11px] font-semibold transition-all ${
                           calcMode === 'totalPay'
-                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold'
-                            : 'text-neutral-400 hover:text-white'
+                            ? 'bg-white dark:bg-amber-500/20 text-slate-900 dark:text-amber-300 border border-slate-300 dark:border-amber-500/30 font-bold shadow-xs'
+                            : 'text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white'
                         }`}
                       >
                         {t.modeA}
@@ -675,8 +749,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                         onClick={() => setCalcMode('interestRate')}
                         className={`px-3 py-1 rounded text-[11px] font-semibold transition-all ${
                           calcMode === 'interestRate'
-                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold'
-                            : 'text-neutral-400 hover:text-white'
+                            ? 'bg-white dark:bg-amber-500/20 text-slate-900 dark:text-amber-300 border border-slate-300 dark:border-amber-500/30 font-bold shadow-xs'
+                            : 'text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white'
                         }`}
                       >
                         {t.modeB}
@@ -687,10 +761,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   {calcMode === 'totalPay' ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <div className="flex items-center justify-between text-neutral-300 text-[11px] mb-1">
+                        <div className="flex items-center justify-between text-slate-700 dark:text-neutral-300 text-[11px] mb-1">
                           <span className="font-semibold">{t.fieldOriginalPrincipal}</span>
                           {isCustomPayoffDifferent && deducedInfo && (
-                            <span className="text-[10px] text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30 flex items-center gap-1 font-mono">
+                            <span className="text-[10px] text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-300 dark:border-amber-500/30 flex items-center gap-1 font-bold">
                               ⚡ {language === 'es' ? 'Deducido' : 'Deduced'}
                             </span>
                           )}
@@ -701,18 +775,18 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                           value={originalPrincipal || ''}
                           onChange={e => setOriginalPrincipal(parseFloat(e.target.value) || 0)}
                           placeholder="ej. 10000.00"
-                          className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-amber-500"
+                          className="w-full bg-white dark:bg-neutral-950 border border-slate-300 dark:border-neutral-800 rounded-lg px-3 py-2 text-slate-900 dark:text-white tabular-nums text-xs focus:outline-none focus:border-amber-500"
                         />
-                        <span className="text-[10px] text-neutral-400 block mt-0.5">
+                        <span className="text-[10px] text-slate-500 dark:text-neutral-400 block mt-0.5">
                           {t.fieldOriginalPrincipalHelp}
                         </span>
                       </div>
 
                       <div>
-                        <div className="flex items-center justify-between text-neutral-300 text-[11px] mb-1">
+                        <div className="flex items-center justify-between text-slate-700 dark:text-neutral-300 text-[11px] mb-1">
                           <span className="font-semibold">{t.totalToPayInput}</span>
                           {isCustomPayoffDifferent && deducedInfo && (
-                            <span className="text-[10px] text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30 flex items-center gap-1 font-mono">
+                            <span className="text-[10px] text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-300 dark:border-amber-500/30 flex items-center gap-1 font-bold">
                               ⚡ {language === 'es' ? 'Deducido' : 'Deduced'}
                             </span>
                           )}
@@ -723,9 +797,9 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                           value={totalToPay || ''}
                           onChange={e => setTotalToPay(parseFloat(e.target.value) || 0)}
                           placeholder="ej. 14000.00"
-                          className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-amber-500"
+                          className="w-full bg-white dark:bg-neutral-950 border border-slate-300 dark:border-neutral-800 rounded-lg px-3 py-2 text-slate-900 dark:text-white tabular-nums text-xs focus:outline-none focus:border-amber-500"
                         />
-                        <span className="text-[10px] text-neutral-400 block mt-0.5">
+                        <span className="text-[10px] text-slate-500 dark:text-neutral-400 block mt-0.5">
                           {t.totalToPayHelp}
                         </span>
                       </div>
@@ -733,10 +807,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <div className="flex items-center justify-between text-neutral-300 text-[11px] mb-1">
+                        <div className="flex items-center justify-between text-slate-700 dark:text-neutral-300 text-[11px] mb-1">
                           <span className="font-semibold">{t.fieldOriginalPrincipal}</span>
                           {isCustomPayoffDifferent && deducedInfo && (
-                            <span className="text-[10px] text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30 flex items-center gap-1 font-mono">
+                            <span className="text-[10px] text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-300 dark:border-amber-500/30 flex items-center gap-1 font-bold">
                               ⚡ {language === 'es' ? 'Deducido' : 'Deduced'}
                             </span>
                           )}
@@ -747,15 +821,15 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                           value={originalPrincipal || ''}
                           onChange={e => setOriginalPrincipal(parseFloat(e.target.value) || 0)}
                           placeholder="ej. 10000.00"
-                          className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-amber-500"
+                          className="w-full bg-white dark:bg-neutral-950 border border-slate-300 dark:border-neutral-800 rounded-lg px-3 py-2 text-slate-900 dark:text-white tabular-nums text-xs focus:outline-none focus:border-amber-500"
                         />
-                        <span className="text-[10px] text-neutral-400 block mt-0.5">
+                        <span className="text-[10px] text-slate-500 dark:text-neutral-400 block mt-0.5">
                           {t.fieldOriginalPrincipalHelp}
                         </span>
                       </div>
 
                       <div>
-                        <div className="flex items-center justify-between text-neutral-300 text-[11px] mb-1">
+                        <div className="flex items-center justify-between text-slate-700 dark:text-neutral-300 text-[11px] mb-1">
                           <span className="font-semibold">{t.annualRateInput}</span>
                         </div>
                         <input
@@ -764,9 +838,9 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                           value={annualRate || ''}
                           onChange={e => setAnnualRate(parseFloat(e.target.value) || 0)}
                           placeholder="ej. 36.0"
-                          className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-amber-500"
+                          className="w-full bg-white dark:bg-neutral-950 border border-slate-300 dark:border-neutral-800 rounded-lg px-3 py-2 text-slate-900 dark:text-white tabular-nums text-xs focus:outline-none focus:border-amber-500"
                         />
-                        <span className="text-[10px] text-neutral-400 block mt-0.5">
+                        <span className="text-[10px] text-slate-500 dark:text-neutral-400 block mt-0.5">
                           {t.annualRateHelp}
                         </span>
                       </div>
@@ -774,18 +848,18 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   )}
 
                   {/* Resultados Calculados en tiempo real */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-2 text-neutral-300">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-2 text-slate-700 dark:text-neutral-300">
                     {/* 1. Mensualidad */}
-                    <div className="bg-neutral-950 p-3 rounded-xl border border-neutral-800 flex flex-col justify-between">
-                      <span className="text-[10px] text-neutral-400 block font-medium">{t.calcResultMonthly}</span>
+                    <div className="bg-white dark:bg-neutral-950 p-3 rounded-xl border border-slate-200 dark:border-neutral-800 flex flex-col justify-between shadow-xs">
+                      <span className="text-[10px] text-slate-500 dark:text-neutral-400 block font-medium">{t.calcResultMonthly}</span>
                       <div className="mt-1">
-                        <span className="font-mono font-bold text-white text-xs sm:text-sm tabular-nums block">
+                        <span className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm tabular-nums block">
                           {formatCurrency(calcMonthly)}
                         </span>
                         <button
                           type="button"
                           onClick={handleApplyCalculatedMonthly}
-                          className="mt-1.5 inline-flex items-center gap-1 text-[10px] text-amber-400 hover:text-amber-300 font-semibold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/30 transition-colors"
+                          className="mt-1.5 inline-flex items-center gap-1 text-[10px] text-amber-700 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-300 font-semibold bg-amber-100/80 dark:bg-amber-500/10 px-2 py-0.5 rounded border border-amber-300 dark:border-amber-500/30 transition-colors"
                           title="Usar esta mensualidad en el Monto de la transacción"
                         >
                           Usar en Monto
@@ -794,95 +868,95 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                     </div>
 
                     {/* 2. Interés Mensual ($) y Tasa Mensual (%) */}
-                    <div className="bg-neutral-950 p-3 rounded-xl border border-neutral-800 flex flex-col justify-between">
-                      <span className="text-[10px] text-neutral-400 block font-medium">{t.calcResultMonthlyInterest}</span>
+                    <div className="bg-white dark:bg-neutral-950 p-3 rounded-xl border border-slate-200 dark:border-neutral-800 flex flex-col justify-between shadow-xs">
+                      <span className="text-[10px] text-slate-500 dark:text-neutral-400 block font-medium">{t.calcResultMonthlyInterest}</span>
                       <div className="mt-1">
-                        <span className="font-mono font-bold text-rose-400 text-xs sm:text-sm tabular-nums block">
+                        <span className="font-bold text-rose-700 dark:text-rose-400 text-xs sm:text-sm tabular-nums block">
                           {formatCurrency(calcMonthlyInterest)} / mes
                         </span>
-                        <span className="text-[9px] text-neutral-400 block mt-0.5 font-mono">
+                        <span className="text-[9px] text-slate-500 dark:text-neutral-400 block mt-0.5 tabular-nums">
                           Tasa: {calcMonthlyInterestRate.toFixed(2)}% mensual
                         </span>
                       </div>
                     </div>
 
                     {/* 3. Interés Total del Crédito */}
-                    <div className="bg-neutral-950 p-3 rounded-xl border border-neutral-800 flex flex-col justify-between">
-                      <span className="text-[10px] text-neutral-400 block font-medium">{t.calcResultTotalInterest}</span>
+                    <div className="bg-white dark:bg-neutral-950 p-3 rounded-xl border border-slate-200 dark:border-neutral-800 flex flex-col justify-between shadow-xs">
+                      <span className="text-[10px] text-slate-500 dark:text-neutral-400 block font-medium">{t.calcResultTotalInterest}</span>
                       <div className="mt-1">
-                        <span className="font-mono font-bold text-rose-400 text-xs sm:text-sm tabular-nums block">
+                        <span className="font-bold text-rose-700 dark:text-rose-400 text-xs sm:text-sm tabular-nums block">
                           {formatCurrency(calcTotalInterest)}
                         </span>
-                        <span className="text-[9px] text-neutral-500 block mt-0.5">
+                        <span className="text-[9px] text-slate-400 dark:text-neutral-500 block mt-0.5">
                           Total pagar - Préstamo
                         </span>
                       </div>
                     </div>
 
                     {/* 4. Tasa Anual (APR) */}
-                    <div className="bg-neutral-950 p-3 rounded-xl border border-neutral-800 flex flex-col justify-between">
-                      <span className="text-[10px] text-neutral-400 block font-medium">{t.calcResultAPR}</span>
+                    <div className="bg-white dark:bg-neutral-950 p-3 rounded-xl border border-slate-200 dark:border-neutral-800 flex flex-col justify-between shadow-xs">
+                      <span className="text-[10px] text-slate-500 dark:text-neutral-400 block font-medium">{t.calcResultAPR}</span>
                       <div className="mt-1">
-                        <span className="font-mono font-bold text-amber-400 text-xs sm:text-sm tabular-nums block">
+                        <span className="font-bold text-amber-700 dark:text-amber-400 text-xs sm:text-sm tabular-nums block">
                           {calcAPR.toFixed(1)}% anual
                         </span>
-                        <span className="text-[9px] text-neutral-500 block mt-0.5">
+                        <span className="text-[9px] text-slate-400 dark:text-neutral-500 block mt-0.5">
                           Tasa Anual Efectiva
                         </span>
                       </div>
                     </div>
 
                     {/* 5. Deuda Inicial del Mes Activo */}
-                    <div className="bg-neutral-950 p-3 rounded-xl border border-neutral-800 flex flex-col justify-between">
-                      <span className="text-[10px] text-neutral-400 block font-medium">Deuda Inicial de este Mes</span>
+                    <div className="bg-white dark:bg-neutral-950 p-3 rounded-xl border border-slate-200 dark:border-neutral-800 flex flex-col justify-between shadow-xs">
+                      <span className="text-[10px] text-slate-500 dark:text-neutral-400 block font-medium">Deuda Inicial de este Mes</span>
                       <div className="mt-1">
-                        <span className="font-mono font-bold text-amber-300 text-xs sm:text-sm tabular-nums block">
+                        <span className="font-bold text-amber-700 dark:text-amber-300 text-xs sm:text-sm tabular-nums block">
                           {formatCurrency(initialDebt > 0 ? initialDebt : calcTheoreticalDebt)}
                         </span>
-                        <span className="text-[9px] text-neutral-500 block mt-0.5">
+                        <span className="text-[9px] text-slate-400 dark:text-neutral-500 block mt-0.5">
                           Al inicio de cuota {currentTerm} de {totalTerm}
                         </span>
                       </div>
                     </div>
 
                     {/* 6. Restante de Deuda Tras Pago (Cálculo Exacto) */}
-                    <div className="bg-neutral-950 p-3 rounded-xl border border-neutral-800 flex flex-col justify-between">
-                      <span className="text-[10px] text-emerald-400 block font-medium">{t.calcResultFinalDebt}</span>
+                    <div className="bg-white dark:bg-neutral-950 p-3 rounded-xl border border-slate-200 dark:border-neutral-800 flex flex-col justify-between shadow-xs">
+                      <span className="text-[10px] text-emerald-700 dark:text-emerald-400 block font-medium">{t.calcResultFinalDebt}</span>
                       <div className="mt-1">
-                        <span className="font-mono font-bold text-emerald-400 text-xs sm:text-sm tabular-nums block">
+                        <span className="font-bold text-emerald-700 dark:text-emerald-400 text-xs sm:text-sm tabular-nums block">
                           {formatCurrency(calcFinalDebt)}
                         </span>
-                        <span className="text-[9px] text-neutral-400 block mt-0.5">
+                        <span className="text-[9px] text-slate-500 dark:text-neutral-400 block mt-0.5">
                           Deuda Inicial - Pago de este mes
                         </span>
                       </div>
                     </div>
 
                     {/* 7. Monto para Liquidar este Mes (Antes de la cuota) */}
-                    <div className="bg-neutral-950 p-3 rounded-xl border border-amber-500/30 flex flex-col justify-between">
-                      <span className="text-[10px] text-amber-300 block font-medium">
+                    <div className="bg-white dark:bg-neutral-950 p-3 rounded-xl border border-amber-300 dark:border-amber-500/30 flex flex-col justify-between shadow-xs">
+                      <span className="text-[10px] text-amber-800 dark:text-amber-300 block font-medium">
                         {language === 'es' ? `Liquidación antes de Cuota ${currentTerm}` : `Payoff before Cuota ${currentTerm}`}
                       </span>
                       <div className="mt-1">
-                        <span className="font-mono font-bold text-amber-300 text-xs sm:text-sm tabular-nums block">
+                        <span className="font-bold text-amber-800 dark:text-amber-300 text-xs sm:text-sm tabular-nums block">
                           {formatCurrency(calcPayoff)}
                         </span>
-                        <span className="text-[9px] text-neutral-400 block mt-0.5">
+                        <span className="text-[9px] text-slate-500 dark:text-neutral-400 block mt-0.5">
                           {language === 'es' ? 'Capital insoluto para finiquitar' : 'Remaining principal to settle'}
                         </span>
                       </div>
                     </div>
 
                     {/* 8. Ahorro de Interés si se Liquida este Mes */}
-                    <div className="bg-neutral-950 p-3 rounded-xl border border-emerald-500/30 flex flex-col justify-between">
-                      <span className="text-[10px] text-emerald-400 block font-medium">
+                    <div className="bg-white dark:bg-neutral-950 p-3 rounded-xl border border-emerald-300 dark:border-emerald-500/30 flex flex-col justify-between shadow-xs">
+                      <span className="text-[10px] text-emerald-700 dark:text-emerald-400 block font-medium">
                         {language === 'es' ? 'Ahorro al Liquidar' : 'Interest Saved on Payoff'}
                       </span>
                       <div className="mt-1">
-                        <span className="font-mono font-bold text-emerald-400 text-xs sm:text-sm tabular-nums block">
+                        <span className="font-bold text-emerald-700 dark:text-emerald-400 text-xs sm:text-sm tabular-nums block">
                           {formatCurrency(calcInterestSaved)}
                         </span>
-                        <span className="text-[9px] text-neutral-400 block mt-0.5">
+                        <span className="text-[9px] text-slate-500 dark:text-neutral-400 block mt-0.5">
                           {language === 'es' 
                             ? `Deuda inicial (${formatCurrency(initialDebt || calcTheoreticalDebt)}) - Liquidación`
                             : `Initial debt (${formatCurrency(initialDebt || calcTheoreticalDebt)}) - Payoff`}
@@ -893,15 +967,15 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 </div>
 
                 {/* Saldo de Deuda Inicial del Mes (con auto-cálculo y opción manual) */}
-                <div className="bg-neutral-900/90 border border-neutral-800 rounded-xl p-3.5 flex flex-col gap-1.5">
+                <div className="bg-slate-50 dark:bg-neutral-900/90 border border-slate-200 dark:border-neutral-800 rounded-xl p-3.5 flex flex-col gap-1.5">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
-                    <label className="text-neutral-300 font-semibold block text-xs">
+                    <label className="text-slate-700 dark:text-neutral-300 font-semibold block text-xs">
                       {t.fieldInitialDebt}
                     </label>
                     <button
                       type="button"
                       onClick={() => setInitialDebt(calcTheoreticalDebt)}
-                      className="text-[11px] text-amber-400 hover:text-amber-300 font-mono font-medium underline flex items-center gap-1 self-start sm:self-auto"
+                      className="text-[11px] text-amber-700 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-300 font-medium underline flex items-center gap-1 self-start sm:self-auto tabular-nums"
                       title="Restaurar al saldo matemático calculado según la cuota actual"
                     >
                       {t.recalcBalanceBtn}: {formatCurrency(calcTheoreticalDebt)}
@@ -913,9 +987,9 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                     value={initialDebt || ''}
                     onChange={e => handleInitialDebtChange(parseFloat(e.target.value) || 0)}
                     placeholder="0.00"
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-amber-500"
+                    className="w-full bg-white dark:bg-neutral-950 border border-slate-300 dark:border-neutral-800 rounded-lg px-3 py-2 text-slate-900 dark:text-white tabular-nums text-xs focus:outline-none focus:border-amber-500"
                   />
-                  <p className="text-[10px] text-neutral-400">
+                  <p className="text-[10px] text-slate-500 dark:text-neutral-400">
                     {language === 'es' 
                       ? `Saldo pendiente antes del pago del mes activo (cuota ${currentTerm} de ${totalTerm}). Si difiere de tu estado de cuenta, puedes editarlo libremente.`
                       : `Pending balance before the active month payment (installment ${currentTerm} of ${totalTerm}). Editable if your statement differs.`}
@@ -923,9 +997,9 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 </div>
 
                 {/* Monto de Liquidación Inmediata de Contado */}
-                <div className="bg-neutral-900/90 border border-neutral-800 rounded-xl p-3.5 flex flex-col gap-1.5">
+                <div className="bg-slate-50 dark:bg-neutral-900/90 border border-slate-200 dark:border-neutral-800 rounded-xl p-3.5 flex flex-col gap-1.5">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
-                    <label className="text-neutral-300 font-semibold block text-xs">
+                    <label className="text-slate-700 dark:text-neutral-300 font-semibold block text-xs">
                       {language === 'es' ? 'Monto de Liquidación Inmediata ($)' : 'Immediate Early Settlement Amount ($)'}
                     </label>
                     <div className="flex items-center gap-2">
@@ -935,7 +1009,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                           onClick={() => {
                             setPayoffDiscountRaw('');
                           }}
-                          className="text-[11px] text-neutral-400 hover:text-white font-mono underline"
+                          className="text-[11px] text-slate-500 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white underline"
                           title="Restaurar al cálculo automático de la tasa"
                         >
                           {language === 'es' ? 'Limpiar personalización' : 'Clear custom'}
@@ -945,7 +1019,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                         <button
                           type="button"
                           onClick={() => handlePayoffDiscountChange(calcPayoff.toFixed(2))}
-                          className="text-[11px] text-amber-400 hover:text-amber-300 font-mono font-medium underline flex items-center gap-1 self-start sm:self-auto"
+                          className="text-[11px] text-amber-700 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-300 font-medium underline flex items-center gap-1 self-start sm:self-auto tabular-nums"
                           title="Usar monto calculado automáticamente"
                         >
                           ⚡ {language === 'es' ? `Usar calculado (${formatCurrency(calcPayoff)})` : `Use calculated (${formatCurrency(calcPayoff)})`}
@@ -959,9 +1033,9 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                     value={payoffDiscountRaw}
                     onChange={e => handlePayoffDiscountChange(e.target.value)}
                     placeholder={calcPayoff > 0 ? `Calculado automático: ${calcPayoff.toFixed(2)}` : '0.00'}
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-1.5 text-white font-mono text-xs focus:outline-none focus:border-amber-500"
+                    className="w-full bg-white dark:bg-neutral-950 border border-slate-300 dark:border-neutral-800 rounded-lg px-3 py-1.5 text-slate-900 dark:text-white tabular-nums text-xs focus:outline-none focus:border-amber-500"
                   />
-                  <p className="text-[10px] text-neutral-400">
+                  <p className="text-[10px] text-slate-500 dark:text-neutral-400">
                     {language === 'es'
                       ? `* Liquidación antes de la cuota ${currentTerm}: ${formatCurrency(calcPayoff)}. Ahorras ${formatCurrency(calcInterestSaved)} de interés (Deuda inicial ${formatCurrency(initialDebt || calcTheoreticalDebt)} menos liquidación). Si tu institución te ofrece una cantidad o quita especial, puedes escribirla aquí.`
                       : `* Payoff before installment ${currentTerm}: ${formatCurrency(calcPayoff)}. You save ${formatCurrency(calcInterestSaved)} in interest (Initial debt ${formatCurrency(initialDebt || calcTheoreticalDebt)} minus payoff). If your lender gave you a special settlement offer, type it here.`}
@@ -969,35 +1043,35 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
                   {/* Banner de Deducción Inversa Automática de Préstamo y Total a Pagar */}
                   {deducedInfo && enteredPayoffNum > 0 && (
-                    <div className="mt-1 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex flex-col gap-1.5">
+                    <div className="mt-1 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs flex flex-col gap-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="font-semibold text-amber-300 flex items-center gap-1.5 text-xs">
-                          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                        <span className="font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-1.5 text-xs">
+                          <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                           {language === 'es' ? 'Cálculo inverso activado por liquidación:' : 'Reverse loan calculation from payoff:'}
                         </span>
-                        <span className="text-[10px] text-amber-400 font-mono">
+                        <span className="text-[10px] text-amber-700 dark:text-amber-400 font-bold tabular-nums">
                           Cuota {currentTerm} de {totalTerm}
                         </span>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] mt-0.5">
-                        <div className="bg-neutral-950/80 p-2 rounded-md border border-neutral-800 flex flex-col justify-between">
-                          <span className="text-neutral-400 block text-[10px]">
+                        <div className="bg-white dark:bg-neutral-950/80 p-2 rounded-md border border-slate-200 dark:border-neutral-800 flex flex-col justify-between">
+                          <span className="text-slate-500 dark:text-neutral-400 block text-[10px]">
                             {language === 'es' ? 'Monto real que se pidió (Capital):' : 'Original loan requested:'}
                           </span>
-                          <span className="font-mono font-bold text-amber-300 text-xs sm:text-sm tabular-nums mt-0.5">
+                          <span className="font-bold text-amber-800 dark:text-amber-300 text-xs sm:text-sm tabular-nums mt-0.5">
                             {formatCurrency(deducedInfo.originalPrincipal)}
                           </span>
                         </div>
-                        <div className="bg-neutral-950/80 p-2 rounded-md border border-neutral-800 flex flex-col justify-between">
-                          <span className="text-neutral-400 block text-[10px]">
+                        <div className="bg-white dark:bg-neutral-950/80 p-2 rounded-md border border-slate-200 dark:border-neutral-800 flex flex-col justify-between">
+                          <span className="text-slate-500 dark:text-neutral-400 block text-[10px]">
                             {language === 'es' ? 'Monto total a pagar original:' : 'Original total to pay:'}
                           </span>
-                          <span className="font-mono font-bold text-amber-300 text-xs sm:text-sm tabular-nums mt-0.5">
+                          <span className="font-bold text-amber-800 dark:text-amber-300 text-xs sm:text-sm tabular-nums mt-0.5">
                             {formatCurrency(deducedInfo.totalToPay)}
                           </span>
                         </div>
                       </div>
-                      <p className="text-[10px] text-neutral-400">
+                      <p className="text-[10px] text-slate-600 dark:text-neutral-400">
                         {language === 'es'
                           ? `* Se calcularon el préstamo original (${formatCurrency(deducedInfo.originalPrincipal)}) y el total a pagar (${formatCurrency(deducedInfo.totalToPay)}) a partir de tu saldo inicial de ${formatCurrency(initialDebt || calcTheoreticalDebt)} y la liquidación ingresada de ${formatCurrency(enteredPayoffNum)}.`
                           : `* Deduced original loan (${formatCurrency(deducedInfo.originalPrincipal)}) and total to pay (${formatCurrency(deducedInfo.totalToPay)}) from your initial balance of ${formatCurrency(initialDebt || calcTheoreticalDebt)} and entered payoff of ${formatCurrency(enteredPayoffNum)}.`}
@@ -1009,104 +1083,92 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               </div>
             )}
           </div>
+        )}
 
           {/* 7. Estado [✓ Hecho] y Monto Real */}
-          <div className="bg-neutral-950/60 p-3 rounded-xl border border-neutral-800/80 flex flex-col gap-2.5">
+          <div className="bg-slate-50 dark:bg-neutral-950/60 p-3 rounded-xl border border-slate-200 dark:border-neutral-800/80 flex flex-col gap-2.5">
             <div className="flex items-center gap-2.5">
               <input
                 type="checkbox"
                 id="isDone"
                 checked={isDone}
                 onChange={e => setIsDone(e.target.checked)}
-                className="w-4 h-4 rounded border-neutral-700 text-emerald-500 focus:ring-emerald-500 accent-emerald-500"
+                className="w-4 h-4 rounded border-slate-300 dark:border-neutral-700 text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
               />
-              <label htmlFor="isDone" className="text-neutral-300 font-semibold cursor-pointer select-none">
+              <label htmlFor="isDone" className="text-slate-900 dark:text-neutral-300 font-semibold cursor-pointer select-none">
                 {t.fieldDoneStatus}
               </label>
             </div>
 
             {isDone && (
-              <div className="pl-6">
-                <label className="text-neutral-400 text-[11px] mb-1 block">
-                  {t.fieldActualAmount}
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={actualAmountRaw}
-                  onChange={e => setActualAmountRaw(e.target.value)}
-                  placeholder={t.fieldActualAmountPlaceholder}
-                  className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-1.5 text-white font-mono text-xs focus:outline-none focus:border-emerald-500"
-                />
+              <div className="pl-6 flex flex-col gap-2">
+                {isAccumulatedTx && prevMonthTotals?.hasData && (
+                  <div className="flex flex-col gap-1 bg-emerald-50/80 dark:bg-emerald-950/40 p-2.5 rounded-lg border border-emerald-300 dark:border-emerald-500/30">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <span className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        {language === 'es' ? 'Actual Real del mes anterior:' : 'Previous month real actual:'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActualAmountRaw(Math.abs(prevMonthTotals.totalActual).toString());
+                        }}
+                        className="px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] transition-colors shadow-xs"
+                      >
+                        {language === 'es' ? 'Copiar este monto' : 'Copy this amount'} ({formatCurrency(prevMonthTotals.totalActual)})
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-emerald-700 dark:text-emerald-400">
+                      {language === 'es'
+                        ? 'Si el mes anterior tuvo pagos pendientes que difieren del saldo proyectado, este valor refleja el dinero real existente en banco.'
+                        : 'If previous month had pending payments, this amount represents your true executed bank cash balance.'}
+                    </p>
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-slate-600 dark:text-neutral-400 text-[11px] mb-1 block font-medium">
+                    {t.fieldActualAmount}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={actualAmountRaw}
+                    onChange={e => setActualAmountRaw(e.target.value)}
+                    placeholder={t.fieldActualAmountPlaceholder}
+                    className="w-full bg-white dark:bg-neutral-900 border border-slate-300 dark:border-neutral-800 rounded-lg px-3 py-1.5 text-slate-900 dark:text-white tabular-nums text-xs focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
               </div>
             )}
           </div>
 
-          {/* 8. Resaltado Visual */}
-          <div>
-            <label className="text-neutral-300 font-semibold mb-1.5 block">
-              {t.fieldHighlight}
-            </label>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setHighlight('none')}
-                className={`px-3 py-1 rounded-lg text-xs font-medium border transition-all ${
-                  highlight === 'none'
-                    ? 'bg-neutral-800 text-white border-neutral-600'
-                    : 'bg-neutral-950 text-neutral-400 border-neutral-800 hover:text-white'
-                }`}
-              >
-                {t.highlightNone}
-              </button>
-              <button
-                type="button"
-                onClick={() => setHighlight('yellow')}
-                className={`px-3 py-1 rounded-lg text-xs font-bold border transition-all ${
-                  highlight === 'yellow'
-                    ? 'bg-yellow-500/30 text-yellow-300 border-yellow-400'
-                    : 'bg-neutral-950 text-yellow-400/70 border-neutral-800 hover:border-yellow-500/40'
-                }`}
-              >
-                {t.highlightYellow}
-              </button>
-              <button
-                type="button"
-                onClick={() => setHighlight('blue')}
-                className={`px-3 py-1 rounded-lg text-xs font-bold border transition-all ${
-                  highlight === 'blue'
-                    ? 'bg-blue-500/30 text-blue-300 border-blue-400'
-                    : 'bg-neutral-950 text-blue-400/70 border-neutral-800 hover:border-blue-500/40'
-                }`}
-              >
-                {t.highlightBlue}
-              </button>
-              <button
-                type="button"
-                onClick={() => setHighlight('green')}
-                className={`px-3 py-1 rounded-lg text-xs font-bold border transition-all ${
-                  highlight === 'green'
-                    ? 'bg-emerald-500/30 text-emerald-300 border-emerald-400'
-                    : 'bg-neutral-950 text-emerald-400/70 border-neutral-800 hover:border-emerald-500/40'
-                }`}
-              >
-                {t.highlightGreen}
-              </button>
-            </div>
+          {/* 8. Color Automático por Etiqueta */}
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-neutral-950/70 border border-slate-200 dark:border-neutral-800 flex items-center justify-between text-xs">
+            <span className="text-slate-600 dark:text-neutral-400 font-medium">
+              {language === 'es' ? 'Color de fila en tabla:' : 'Row table color:'}
+            </span>
+            <span className="font-bold text-slate-800 dark:text-neutral-200 flex items-center gap-1.5">
+              <span>{language === 'es' ? 'Automático por etiqueta' : 'Automatic by tag'}</span>
+              <span className="px-2 py-0.5 rounded font-bold text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+                {label}
+              </span>
+            </span>
           </div>
 
           {/* Footer Actions */}
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-neutral-800 mt-2">
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-neutral-800 mt-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-lg border border-neutral-800 text-neutral-400 hover:text-white text-xs font-medium hover:bg-neutral-800 transition-colors"
+              className="px-4 py-2 rounded-lg border border-slate-300 dark:border-neutral-800 text-slate-700 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white text-xs font-semibold hover:bg-slate-100 dark:hover:bg-neutral-800 transition-colors"
             >
               {t.btnCancel}
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-bold text-xs shadow-md shadow-emerald-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
               {initialData ? t.btnUpdate : t.btnSave}
             </button>

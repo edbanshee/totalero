@@ -1,4 +1,7 @@
-export type TransactionLabel = 'Ingreso' | 'Gasto' | 'Servicio' | 'Neto' | 'Coppel' | 'Préstamo' | 'Otro';
+export const MIN_CATALOG_YEAR = 2024;
+export const MAX_CATALOG_YEAR = 2050;
+
+export type TransactionLabel = 'Ingreso' | 'Gasto' | 'Servicio' | 'Neto' | 'Préstamo' | 'Crédito' | 'Otro' | 'Coppel';
 
 export type RowHighlight = 'none' | 'yellow' | 'blue' | 'green';
 
@@ -30,6 +33,7 @@ export interface Transaction {
   actualAmount: number | null; // Monto real en cuenta bancaria
   highlight: RowHighlight;
   isAutoAccumulated?: boolean; // Para la fila 1 "Acumulado"
+  hasCustomActual?: boolean; // Si el usuario definió manualmente un actual real distinto al automático
   loanDetails?: LoanDetails;
 }
 
@@ -60,7 +64,28 @@ export interface MonthData {
 
 export type Language = 'es' | 'en';
 export type ThemeMode = 'dark' | 'light';
-export type FilterType = 'all' | 'done' | 'pending';
+export type FilterType = 'all' | 'q1' | 'q2' | 'done' | 'pending';
+export type PeriodView = 'month' | 'q1' | 'q2';
+
+export interface QuincenaSummary {
+  quincena: 1 | 2;
+  dayRange: string; // "1 - 15" o "16 - 30/31"
+  startBalance: number;
+  totalIncome: number;
+  totalExpense: number;
+  projectedClose: number;
+  totalActual: number;
+  doneCount: number;
+  totalTransactionsCount: number;
+  hasDeficit: boolean;
+  deficitAmount: number;
+  totalDueLoanPayments: number;
+}
+
+export interface BiweeklyBreakdown {
+  q1: QuincenaSummary;
+  q2: QuincenaSummary;
+}
 
 export interface UserSession {
   isLoggedIn: boolean;

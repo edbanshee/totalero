@@ -33,8 +33,8 @@ export const SyncPromptModal: React.FC<SyncPromptModalProps> = ({
   const hasLocalData = totalElements > 0;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-neutral-900 border border-neutral-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col text-neutral-100 animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 bg-slate-900/50 dark:bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col text-slate-800 dark:text-neutral-100 animate-in fade-in zoom-in-95 duration-200">
         
         {/* Gradient Hero Header */}
         <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-emerald-600 p-6 sm:p-7 text-center relative flex flex-col items-center">
@@ -73,15 +73,15 @@ export const SyncPromptModal: React.FC<SyncPromptModalProps> = ({
           {/* Badges de datos detectados: SOLO si totalElements > 0 */}
           {hasLocalData && (
             <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
-              <span className="px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 text-[11px] font-semibold text-white flex items-center gap-1.5 font-mono">
+              <span className="px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 text-[11px] font-semibold text-white flex items-center gap-1.5 tabular-nums">
                 <Layers className="w-3 h-3" />
                 {stats.transactions} {isEs ? 'movimiento(s)' : 'transaction(s)'}
               </span>
-              <span className="px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 text-[11px] font-semibold text-white flex items-center gap-1.5 font-mono">
+              <span className="px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 text-[11px] font-semibold text-white flex items-center gap-1.5 tabular-nums">
                 <Landmark className="w-3 h-3" />
                 {stats.loans} {isEs ? 'préstamo(s)' : 'loan(s)'}
               </span>
-              <span className="px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 text-[11px] font-semibold text-white flex items-center gap-1.5 font-mono">
+              <span className="px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 text-[11px] font-semibold text-white flex items-center gap-1.5 tabular-nums">
                 <CreditCard className="w-3 h-3" />
                 {stats.cards} {isEs ? 'tarjeta(s)' : 'card(s)'}
               </span>
@@ -91,7 +91,7 @@ export const SyncPromptModal: React.FC<SyncPromptModalProps> = ({
 
         {/* Options Body */}
         <div className="p-6 flex flex-col gap-4">
-          <h3 className="text-sm font-bold text-white text-center sm:text-left">
+          <h3 className="text-sm font-bold text-slate-800 dark:text-white text-center sm:text-left">
             {isEs 
               ? '¿Cómo deseas inicializar el almacenamiento en tu cuenta de Google?' 
               : 'How would you like to initialize storage in your Google account?'}
@@ -101,21 +101,21 @@ export const SyncPromptModal: React.FC<SyncPromptModalProps> = ({
           {hasLocalData && (
             <button
               onClick={onSyncLocalToCloud}
-              className="group p-4 rounded-2xl border-2 border-indigo-500/60 hover:border-indigo-400 bg-neutral-950/70 hover:bg-indigo-950/20 text-left transition-all flex items-start gap-3.5 shadow-sm"
+              className="group p-4 rounded-2xl border-2 border-indigo-500/50 hover:border-indigo-500 bg-indigo-50/50 dark:bg-neutral-950/70 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 text-left transition-all flex items-start gap-3.5 shadow-sm"
             >
-              <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                 <UploadCloud className="w-5 h-5 stroke-[2.2]" />
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs sm:text-sm font-bold text-white group-hover:text-indigo-300">
+                  <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-300">
                     {isEs ? 'Sincronizar e Importar Datos Locales' : 'Sync & Import Local Data'}
                   </span>
-                  <span className="px-2 py-0.5 rounded-full bg-indigo-500 text-neutral-950 text-[10px] font-extrabold uppercase tracking-wide">
+                  <span className="px-2 py-0.5 rounded-full bg-indigo-600 text-white dark:bg-indigo-500 dark:text-neutral-950 text-[10px] font-extrabold uppercase tracking-wide">
                     {isEs ? 'RECOMENDADO' : 'RECOMMENDED'}
                   </span>
                 </div>
-                <p className="text-[11px] text-neutral-400 mt-1 leading-relaxed">
+                <p className="text-[11px] text-slate-600 dark:text-neutral-400 mt-1 leading-relaxed">
                   {isEs ? (
                     `Copia tus ${stats.transactions} movimientos, ${stats.loans} préstamos y ${stats.cards} tarjetas actuales a la nube vinculada a tu cuenta de Google para tener acceso desde cualquier dispositivo.`
                   ) : (
@@ -131,31 +131,31 @@ export const SyncPromptModal: React.FC<SyncPromptModalProps> = ({
             onClick={onStartFreshCloud}
             className={`group p-4 rounded-2xl border text-left transition-all flex items-start gap-3.5 ${
               hasLocalData
-                ? 'border-neutral-800 hover:border-neutral-700 bg-neutral-950/50 hover:bg-neutral-800/40'
-                : 'border-2 border-emerald-500/60 hover:border-emerald-400 bg-neutral-950/70 hover:bg-emerald-950/20 shadow-sm'
+                ? 'border-slate-200 dark:border-neutral-800 hover:border-slate-300 dark:hover:border-neutral-700 bg-slate-50/70 dark:bg-neutral-950/50 hover:bg-slate-100 dark:hover:bg-neutral-800/40'
+                : 'border-2 border-emerald-500/60 hover:border-emerald-500 bg-emerald-50/50 dark:bg-neutral-950/70 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 shadow-sm'
             }`}
           >
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform ${
               hasLocalData
-                ? 'bg-neutral-800 text-neutral-400 border border-neutral-700'
-                : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                ? 'bg-slate-200 dark:bg-neutral-800 text-slate-600 dark:text-neutral-400 border border-slate-300 dark:border-neutral-700'
+                : 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30'
             }`}>
               <Sparkles className="w-5 h-5 stroke-[2]" />
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className={`text-xs sm:text-sm font-bold ${hasLocalData ? 'text-white group-hover:text-neutral-200' : 'text-white group-hover:text-emerald-300'}`}>
+                <span className={`text-xs sm:text-sm font-bold ${hasLocalData ? 'text-slate-900 dark:text-white group-hover:text-slate-700 dark:group-hover:text-neutral-200' : 'text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-300'}`}>
                   {isEs 
                     ? (hasLocalData ? 'Iniciar con Cuenta Limpia' : 'Comenzar a usar la app en la Nube') 
                     : (hasLocalData ? 'Start with Clean Account' : 'Start using app in Cloud')}
                 </span>
                 {!hasLocalData && (
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-500 text-neutral-950 text-[10px] font-extrabold uppercase tracking-wide">
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white dark:bg-emerald-500 dark:text-neutral-950 text-[10px] font-extrabold uppercase tracking-wide">
                     {isEs ? 'CONTINUAR' : 'PROCEED'}
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-neutral-400 mt-1 leading-relaxed">
+              <p className="text-[11px] text-slate-600 dark:text-neutral-400 mt-1 leading-relaxed">
                 {isEs ? (
                   hasLocalData 
                     ? 'Comenzar desde cero en la nube vinculada a tu cuenta de Google. Tus datos locales de invitado se mantendrán intactos en este navegador para cuando uses la app sin sesión.'
@@ -173,7 +173,7 @@ export const SyncPromptModal: React.FC<SyncPromptModalProps> = ({
           <div className="text-center pt-2">
             <button
               onClick={onDismiss}
-              className="text-xs text-neutral-500 hover:text-neutral-300 underline transition-colors"
+              className="text-xs text-slate-500 dark:text-neutral-500 hover:text-slate-700 dark:hover:text-neutral-300 underline transition-colors"
             >
               {isEs ? 'Decidir más tarde (mantener vista previa)' : 'Decide later (keep preview)'}
             </button>

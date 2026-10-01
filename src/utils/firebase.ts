@@ -197,6 +197,31 @@ export async function loadCloudFinancialData(userId: string): Promise<CloudStora
   }
 }
 
+/**
+ * Recursively removes all keys whose values are `undefined` from an object or array.
+ * Firestore strictly forbids `undefined` anywhere in document payloads.
+ */
+export function stripUndefined<T>(data: T): T {
+  if (data === null || data === undefined) {
+    return data;
+  }
+  if (Array.isArray(data)) {
+    return data
+      .filter(item => item !== undefined)
+      .map(item => stripUndefined(item)) as unknown as T;
+  }
+  if (typeof data === 'object') {
+    const cleaned: Record<string, any> = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined) {
+        cleaned[key] = stripUndefined(value);
+      }
+    }
+    return cleaned as T;
+  }
+  return data;
+}
+
 // Save cloud financial data
 export async function saveCloudFinancialData(
   userId: string, 
@@ -208,7 +233,7 @@ export async function saveCloudFinancialData(
   const docPath = `users/${userId}/financialData/main`;
   try {
     const docRef = doc(db, 'users', userId, 'financialData', 'main');
-    const payload: CloudStoragePayload = {
+    const rawPayload: CloudStoragePayload = {
       userId,
       email,
       months,
@@ -216,7 +241,9 @@ export async function saveCloudFinancialData(
       selectedYear,
       updatedAt: new Date().toISOString()
     };
-    await setDoc(docRef, payload);
+    // Deep strip any undefined values to ensure Firestore compliance
+    const sanitizedPayload = stripUndefined(rawPayload);
+    await setDoc(docRef, sanitizedPayload);
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, docPath);
   }

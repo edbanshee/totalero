@@ -1,4 +1,4 @@
-import { Transaction, MonthData, Language, LoanDetails } from '../types/finance';
+import { Transaction, MonthData, Language, LoanDetails, MAX_CATALOG_YEAR, BiweeklyBreakdown } from '../types/finance';
 import { MONTH_SHORT } from './translations';
 
 /**
@@ -8,7 +8,7 @@ import { MONTH_SHORT } from './translations';
  */
 export function formatCurrency(amount: number | null | undefined): string {
   if (amount === null || amount === undefined || isNaN(amount)) {
-    return '$ 0.00';
+    return '$0.00';
   }
   const isNegative = amount < 0;
   const absVal = Math.abs(amount);
@@ -16,7 +16,7 @@ export function formatCurrency(amount: number | null | undefined): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   });
-  return isNegative ? `-$ ${formatted}` : `$ ${formatted}`;
+  return isNegative ? `-$${formatted}` : `$${formatted}`;
 }
 
 export function formatCompactCurrency(amount: number): string {
@@ -392,30 +392,270 @@ export function computeMonthTotals(transactions: Transaction[]): MonthTotals {
 }
 
 /**
- * Recalcula en cascada el "Acumulado" para los 12 meses de un año (y siguientes)
+ * Calcula los totales y proyecciones quincenales (1ª Quincena: días 1-15, 2ª Quincena: días 16-fin de mes)
+ */
+export function computeQuincenaTotals(
+  transactions: Transaction[],
+  month: number,
+  year: number
+): BiweeklyBreakdown {
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  let accumulated = 0;
+  let q1Income = 0;
+  let q1Expense = 0;
+  let q1Actual = 0;
+  let q1DoneCount = 0;
+  let q1TxCount = 0;
+  let q1LoanDue = 0;
+
+  let q2Income = 0;
+  let q2Expense = 0;
+  let q2Actual = 0;
+  let q2DoneCount = 0;
+  let q2TxCount = 0;
+  let q2LoanDue = 0;
+
+  transactions.forEach((tx) => {
+    if (tx.isAutoAccumulated) {
+      accumulated = tx.amount;
+      if (tx.isDone) {
+        const val = tx.actualAmount !== null ? tx.actualAmount : tx.amount;
+        q1Actual += val;
+        q1DoneCount++;
+      }
+      return;
+    }
+
+    const isQ1 = tx.day <= 15;
+    const valActual = tx.actualAmount !== null ? tx.actualAmount : tx.amount;
+
+    if (isQ1) {
+      q1TxCount++;
+      if (tx.amount >= 0) {
+        q1Income += tx.amount;
+      } else {
+        q1Expense += Math.abs(tx.amount);
+      }
+      if (tx.loanDetails) {
+        q1LoanDue += Math.abs(tx.amount);
+      }
+      if (tx.isDone) {
+        q1Actual += valActual;
+        q1DoneCount++;
+      }
+    } else {
+      q2TxCount++;
+      if (tx.amount >= 0) {
+        q2Income += tx.amount;
+      } else {
+        q2Expense += Math.abs(tx.amount);
+      }
+      if (tx.loanDetails) {
+        q2LoanDue += Math.abs(tx.amount);
+      }
+      if (tx.isDone) {
+        q2Actual += valActual;
+        q2DoneCount++;
+      }
+    }
+  });
+
+  // Saldo con el que arranca Q1 = Acumulado
+  const q1Start = accumulated;
+  // Saldo proyectado de Q1 al día 15 tras cubrir ingresos y gastos de días 1 al 15
+  const q1ProjectedClose = q1Start + q1Income - q1Expense;
+  const q1HasDeficit = q1ProjectedClose < 0;
+  const q1DeficitAmount = q1HasDeficit ? Math.abs(q1ProjectedClose) : 0;
+
+  // Q2 arranca con el saldo con el que cerró Q1
+  const q2Start = q1ProjectedClose;
+  // Saldo proyectado de Q2 al cierre de mes (equivale al Total Fin de Mes)
+  const q2ProjectedClose = q2Start + q2Income - q2Expense;
+  const q2HasDeficit = q2ProjectedClose < 0;
+  const q2DeficitAmount = q2HasDeficit ? Math.abs(q2ProjectedClose) : 0;
+
+  return {
+    q1: {
+      quincena: 1,
+      dayRange: '1 - 15',
+      startBalance: Math.round(q1Start * 100) / 100,
+      totalIncome: Math.round(q1Income * 100) / 100,
+      totalExpense: Math.round(q1Expense * 100) / 100,
+      projectedClose: Math.round(q1ProjectedClose * 100) / 100,
+      totalActual: Math.round(q1Actual * 100) / 100,
+      doneCount: q1DoneCount,
+      totalTransactionsCount: q1TxCount,
+      hasDeficit: q1HasDeficit,
+      deficitAmount: Math.round(q1DeficitAmount * 100) / 100,
+      totalDueLoanPayments: Math.round(q1LoanDue * 100) / 100
+    },
+    q2: {
+      quincena: 2,
+      dayRange: `16 - ${daysInMonth}`,
+      startBalance: Math.round(q2Start * 100) / 100,
+      totalIncome: Math.round(q2Income * 100) / 100,
+      totalExpense: Math.round(q2Expense * 100) / 100,
+      projectedClose: Math.round(q2ProjectedClose * 100) / 100,
+      totalActual: Math.round(q2Actual * 100) / 100,
+      doneCount: q2DoneCount,
+      totalTransactionsCount: q2TxCount,
+      hasDeficit: q2HasDeficit,
+      deficitAmount: Math.round(q2DeficitAmount * 100) / 100,
+      totalDueLoanPayments: Math.round(q2LoanDue * 100) / 100
+    }
+  };
+}
+
+/**
+ * Limpia y sanea de forma exhaustiva los meses para garantizar que:
+ * 1. Cada mes tenga EXACTAMENTE UNA fila de "Acumulado" legítima para ese mes.
+ * 2. Se elimine cualquier duplicado de "Acumulado" proveniente de otros meses (ej. 01-oct en agosto).
+ * 3. Se preserven los valores personalizados del usuario (monto, actualAmount, isDone) en la fila legítima.
+ * 4. El Acumulado nunca quede marcado como recurrente (isRecurring = false).
+ */
+export function sanitizeAndDeduplicateMonths(
+  months: Record<string, MonthData>,
+  language: Language = 'es'
+): Record<string, MonthData> {
+  const cleaned: Record<string, MonthData> = {};
+
+  for (const [key, monthData] of Object.entries(months)) {
+    if (!monthData) continue;
+    const parts = key.split('-');
+    const curYear = monthData.year ?? Number(parts[0]) ?? 2026;
+    const curMonth = monthData.month ?? Number(parts[1]) ?? 0;
+
+    const txs = Array.isArray(monthData.transactions) ? monthData.transactions : [];
+
+    // Identificar candidatos de Acumulado
+    const accCandidates: Transaction[] = [];
+    const regularTxs: Transaction[] = [];
+
+    for (const t of txs) {
+      const isAcc = (
+        t.isAutoAccumulated === true ||
+        t.concept.trim().toLowerCase() === 'acumulado' ||
+        t.id.startsWith('acc-') ||
+        t.id.includes('-acc')
+      );
+
+      if (isAcc) {
+        accCandidates.push(t);
+      } else {
+        regularTxs.push(t);
+      }
+    }
+
+    // Extraer mejores valores si el usuario personalizó alguno de los acumulados
+    let bestAmount = 0;
+    let bestActual: number | null = null;
+    let bestDone = false;
+    let bestHasCustomActual = false;
+
+    // Buscar si hay alguno que corresponda específicamente a este mes
+    const nativeAcc = accCandidates.find(t => t.id === `acc-${curYear}-${curMonth}`);
+    const otherAccs = accCandidates.filter(t => t.id !== `acc-${curYear}-${curMonth}`);
+
+    if (nativeAcc) {
+      bestAmount = nativeAcc.amount;
+      bestActual = nativeAcc.actualAmount ?? null;
+      bestDone = !!nativeAcc.isDone;
+      bestHasCustomActual = !!nativeAcc.hasCustomActual;
+    }
+
+    // Si los otros candidatos tienen datos reales (ej. usuario editó un acumulado duplicado con actual real)
+    for (const stray of otherAccs) {
+      if (stray.hasCustomActual && stray.actualAmount !== null) {
+        bestActual = stray.actualAmount;
+        bestHasCustomActual = true;
+        bestDone = true;
+      } else if (bestActual === null && stray.actualAmount !== null) {
+        bestActual = stray.actualAmount;
+        bestDone = true;
+      }
+      if (bestAmount === 0 && stray.amount !== 0) {
+        bestAmount = stray.amount;
+      }
+    }
+
+    const singleAccumulated: Transaction = {
+      id: `acc-${curYear}-${curMonth}`,
+      label: 'Neto',
+      concept: 'Acumulado',
+      amount: bestAmount,
+      day: 1,
+      dateString: getDateString(1, curMonth, language),
+      isRecurring: false, // El acumulado NUNCA debe ser recurrente
+      isDone: bestDone,
+      actualAmount: bestActual,
+      hasCustomActual: bestHasCustomActual,
+      highlight: 'none',
+      isAutoAccumulated: true
+    };
+
+    cleaned[key] = {
+      ...monthData,
+      year: curYear,
+      month: curMonth,
+      transactions: [singleAccumulated, ...regularTxs]
+    };
+  }
+
+  return cleaned;
+}
+
+/**
+ * Recalcula en cascada el "Acumulado" para los meses y años existentes (hasta MAX_CATALOG_YEAR).
+ * Ahora propaga TANTO el Monto Proyectado (endOfMonthTotal) COMO el Actual (Real) (totalActual)
+ * del mes anterior automáticamente.
  */
 export function cascadeAccumulatedBalances(
   months: Record<string, MonthData>,
   startYear: number,
-  startMonth: number
+  startMonth: number,
+  language: Language = 'es'
 ): Record<string, MonthData> {
-  const updated = { ...months };
+  // Primero saneamos y eliminamos cualquier duplicado o residuo
+  const updated = sanitizeAndDeduplicateMonths(months, language);
   
   // Determinamos el balance final del mes actual
   let currentKey = `${startYear}-${startMonth}`;
   if (!updated[currentKey]) return updated;
 
   let currentTotals = computeMonthTotals(updated[currentKey].transactions);
-  let carryOver = currentTotals.endOfMonthTotal;
+  let carryOverProjected = currentTotals.endOfMonthTotal;
+  let carryOverActual = currentTotals.totalActual;
+  let carryOverDone = currentTotals.doneCount > 0 || currentTotals.totalActual !== 0;
 
-  // Propagamos a los siguientes meses del año
-  for (let m = startMonth + 1; m < 12; m++) {
-    const nextKey = `${startYear}-${m}`;
+  // Encontrar el año más alto existente en `updated`
+  const existingYears = Object.keys(updated)
+    .map(k => parseInt(k.split('-')[0], 10))
+    .filter(y => !isNaN(y));
+  const maxExistingYear = existingYears.length > 0 ? Math.max(...existingYears) : startYear;
+  const maxYearToCascade = Math.min(Math.max(startYear, maxExistingYear), MAX_CATALOG_YEAR);
+
+  let curY = startYear;
+  let curM = startMonth + 1;
+
+  while (curY <= maxYearToCascade) {
+    if (curM >= 12) {
+      curM = 0;
+      curY += 1;
+      if (curY > maxYearToCascade) break;
+    }
+
+    const nextKey = `${curY}-${curM}`;
+    // Si el mes no existe en updated, solo lo inicializamos si hay años existentes por delante
     if (!updated[nextKey]) {
-      // Si el mes aún no existe, lo inicializamos
+      if (curY > maxExistingYear) {
+        break;
+      }
+      const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
       updated[nextKey] = {
-        year: startYear,
-        month: m,
+        year: curY,
+        month: curM,
+        title: `${monthNames[curM]} (${curY})`,
         transactions: [],
         creditCards: [],
         hasUserActivity: false
@@ -424,40 +664,117 @@ export function cascadeAccumulatedBalances(
 
     const monthData = updated[nextKey];
     let txs = [...monthData.transactions];
-    const accIndex = txs.findIndex(t => t.isAutoAccumulated);
+
+    // Buscar la fila de acumulado
+    let accIndex = txs.findIndex(t => t.isAutoAccumulated || t.concept.trim().toLowerCase() === 'acumulado');
 
     if (accIndex >= 0) {
+      const existing = txs[accIndex];
+      const hasCustom = existing.hasCustomActual === true;
+
       txs[accIndex] = {
-        ...txs[accIndex],
-        amount: carryOver,
-        actualAmount: txs[accIndex].isDone ? (txs[accIndex].actualAmount ?? carryOver) : null
+        ...existing,
+        id: `acc-${curY}-${curM}`,
+        label: 'Neto',
+        concept: 'Acumulado',
+        amount: carryOverProjected,
+        day: 1,
+        dateString: getDateString(1, curM, language),
+        isRecurring: false,
+        isAutoAccumulated: true,
+        // Si el usuario especificó manualmente su propio actual real, respetarlo.
+        // Si no, autocompletar con el actual real del mes anterior.
+        actualAmount: hasCustom ? existing.actualAmount : carryOverActual,
+        isDone: hasCustom ? existing.isDone : carryOverDone,
+        hasCustomActual: hasCustom
       };
     } else {
       // Insertamos Acumulado al inicio
       txs.unshift({
-        id: `acc-${startYear}-${m}`,
+        id: `acc-${curY}-${curM}`,
         label: 'Neto',
         concept: 'Acumulado',
-        amount: carryOver,
+        amount: carryOverProjected,
         day: 1,
-        dateString: getDateString(1, m, 'es'),
+        dateString: getDateString(1, curM, language),
         isRecurring: false,
-        isDone: false,
-        actualAmount: null,
+        isDone: carryOverDone,
+        actualAmount: carryOverActual,
+        hasCustomActual: false,
         highlight: 'none',
         isAutoAccumulated: true
       });
     }
 
+    // Filtrar cualquier duplicado residual en caso de que existiera
+    const singleAcc = txs.find(t => t.isAutoAccumulated)!;
+    const cleanRegular = txs.filter(t => !t.isAutoAccumulated && t.concept.trim().toLowerCase() !== 'acumulado');
+    const finalTxs = [singleAcc, ...cleanRegular];
+
     updated[nextKey] = {
       ...monthData,
-      transactions: txs
+      transactions: finalTxs
     };
 
-    // Actualizamos carryOver para el siguiente mes
-    const nextTotals = computeMonthTotals(txs);
-    carryOver = nextTotals.endOfMonthTotal;
+    // Actualizamos los saldos para el siguiente mes en la cadena
+    const nextTotals = computeMonthTotals(finalTxs);
+    carryOverProjected = nextTotals.endOfMonthTotal;
+    carryOverActual = nextTotals.totalActual;
+    carryOverDone = nextTotals.doneCount > 0 || nextTotals.totalActual !== 0;
+    curM += 1;
   }
 
   return updated;
 }
+
+/**
+ * Obtiene los totales del mes anterior más cercano para consultar el real y proyectado
+ */
+export function getPreviousMonthTotals(
+  months: Record<string, MonthData>,
+  year: number,
+  month: number
+): { endOfMonthTotal: number; totalActual: number; hasData: boolean } | null {
+  let prevM = month - 1;
+  let prevY = year;
+  if (prevM < 0) {
+    prevM = 11;
+    prevY = year - 1;
+  }
+
+  const prevKey = `${prevY}-${prevM}`;
+  if (months[prevKey] && months[prevKey].transactions && months[prevKey].transactions.length > 0) {
+    const totals = computeMonthTotals(months[prevKey].transactions);
+    return {
+      endOfMonthTotal: totals.endOfMonthTotal,
+      totalActual: totals.totalActual,
+      hasData: true
+    };
+  }
+
+  // Si no está inmediatamente anterior, buscar el mes anterior poblado más cercano
+  const allPreceding = Object.keys(months).filter(k => {
+    const [y, m] = k.split('-').map(Number);
+    return y < year || (y === year && m < month);
+  });
+
+  if (allPreceding.length > 0) {
+    allPreceding.sort((a, b) => {
+      const [yA, mA] = a.split('-').map(Number);
+      const [yB, mB] = b.split('-').map(Number);
+      return (yA * 12 + mA) - (yB * 12 + mB);
+    });
+    const closestKey = allPreceding[allPreceding.length - 1];
+    if (months[closestKey] && months[closestKey].transactions.length > 0) {
+      const totals = computeMonthTotals(months[closestKey].transactions);
+      return {
+        endOfMonthTotal: totals.endOfMonthTotal,
+        totalActual: totals.totalActual,
+        hasData: true
+      };
+    }
+  }
+
+  return null;
+}
+

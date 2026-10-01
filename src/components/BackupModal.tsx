@@ -107,15 +107,15 @@ export const BackupModal: React.FC<BackupModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col text-xs">
+    <div className="fixed inset-0 z-50 bg-slate-900/50 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col text-xs text-slate-900 dark:text-neutral-100 transition-colors">
         
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-neutral-800 bg-neutral-950/60">
-          <h3 className="text-base font-bold text-white tracking-tight">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 dark:border-neutral-800 bg-slate-50 dark:bg-neutral-950/60">
+          <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
             {t.backupModalTitle}
           </h3>
-          <button onClick={onClose} className="text-neutral-400 hover:text-white p-1 rounded-lg">
+          <button onClick={onClose} className="text-slate-400 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-neutral-800 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -127,30 +127,30 @@ export const BackupModal: React.FC<BackupModalProps> = ({
           {feedback && (
             <div className={`p-3 rounded-xl border flex items-center gap-2.5 animate-in fade-in duration-150 ${
               feedback.type === 'success' 
-                ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300' 
-                : 'bg-rose-950/40 border-rose-500/40 text-rose-300'
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-500/40 text-emerald-800 dark:text-emerald-300' 
+                : 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-500/40 text-rose-800 dark:text-rose-300'
             }`}>
               {feedback.type === 'success' ? (
-                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
               ) : (
-                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
+                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
               )}
               <span className="text-xs font-semibold">{feedback.message}</span>
             </div>
           )}
 
           {/* Exportar */}
-          <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-800 flex flex-col gap-2">
-            <span className="font-bold text-white text-xs flex items-center gap-1.5">
-              <Download className="w-4 h-4 text-emerald-400" />
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-neutral-950 border border-slate-200 dark:border-neutral-800 flex flex-col gap-2">
+            <span className="font-bold text-slate-900 dark:text-white text-xs flex items-center gap-1.5">
+              <Download className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               {t.backupExport}
             </span>
-            <p className="text-[11px] text-neutral-400 leading-relaxed">
+            <p className="text-[11px] text-slate-500 dark:text-neutral-400 leading-relaxed">
               {t.exportNotice}
             </p>
             <button
               onClick={handleExport}
-              className="mt-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-bold text-xs transition-colors"
+              className="mt-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-colors shadow-xs"
             >
               <Download className="w-3.5 h-3.5" />
               <span>{t.downloadJson}</span>
@@ -158,12 +158,12 @@ export const BackupModal: React.FC<BackupModalProps> = ({
           </div>
 
           {/* Importar */}
-          <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-800 flex flex-col gap-2">
-            <span className="font-bold text-white text-xs flex items-center gap-1.5">
-              <Upload className="w-4 h-4 text-sky-400" />
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-neutral-950 border border-slate-200 dark:border-neutral-800 flex flex-col gap-2">
+            <span className="font-bold text-slate-900 dark:text-white text-xs flex items-center gap-1.5">
+              <Upload className="w-4 h-4 text-sky-600 dark:text-sky-400" />
               {t.backupImport}
             </span>
-            <p className="text-[11px] text-neutral-400 leading-relaxed">
+            <p className="text-[11px] text-slate-500 dark:text-neutral-400 leading-relaxed">
               {t.importNotice}
             </p>
             <input
@@ -175,7 +175,7 @@ export const BackupModal: React.FC<BackupModalProps> = ({
             />
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="mt-1 flex items-center justify-center gap-2 py-2 rounded-lg border border-neutral-700 bg-neutral-900 hover:bg-neutral-800 text-white font-semibold text-xs transition-colors"
+              className="mt-1 flex items-center justify-center gap-2 py-2 rounded-lg border border-slate-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 hover:bg-slate-100 dark:hover:bg-neutral-800 text-slate-800 dark:text-white font-semibold text-xs transition-colors shadow-xs"
             >
               <Upload className="w-3.5 h-3.5" />
               <span>{t.uploadJson}</span>
@@ -183,8 +183,8 @@ export const BackupModal: React.FC<BackupModalProps> = ({
           </div>
 
           {/* Restablecer fábrica */}
-          <div className="pt-2 border-t border-neutral-800 flex items-center justify-between">
-            <span className="text-[11px] text-neutral-500">¿Deseas reiniciar la aplicación?</span>
+          <div className="pt-2 border-t border-slate-200 dark:border-neutral-800 flex items-center justify-between">
+            <span className="text-[11px] text-slate-500 dark:text-neutral-500">¿Deseas reiniciar la aplicación?</span>
             <button
               onClick={() => {
                 if (window.confirm(language === 'es' ? '¿Restablecer datos de ejemplo iniciales?' : 'Reset to initial sample data?')) {
@@ -192,7 +192,7 @@ export const BackupModal: React.FC<BackupModalProps> = ({
                   onClose();
                 }
               }}
-              className="flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium"
+              className="flex items-center gap-1 text-[11px] text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 font-semibold"
             >
               <RefreshCw className="w-3 h-3" />
               <span>{t.resetData}</span>

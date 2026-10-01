@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CreditCard as CardIcon, Plus, Check, Trash2, Edit2 } from 'lucide-react';
+import { CreditCard as CardIcon, Plus, Trash2, Edit2 } from 'lucide-react';
 import { CreditCard, Language } from '../types/finance';
 import { TRANSLATIONS } from '../utils/translations';
 import { formatCurrency, getDateString } from '../utils/calculations';
@@ -17,7 +17,6 @@ interface CreditCardsSectionProps {
 export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
   creditCards,
   selectedMonth,
-  year,
   language,
   onUpdateCard,
   onAddCard,
@@ -90,36 +89,28 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
     });
   };
 
-  // Helper para mostrar fecha de corte (si el corte es en el mes previo)
-  const getCutDateDisplay = (cutDay: number) => {
-    if (!cutDay) return '-';
-    // Si cutDay > payDay suele pertenecer al ciclo del mes anterior
-    const cutMonth = formPayDay < cutDay ? (selectedMonth === 0 ? 11 : selectedMonth - 1) : selectedMonth;
-    return getDateString(cutDay, cutMonth, language);
-  };
-
   return (
-    <div className="bg-neutral-950/70 border border-neutral-800 rounded-2xl p-4 sm:p-5 flex flex-col gap-4">
+    <div className="bg-white dark:bg-neutral-950/70 border border-slate-200 dark:border-neutral-800 rounded-2xl p-4 sm:p-5 flex flex-col gap-4 shadow-sm transition-colors">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-800 pb-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-neutral-800 pb-3">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
             <CardIcon className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-white tracking-tight">{t.creditCardsTitle}</h3>
-            <p className="text-[11px] text-neutral-400">{t.creditCardsSubtitle}</p>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">{t.creditCardsTitle}</h3>
+            <p className="text-[11px] text-slate-500 dark:text-neutral-400">{t.creditCardsSubtitle}</p>
           </div>
         </div>
 
         {/* Totales Quincenales */}
-        <div className="flex items-center gap-3 text-xs font-mono font-medium">
-          <span className="text-neutral-400">
-            {t.totalFortnight1}: <strong className="text-white tabular-nums">{formatCurrency(totalFortnight1)}</strong>
+        <div className="flex items-center gap-3 text-xs font-medium">
+          <span className="text-slate-600 dark:text-neutral-400">
+            {t.totalFortnight1}: <strong className="text-slate-900 dark:text-white tabular-nums font-bold">{formatCurrency(totalFortnight1)}</strong>
           </span>
-          <span className="text-neutral-600">|</span>
-          <span className="text-neutral-400">
-            {t.totalFortnight2}: <strong className="text-white tabular-nums">{formatCurrency(totalFortnight2)}</strong>
+          <span className="text-slate-300 dark:text-neutral-700">|</span>
+          <span className="text-slate-600 dark:text-neutral-400">
+            {t.totalFortnight2}: <strong className="text-slate-900 dark:text-white tabular-nums font-bold">{formatCurrency(totalFortnight2)}</strong>
           </span>
         </div>
       </div>
@@ -128,15 +119,15 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         
         {/* 1ra Quincena (Días 1 - 15) */}
-        <div className="bg-neutral-900/60 border border-neutral-800/80 rounded-xl p-3 flex flex-col gap-2.5">
+        <div className="bg-slate-50/70 dark:bg-neutral-900/60 border border-slate-200 dark:border-neutral-800/80 rounded-xl p-3 flex flex-col gap-2.5 shadow-xs">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-neutral-200">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-neutral-200">
               <span>📅</span>
               <span>{t.fortnight1}</span>
             </div>
             <button
               onClick={() => openAddModal(5)}
-              className="flex items-center gap-1 text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 px-2 py-0.5 rounded transition-colors"
+              className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 hover:bg-emerald-100/60 dark:hover:bg-emerald-500/10 px-2 py-0.5 rounded transition-colors"
             >
               <Plus className="w-3 h-3" />
               <span>{t.addCard}</span>
@@ -146,7 +137,7 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="text-[10px] text-neutral-400 border-b border-neutral-800 uppercase font-semibold">
+                <tr className="text-[10px] text-slate-500 dark:text-neutral-400 border-b border-slate-200 dark:border-neutral-800 uppercase font-semibold">
                   <th className="py-1.5 px-2">{t.cardColName}</th>
                   <th className="py-1.5 px-2">{t.cardColPayDate}</th>
                   <th className="py-1.5 px-2">{t.cardColCutDate}</th>
@@ -155,10 +146,10 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
                   <th className="py-1.5 px-1 text-center"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-800/40">
+              <tbody className="divide-y divide-slate-200 dark:divide-neutral-800/40">
                 {fortnight1.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-4 text-center text-neutral-500 text-[11px]">
+                    <td colSpan={6} className="py-4 text-center text-slate-400 dark:text-neutral-500 text-[11px]">
                       {language === 'es' ? 'Sin tarjetas en 1ra quincena' : 'No cards in 1st fortnight'}
                     </td>
                   </tr>
@@ -169,11 +160,11 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
                     const cutDateStr = getDateString(card.cutDay, cutMonth, language);
 
                     return (
-                      <tr key={card.id} className="hover:bg-neutral-800/30 transition-colors">
-                        <td className="py-2 px-2 font-bold text-white whitespace-nowrap">{card.name}</td>
-                        <td className="py-2 px-2 font-mono text-neutral-300 whitespace-nowrap">{payDateStr}</td>
-                        <td className="py-2 px-2 font-mono text-neutral-400 whitespace-nowrap">{cutDateStr}</td>
-                        <td className="py-2 px-2 text-right font-mono font-semibold text-white whitespace-nowrap tabular-nums">
+                      <tr key={card.id} className="hover:bg-slate-100/80 dark:hover:bg-neutral-800/30 transition-colors">
+                        <td className="py-2 px-2 font-bold text-slate-900 dark:text-white whitespace-nowrap">{card.name}</td>
+                        <td className="py-2 px-2 text-slate-700 dark:text-neutral-300 whitespace-nowrap tabular-nums">{payDateStr}</td>
+                        <td className="py-2 px-2 text-slate-500 dark:text-neutral-400 whitespace-nowrap tabular-nums">{cutDateStr}</td>
+                        <td className="py-2 px-2 text-right font-semibold text-slate-900 dark:text-white whitespace-nowrap tabular-nums">
                           {card.amount > 0 ? formatCurrency(card.amount) : '-'}
                         </td>
                         <td className="py-2 px-2 text-center">
@@ -181,8 +172,8 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
                             onClick={() => toggleCardPaid(card)}
                             className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all border ${
                               card.isPaid
-                                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                                : 'bg-neutral-800 text-neutral-400 border-neutral-700 hover:border-neutral-500'
+                                ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40'
+                                : 'bg-white dark:bg-neutral-800 text-slate-700 dark:text-neutral-400 border-slate-300 dark:border-neutral-700 hover:border-slate-400 dark:hover:border-neutral-500'
                             }`}
                           >
                             {card.isPaid ? t.paidPayment : t.pendingPayment}
@@ -192,14 +183,14 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
                           <div className="flex items-center justify-end gap-1">
                             <button
                               onClick={() => openEditModal(card)}
-                              className="text-neutral-500 hover:text-emerald-400 p-0.5"
+                              className="text-slate-400 dark:text-neutral-500 hover:text-emerald-600 dark:hover:text-emerald-400 p-0.5"
                               title="Editar"
                             >
                               <Edit2 className="w-3 h-3" />
                             </button>
                             <button
                               onClick={() => onDeleteCard(card.id)}
-                              className="text-neutral-500 hover:text-rose-400 p-0.5"
+                              className="text-slate-400 dark:text-neutral-500 hover:text-rose-600 dark:hover:text-rose-400 p-0.5"
                               title="Eliminar"
                             >
                               <Trash2 className="w-3 h-3" />
@@ -216,15 +207,15 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
         </div>
 
         {/* 2da Quincena (Días 16 - 31) */}
-        <div className="bg-neutral-900/60 border border-neutral-800/80 rounded-xl p-3 flex flex-col gap-2.5">
+        <div className="bg-slate-50/70 dark:bg-neutral-900/60 border border-slate-200 dark:border-neutral-800/80 rounded-xl p-3 flex flex-col gap-2.5 shadow-xs">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-neutral-200">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-neutral-200">
               <span>📅</span>
               <span>{t.fortnight2}</span>
             </div>
             <button
               onClick={() => openAddModal(18)}
-              className="flex items-center gap-1 text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 px-2 py-0.5 rounded transition-colors"
+              className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 hover:bg-emerald-100/60 dark:hover:bg-emerald-500/10 px-2 py-0.5 rounded transition-colors"
             >
               <Plus className="w-3 h-3" />
               <span>{t.addCard}</span>
@@ -234,7 +225,7 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="text-[10px] text-neutral-400 border-b border-neutral-800 uppercase font-semibold">
+                <tr className="text-[10px] text-slate-500 dark:text-neutral-400 border-b border-slate-200 dark:border-neutral-800 uppercase font-semibold">
                   <th className="py-1.5 px-2">{t.cardColName}</th>
                   <th className="py-1.5 px-2">{t.cardColPayDate}</th>
                   <th className="py-1.5 px-2">{t.cardColCutDate}</th>
@@ -243,10 +234,10 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
                   <th className="py-1.5 px-1 text-center"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-800/40">
+              <tbody className="divide-y divide-slate-200 dark:divide-neutral-800/40">
                 {fortnight2.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-4 text-center text-neutral-500 text-[11px]">
+                    <td colSpan={6} className="py-4 text-center text-slate-400 dark:text-neutral-500 text-[11px]">
                       {language === 'es' ? 'Sin tarjetas en 2da quincena' : 'No cards in 2nd fortnight'}
                     </td>
                   </tr>
@@ -257,11 +248,11 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
                     const cutDateStr = getDateString(card.cutDay, cutMonth, language);
 
                     return (
-                      <tr key={card.id} className="hover:bg-neutral-800/30 transition-colors">
-                        <td className="py-2 px-2 font-bold text-white whitespace-nowrap">{card.name}</td>
-                        <td className="py-2 px-2 font-mono text-neutral-300 whitespace-nowrap">{payDateStr}</td>
-                        <td className="py-2 px-2 font-mono text-neutral-400 whitespace-nowrap">{cutDateStr}</td>
-                        <td className="py-2 px-2 text-right font-mono font-semibold text-white whitespace-nowrap tabular-nums">
+                      <tr key={card.id} className="hover:bg-slate-100/80 dark:hover:bg-neutral-800/30 transition-colors">
+                        <td className="py-2 px-2 font-bold text-slate-900 dark:text-white whitespace-nowrap">{card.name}</td>
+                        <td className="py-2 px-2 text-slate-700 dark:text-neutral-300 whitespace-nowrap tabular-nums">{payDateStr}</td>
+                        <td className="py-2 px-2 text-slate-500 dark:text-neutral-400 whitespace-nowrap tabular-nums">{cutDateStr}</td>
+                        <td className="py-2 px-2 text-right font-semibold text-slate-900 dark:text-white whitespace-nowrap tabular-nums">
                           {card.amount > 0 ? formatCurrency(card.amount) : '-'}
                         </td>
                         <td className="py-2 px-2 text-center">
@@ -269,8 +260,8 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
                             onClick={() => toggleCardPaid(card)}
                             className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all border ${
                               card.isPaid
-                                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                                : 'bg-neutral-800 text-neutral-400 border-neutral-700 hover:border-neutral-500'
+                                ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40'
+                                : 'bg-white dark:bg-neutral-800 text-slate-700 dark:text-neutral-400 border-slate-300 dark:border-neutral-700 hover:border-slate-400 dark:hover:border-neutral-500'
                             }`}
                           >
                             {card.isPaid ? t.paidPayment : t.pendingPayment}
@@ -280,14 +271,14 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
                           <div className="flex items-center justify-end gap-1">
                             <button
                               onClick={() => openEditModal(card)}
-                              className="text-neutral-500 hover:text-emerald-400 p-0.5"
+                              className="text-slate-400 dark:text-neutral-500 hover:text-emerald-600 dark:hover:text-emerald-400 p-0.5"
                               title="Editar"
                             >
                               <Edit2 className="w-3 h-3" />
                             </button>
                             <button
                               onClick={() => onDeleteCard(card.id)}
-                              className="text-neutral-500 hover:text-rose-400 p-0.5"
+                              className="text-slate-400 dark:text-neutral-500 hover:text-rose-600 dark:hover:text-rose-400 p-0.5"
                               title="Eliminar"
                             >
                               <Trash2 className="w-3 h-3" />
@@ -307,15 +298,15 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
 
       {/* Modal para Agregar / Editar Tarjeta */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 max-w-sm w-full shadow-2xl">
-            <h4 className="text-base font-bold text-white mb-3">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-2xl p-5 max-w-sm w-full shadow-2xl">
+            <h4 className="text-base font-bold text-slate-900 dark:text-white mb-3">
               {editingCard ? (language === 'es' ? 'Editar Tarjeta' : 'Edit Card') : t.addCard}
             </h4>
             
             <form onSubmit={handleSaveCard} className="flex flex-col gap-3">
               <div>
-                <label className="text-xs text-neutral-400 mb-1 block">
+                <label className="text-xs font-semibold text-slate-700 dark:text-neutral-300 mb-1 block">
                   {language === 'es' ? 'Nombre de la Tarjeta' : 'Card Name'}
                 </label>
                 <input
@@ -323,14 +314,14 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
                   required
                   value={formName}
                   onChange={e => setFormName(e.target.value)}
-                  placeholder="ej. Nu M, Stori, BBVA..."
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                  placeholder="ej. Tarjeta Oro, Tarjeta Digital, Tarjeta Platinum..."
+                  className="w-full bg-slate-50 dark:bg-neutral-950 border border-slate-300 dark:border-neutral-800 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 focus:bg-white dark:focus:bg-neutral-900"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-xs text-neutral-400 mb-1 block">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-neutral-300 mb-1 block">
                     {language === 'es' ? 'Día de Pago (1-31)' : 'Due Day (1-31)'}
                   </label>
                   <input
@@ -339,11 +330,11 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
                     max={31}
                     value={formPayDay}
                     onChange={e => setFormPayDay(Number(e.target.value))}
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-50 dark:bg-neutral-950 border border-slate-300 dark:border-neutral-800 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white tabular-nums focus:outline-none focus:border-emerald-500 focus:bg-white dark:focus:bg-neutral-900"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-neutral-400 mb-1 block">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-neutral-300 mb-1 block">
                     {language === 'es' ? 'Día de Corte (1-31)' : 'Cutoff Day (1-31)'}
                   </label>
                   <input
@@ -352,13 +343,13 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
                     max={31}
                     value={formCutDay}
                     onChange={e => setFormCutDay(Number(e.target.value))}
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-50 dark:bg-neutral-950 border border-slate-300 dark:border-neutral-800 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white tabular-nums focus:outline-none focus:border-emerald-500 focus:bg-white dark:focus:bg-neutral-900"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs text-neutral-400 mb-1 block">
+                <label className="text-xs font-semibold text-slate-700 dark:text-neutral-300 mb-1 block">
                   {language === 'es' ? 'Monto a Pagar ($)' : 'Amount to Pay ($)'}
                 </label>
                 <input
@@ -367,7 +358,7 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
                   value={formAmount || ''}
                   onChange={e => setFormAmount(Number(e.target.value))}
                   placeholder="0.00"
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-slate-50 dark:bg-neutral-950 border border-slate-300 dark:border-neutral-800 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white tabular-nums focus:outline-none focus:border-emerald-500 focus:bg-white dark:focus:bg-neutral-900"
                 />
               </div>
 
@@ -375,13 +366,13 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-3 py-1.5 rounded-lg border border-neutral-800 text-neutral-400 hover:text-white text-xs"
+                  className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-neutral-800 text-slate-700 dark:text-neutral-400 hover:bg-slate-100 dark:hover:text-white text-xs font-semibold"
                 >
                   {t.btnCancel}
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 rounded-lg bg-emerald-500 text-neutral-950 font-bold text-xs hover:bg-emerald-400"
+                  className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-xs"
                 >
                   {t.btnSave}
                 </button>

@@ -2,24 +2,16 @@ import { MonthData, CreditLine, Transaction, CreditCard } from '../types/finance
 import { getDateString, computePayoffAndSavings } from './calculations';
 
 export const DEFAULT_CREDIT_LINES: CreditLine[] = [
-  { id: 'cl-1', institution: 'MercadoPago', availableAmount: 4357 },
-  { id: 'cl-2', institution: 'BanCoppel', availableAmount: 4000 },
-  { id: 'cl-3', institution: 'DiDi', availableAmount: 0 },
-  { id: 'cl-4', institution: 'DiDi M', availableAmount: 1000 },
-  { id: 'cl-5', institution: 'Nu', availableAmount: 0 },
-  { id: 'cl-6', institution: 'Coppel', availableAmount: 0 },
-  { id: 'cl-7', institution: 'Coppel M', availableAmount: 0 },
+  { id: 'cl-1', institution: 'Línea de Crédito Bancaria Principal', availableAmount: 25000 },
+  { id: 'cl-2', institution: 'Línea Digital Revolvente', availableAmount: 12000 },
+  { id: 'cl-3', institution: 'Fondo de Emergencia / Reserva', availableAmount: 18000 },
 ];
 
 export function createDefaultCreditCards(monthIndex: number): CreditCard[] {
   return [
-    { id: 'cc-1', name: 'Nu M', payDay: 4, cutDay: 22, amount: 3700.68, isPaid: false },
-    { id: 'cc-2', name: 'Stori', payDay: 2, cutDay: 12, amount: 7979.71, isPaid: false },
-    { id: 'cc-3', name: 'Uala', payDay: 15, cutDay: 30, amount: 0, isPaid: false },
-    { id: 'cc-4', name: 'Merca (MercadoCrédito)', payDay: 17, cutDay: 7, amount: 0, isPaid: false },
-    { id: 'cc-5', name: 'Vexi', payDay: 18, cutDay: 17, amount: 643.54, isPaid: false },
-    { id: 'cc-6', name: 'Stori M', payDay: 19, cutDay: 27, amount: 0, isPaid: false },
-    { id: 'cc-7', name: 'Klar M', payDay: 21, cutDay: 28, amount: 0, isPaid: false },
+    { id: 'cc-1', name: 'Tarjeta Oro Principal', payDay: 5, cutDay: 20, amount: 4250.00, isPaid: false },
+    { id: 'cc-2', name: 'Tarjeta Digital Cashback', payDay: 15, cutDay: 28, amount: 2180.50, isPaid: false },
+    { id: 'cc-3', name: 'Tarjeta Departamental', payDay: 22, cutDay: 7, amount: 1350.00, isPaid: false },
   ];
 }
 
@@ -32,80 +24,80 @@ export function createInitialSampleMonths(year: number = 2026): Record<string, M
       id: `acc-${year}-0`,
       label: 'Neto',
       concept: 'Acumulado',
-      amount: 9513.88,
+      amount: 12500.00,
       day: 1,
       dateString: getDateString(1, 0, 'es'),
       isRecurring: false,
       isDone: true,
-      actualAmount: 9513.88,
+      actualAmount: 12500.00,
       highlight: 'none',
       isAutoAccumulated: true
     },
     {
       id: `tx-1`,
       label: 'Ingreso',
-      concept: 'Quincena (-RM 3 de 12)',
-      amount: 5925.43,
+      concept: 'Sueldo / Nómina Quincenal',
+      amount: 15000.00,
       day: 15,
       dateString: getDateString(15, 0, 'es'),
       isRecurring: true,
       isDone: true,
-      actualAmount: 5925.43,
+      actualAmount: 15000.00,
       highlight: 'none'
     },
     {
       id: `tx-2`,
       label: 'Gasto',
-      concept: 'Recarga Telcel',
-      amount: -200.00,
-      day: 15,
-      dateString: getDateString(15, 0, 'es'),
+      concept: 'Renta / Vivienda',
+      amount: -5500.00,
+      day: 5,
+      dateString: getDateString(5, 0, 'es'),
       isRecurring: true,
       isDone: true,
-      actualAmount: -200.00,
+      actualAmount: -5500.00,
       highlight: 'none'
     },
     {
       id: `tx-3`,
-      label: 'Gasto',
-      concept: 'Cámara Ken',
-      amount: -2900.00,
-      day: 15,
-      dateString: getDateString(15, 0, 'es'),
-      isRecurring: false,
-      isDone: false,
-      actualAmount: null,
+      label: 'Servicio',
+      concept: 'Servicios Básicos (Luz, Agua, Gas)',
+      amount: -850.00,
+      day: 8,
+      dateString: getDateString(8, 0, 'es'),
+      isRecurring: true,
+      isDone: true,
+      actualAmount: -850.00,
       highlight: 'none'
     },
     {
       id: `tx-4`,
-      label: 'Gasto',
-      concept: 'Audifonos HiFi',
-      amount: -1555.00,
-      day: 15,
-      dateString: getDateString(15, 0, 'es'),
-      isRecurring: false,
-      isDone: false,
-      actualAmount: null,
+      label: 'Servicio',
+      concept: 'Telefonía Móvil e Internet Fibra',
+      amount: -699.00,
+      day: 10,
+      dateString: getDateString(10, 0, 'es'),
+      isRecurring: true,
+      isDone: true,
+      actualAmount: -699.00,
       highlight: 'none'
     },
     {
       id: `tx-5`,
       label: 'Gasto',
-      concept: 'Canasta Tacos',
-      amount: -1700.00,
-      day: 15,
-      dateString: getDateString(15, 0, 'es'),
-      isRecurring: false,
-      isDone: false,
-      actualAmount: null,
+      concept: 'Supermercado y Despensa Familiar',
+      amount: -3400.00,
+      day: 14,
+      dateString: getDateString(14, 0, 'es'),
+      isRecurring: true,
+      isDone: true,
+      actualAmount: -3400.00,
       highlight: 'none'
     },
     {
       id: `tx-6`,
-      label: 'Gasto',
-      concept: 'Prestamo BanCoppel 2 de 12',
-      amount: -2895.00,
+      label: 'Préstamo',
+      concept: 'Préstamo Personal Cuota 2 de 12',
+      amount: -2150.00,
       day: 16,
       dateString: getDateString(16, 0, 'es'),
       isRecurring: true,
@@ -113,26 +105,38 @@ export function createInitialSampleMonths(year: number = 2026): Record<string, M
       actualAmount: null,
       highlight: 'yellow',
       loanDetails: {
-        loanId: 'loan-bancoppel',
-        institutionName: 'BanCoppel',
+        loanId: 'loan-personal',
+        institutionName: 'Banco Principal',
         totalTermMonths: 12,
         currentTermMonth: 2,
-        initialDebt: 31471.30,
-        finalDebt: 28576.30,
-        originalPrincipal: 25000.00,
-        annualInterestRate: 38.5,
-        totalToPay: 34366.30,
-        totalInterest: 9366.30,
-        payoffDiscount: 22916.67,
-        interestSaved: 8554.63,
+        initialDebt: 21500.00,
+        finalDebt: 19350.00,
+        originalPrincipal: 22000.00,
+        annualInterestRate: 22.5,
+        totalToPay: 25800.00,
+        totalInterest: 3800.00,
+        payoffDiscount: 18500.00,
+        interestSaved: 2950.00,
         mode: 'totalPay'
       }
     },
     {
       id: `tx-7`,
-      label: 'Gasto',
-      concept: 'PrestamoCoppel 2 de 12',
-      amount: -6262.00,
+      label: 'Servicio',
+      concept: 'Suscripción Streaming y Nube',
+      amount: -250.00,
+      day: 20,
+      dateString: getDateString(20, 0, 'es'),
+      isRecurring: true,
+      isDone: false,
+      actualAmount: null,
+      highlight: 'none'
+    },
+    {
+      id: `tx-8`,
+      label: 'Préstamo',
+      concept: 'Crédito Automotriz Cuota 4 de 24',
+      amount: -3800.00,
       day: 22,
       dateString: getDateString(22, 0, 'es'),
       isRecurring: true,
@@ -140,40 +144,28 @@ export function createInitialSampleMonths(year: number = 2026): Record<string, M
       actualAmount: null,
       highlight: 'yellow',
       loanDetails: {
-        loanId: 'loan-coppel',
-        institutionName: 'Coppel',
-        totalTermMonths: 12,
-        currentTermMonth: 2,
-        initialDebt: 68870.00,
-        finalDebt: 62608.00,
-        originalPrincipal: 52000.00,
-        annualInterestRate: 42.0,
-        totalToPay: 75144.00,
-        totalInterest: 23144.00,
-        payoffDiscount: 47666.67,
-        interestSaved: 21203.33,
+        loanId: 'loan-auto',
+        institutionName: 'Crédito Automotriz',
+        totalTermMonths: 24,
+        currentTermMonth: 4,
+        initialDebt: 76000.00,
+        finalDebt: 72200.00,
+        originalPrincipal: 75000.00,
+        annualInterestRate: 15.5,
+        totalToPay: 91200.00,
+        totalInterest: 16200.00,
+        payoffDiscount: 67500.00,
+        interestSaved: 7300.00,
         mode: 'totalPay'
       }
     },
     {
-      id: `tx-8`,
-      label: 'Coppel',
-      concept: 'MyArcade',
-      amount: -3686.00,
+      id: `tx-9`,
+      label: 'Gasto',
+      concept: 'Combustible y Mantenimiento Vehicular',
+      amount: -1200.00,
       day: 25,
       dateString: getDateString(25, 0, 'es'),
-      isRecurring: false,
-      isDone: false,
-      actualAmount: null,
-      highlight: 'none'
-    },
-    {
-      id: `tx-9`,
-      label: 'Servicio',
-      concept: 'Bebbia Purificador',
-      amount: -369.00,
-      day: 28,
-      dateString: getDateString(28, 0, 'es'),
       isRecurring: true,
       isDone: false,
       actualAmount: null,
@@ -182,10 +174,10 @@ export function createInitialSampleMonths(year: number = 2026): Record<string, M
     {
       id: `tx-10`,
       label: 'Ingreso',
-      concept: 'Bebbia Familia',
-      amount: 100.00,
-      day: 28,
-      dateString: getDateString(28, 0, 'es'),
+      concept: 'Segunda Quincena Nómina',
+      amount: 15000.00,
+      day: 30,
+      dateString: getDateString(30, 0, 'es'),
       isRecurring: true,
       isDone: false,
       actualAmount: null,
@@ -193,36 +185,15 @@ export function createInitialSampleMonths(year: number = 2026): Record<string, M
     },
     {
       id: `tx-11`,
-      label: 'Servicio',
-      concept: 'Google One 2TB',
-      amount: -100.00,
-      day: 29,
-      dateString: getDateString(29, 0, 'es'),
-      isRecurring: true,
-      isDone: false,
-      actualAmount: null,
-      highlight: 'none'
-    },
-    {
-      id: `tx-12`,
       label: 'Ingreso',
-      concept: 'PS5 Martin Abono',
-      amount: 3500.00,
-      day: 30,
-      dateString: getDateString(30, 0, 'es'),
+      concept: 'Rendimiento de Inversiones / Proyecto',
+      amount: 1800.00,
+      day: 28,
+      dateString: getDateString(28, 0, 'es'),
       isRecurring: false,
       isDone: false,
       actualAmount: null,
-      highlight: 'green',
-      loanDetails: {
-        loanId: 'loan-ps5',
-        institutionName: 'PS5 Martin',
-        totalTermMonths: 3,
-        currentTermMonth: 1,
-        initialDebt: 10000.00,
-        finalDebt: 6500.00,
-        mode: 'totalPay'
-      }
+      highlight: 'green'
     }
   ];
 
@@ -238,7 +209,6 @@ export function createInitialSampleMonths(year: number = 2026): Record<string, M
   // Pre-generar los meses 1 al 11 avanzando las deudas y recurrentes
   let previousMonthTxs = month0Transactions;
   for (let m = 1; m < 12; m++) {
-    // Calculamos carryOver
     let accVal = 0;
     let net = 0;
     previousMonthTxs.forEach(t => {
@@ -263,7 +233,6 @@ export function createInitialSampleMonths(year: number = 2026): Record<string, M
       }
     ];
 
-    // Avanzamos recurrentes y préstamos
     previousMonthTxs.forEach(oldTx => {
       if (oldTx.isAutoAccumulated) return;
 
@@ -285,7 +254,7 @@ export function createInitialSampleMonths(year: number = 2026): Record<string, M
           newTxs.push({
             id: `tx-loan-${m}-${oldTx.id}`,
             label: oldTx.label,
-            concept: `${oldTx.loanDetails.institutionName} ${nextInstallment} de ${oldTx.loanDetails.totalTermMonths}`,
+            concept: `${oldTx.loanDetails.institutionName} Cuota ${nextInstallment} de ${oldTx.loanDetails.totalTermMonths}`,
             amount: oldTx.amount,
             day: oldTx.day,
             dateString: getDateString(oldTx.day, m, 'es'),
@@ -319,7 +288,7 @@ export function createInitialSampleMonths(year: number = 2026): Record<string, M
       }
     });
 
-    const hasRealActivity = m <= 3; // Enero a Abril con actividad inicial proyectada
+    const hasRealActivity = m <= 3;
 
     months[`${year}-${m}`] = {
       year,
@@ -338,10 +307,12 @@ export function createInitialSampleMonths(year: number = 2026): Record<string, M
 
 export function createEmptyMonths(year: number = 2026): Record<string, MonthData> {
   const months: Record<string, MonthData> = {};
+  const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
   for (let m = 0; m < 12; m++) {
     months[`${year}-${m}`] = {
       year,
       month: m,
+      title: `${monthNames[m]} (${year})`,
       transactions: [
         {
           id: `acc-${year}-${m}`,
@@ -386,4 +357,3 @@ export function countDataStats(months: Record<string, MonthData>, creditLines: C
     creditLines: creditLines.length
   };
 }
-
