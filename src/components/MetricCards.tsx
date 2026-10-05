@@ -131,7 +131,7 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
 
     card5Title = language === 'es' ? 'Pagos de Deuda (1ª Q)' : 'Debt Due (1st Bw)';
     card5Value = biweekly.q1.totalDueLoanPayments;
-    card5Badge = 'Días 1 - 15';
+    card5Badge = language === 'es' ? '1ra Quincena' : '1st Fortnight';
     card5FootLabel = 'Vencimiento:';
     card5FootVal = 'Antes del 16';
   } else if (periodView === 'q2') {
@@ -158,7 +158,7 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
 
     card5Title = language === 'es' ? 'Pagos de Deuda (2ª Q)' : 'Debt Due (2nd Bw)';
     card5Value = biweekly.q2.totalDueLoanPayments;
-    card5Badge = `Días ${biweekly.q2.dayRange}`;
+    card5Badge = language === 'es' ? '2da Quincena' : '2nd Fortnight';
     card5FootLabel = 'Vencimiento:';
     card5FootVal = 'Hasta fin de mes';
   }
@@ -392,7 +392,7 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
               <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <span>{t.biweeklyDiagnosticTitle}</span>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700">
-                  Días 1 - 15 vs 16 - {biweekly.q2.dayRange.split('-')[1]?.trim() || 'Fin'}
+                  {language === 'es' ? '1ª Quincena vs 2ª Quincena' : '1st vs 2nd Fortnight'}
                 </span>
               </h4>
               <p className="text-[11px] text-slate-500 dark:text-neutral-400 mt-0.5">
@@ -424,7 +424,7 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
                   <span className="text-base">🌓</span>
                   <div>
                     <span className="text-xs font-bold text-slate-900 dark:text-white block">
-                      {t.q1Label} (Días {biweekly.q1.dayRange})
+                      {t.q1Label}
                     </span>
                     <span className="text-[10px] text-slate-500 dark:text-neutral-400">
                       {language === 'es' ? 'Fase inicial del mes' : 'Initial month phase'}
@@ -531,7 +531,7 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
                   <span className="text-base">🌔</span>
                   <div>
                     <span className="text-xs font-bold text-slate-900 dark:text-white block">
-                      {t.q2Label} (Días {biweekly.q2.dayRange})
+                      {t.q2Label}
                     </span>
                     <span className="text-[10px] text-slate-500 dark:text-neutral-400">
                       {language === 'es' ? 'Cierre del mes' : 'Month closing phase'}

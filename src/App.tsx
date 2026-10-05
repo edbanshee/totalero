@@ -9,6 +9,7 @@ import {
   FilterType, 
   PeriodView,
   UserSession,
+  ActiveView,
   MIN_CATALOG_YEAR,
   MAX_CATALOG_YEAR
 } from './types/finance';
@@ -53,6 +54,7 @@ import { MONTH_NAMES } from './utils/translations';
 
 import { Header } from './components/Header';
 import { MonthBar } from './components/MonthBar';
+import { AnnualOverview } from './components/AnnualOverview';
 import { MetricCards } from './components/MetricCards';
 import { CashFlowTable } from './components/CashFlowTable';
 import { CreditCardsSection } from './components/CreditCardsSection';
@@ -119,6 +121,7 @@ export default function App() {
   const [creditLines, setCreditLines] = useState<CreditLine[]>(DEFAULT_CREDIT_LINES);
 
   // Table Controls
+  const [activeView, setActiveView] = useState<ActiveView>('monthly');
   const [pinAccumulated, setPinAccumulated] = useState<boolean>(true);
   const [filter, setFilter] = useState<FilterType>('all');
   const [periodView, setPeriodView] = useState<PeriodView>('month');
@@ -557,6 +560,11 @@ export default function App() {
     }
   };
 
+  const handleSelectMonthAndNavigate = (monthIndex: number) => {
+    setSelectedMonth(monthIndex);
+    setActiveView('monthly');
+  };
+
   // Login Local
   const handleLoginLocal = (startFromScratch: boolean) => {
     const session: UserSession = {
@@ -702,17 +710,21 @@ export default function App() {
 
   // Export JSON
   const handleExportJson = () => {
+    const cleanMonths = sanitizeAndDeduplicateMonths(months, language);
     const exportPayload = {
-      version: '2.0',
+      app: 'Totalero',
+      version: '2.1',
       userMode: userSession.userMode,
       exportedAt: new Date().toISOString(),
-      months,
+      activeYear: selectedYear,
+      activeMonth: selectedMonth,
+      months: cleanMonths,
       creditLines
     };
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(exportPayload, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', `totalero_backup_${new Date().toISOString().slice(0, 10)}.json`);
+    downloadAnchor.setAttribute('download', `totalero_backup_${selectedYear}_${new Date().toISOString().slice(0, 10)}.json`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
@@ -1760,25 +1772,35 @@ export default function App() {
     setCreditLines(prev => prev.filter(l => l.id !== id));
   };
 
-  // Import JSON backup with immediate persistence
+  // Import JSON backup with immediate persistence, sanitization and cascading recalculation
   const handleImportData = async (importedMonths: Record<string, MonthData>, importedLines: CreditLine[]) => {
-    setMonths(importedMonths);
-    setCreditLines(importedLines);
+    // 1. Determinar el año base para iniciar el recálculo en cascada
+    const years = Object.values(importedMonths).map(m => m.year).filter(Boolean);
+    const startYear = years.length > 0 ? Math.min(...years) : selectedYear;
+
+    // 2. Normalización, deduplicación, validación de bisiestos/fechas y recálculo en cascada
+    const sanitizedAndCascaded = cascadeAccumulatedBalances(importedMonths, startYear, 0, language);
+    const finalLines = (importedLines && Array.isArray(importedLines) && importedLines.length > 0)
+      ? importedLines
+      : (creditLines && creditLines.length > 0 ? creditLines : DEFAULT_CREDIT_LINES);
+
+    setMonths(sanitizedAndCascaded);
+    setCreditLines(finalLines);
 
     if (userSession.userMode === 'cloud' && auth.currentUser) {
       try {
         await saveCloudFinancialData(
           auth.currentUser.uid,
           auth.currentUser.email || '',
-          importedMonths,
-          importedLines,
+          sanitizedAndCascaded,
+          finalLines,
           selectedYear
         );
       } catch (err) {
         console.error('Error persisting imported data to cloud:', err);
       }
     } else {
-      saveLocalData(importedMonths, importedLines, selectedYear);
+      saveLocalData(sanitizedAndCascaded, finalLines, selectedYear);
     }
   };
 
@@ -1805,6 +1827,8 @@ export default function App() {
           year={selectedYear}
           month={selectedMonth}
           onYearChange={setSelectedYear}
+          activeView={activeView}
+          onViewChange={setActiveView}
           language={language}
           onLanguageToggle={handleLanguageToggle}
           theme={theme}
@@ -1814,93 +1838,109 @@ export default function App() {
           onOpenBackup={() => setIsBackupOpen(true)}
           onOpenDangerZone={() => setIsDangerZoneOpen(true)}
         />
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 pb-2.5 pt-0.5">
-          <MonthBar
-            year={selectedYear}
-            selectedMonth={selectedMonth}
-            monthsData={months}
-            onSelectMonth={setSelectedMonth}
-            onPrevMonth={handlePrevMonth}
-            onNextMonth={handleNextMonth}
-            language={language}
-          />
-        </div>
+        {activeView === 'monthly' && (
+          <div className="max-w-[1600px] mx-auto px-4 sm:px-6 pb-2.5 pt-0.5">
+            <MonthBar
+              year={selectedYear}
+              selectedMonth={selectedMonth}
+              monthsData={months}
+              onSelectMonth={setSelectedMonth}
+              onPrevMonth={handlePrevMonth}
+              onNextMonth={handleNextMonth}
+              language={language}
+            />
+          </div>
+        )}
       </div>
 
       {/* Main Viewport */}
       <main className="flex-1 max-w-[1600px] w-full mx-auto px-3 sm:px-6 py-4 flex flex-col gap-5">
         
-        {/* 2. Tarjetas de Métricas Resumen y Diagnóstico Quincenal */}
-        <MetricCards
-          totals={currentTotals}
-          totalLiquidity={totalLiquidity}
-          transactions={currentMonthData.transactions}
-          month={selectedMonth}
-          year={selectedYear}
-          language={language}
-          periodView={periodView}
-          onPeriodViewChange={setPeriodView}
-          onFilterTableQuincena={(q) => setFilter(q === 1 ? 'q1' : 'q2')}
-        />
+        {activeView === 'annual' ? (
+          <AnnualOverview
+            year={selectedYear}
+            monthsData={months}
+            creditLines={creditLines}
+            language={language}
+            onSelectMonthAndNavigate={handleSelectMonthAndNavigate}
+            onYearChange={setSelectedYear}
+            onBackToMonthly={() => setActiveView('monthly')}
+          />
+        ) : (
+          <>
+            {/* 2. Tarjetas de Métricas Resumen y Diagnóstico Quincenal */}
+            <MetricCards
+              totals={currentTotals}
+              totalLiquidity={totalLiquidity}
+              transactions={currentMonthData.transactions}
+              month={selectedMonth}
+              year={selectedYear}
+              language={language}
+              periodView={periodView}
+              onPeriodViewChange={setPeriodView}
+              onFilterTableQuincena={(q) => setFilter(q === 1 ? 'q1' : 'q2')}
+            />
 
-        {/* 4. Tabla de Flujo de Caja Inteligente */}
-        <CashFlowTable
-          transactions={currentMonthData.transactions}
-          totals={currentTotals}
-          totalLiquidity={totalLiquidity}
-          selectedMonth={selectedMonth}
-          year={selectedYear}
-          language={language}
-          filter={filter}
-          onFilterChange={setFilter}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          pinAccumulated={pinAccumulated}
-          onTogglePinAccumulated={() => setPinAccumulated(!pinAccumulated)}
-          onOpenAddModal={() => {
-            setEditingTx(null);
-            setIsTxModalOpen(true);
-          }}
-          onEditTransaction={(tx) => {
-            setEditingTx(tx);
-            setIsTxModalOpen(true);
-          }}
-          onDeleteTransaction={handleDeleteRequest}
-          onDuplicateTransaction={handleDuplicateTransaction}
-          onMoveTransaction={handleMoveTransaction}
-          onToggleDone={handleToggleDone}
-          onOpenAmortizationModal={(tx) => {
-            setAmortizationTx(tx);
-            setIsAmortizationOpen(true);
-          }}
-        />
-
-        {/* 5. Paneles Inferiores: Tarjetas de Crédito y Bolsa de Liquidez */}
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 mt-2">
-          {/* Tarjetas de Crédito Quincenales */}
-          <div className="xl:col-span-8">
-            <CreditCardsSection
-              creditCards={currentMonthData.creditCards || []}
+            {/* 4. Tabla de Flujo de Caja Inteligente */}
+            <CashFlowTable
+              transactions={currentMonthData.transactions}
+              totals={currentTotals}
+              totalLiquidity={totalLiquidity}
               selectedMonth={selectedMonth}
               year={selectedYear}
               language={language}
-              onUpdateCard={handleUpdateCreditCard}
-              onAddCard={handleAddCreditCard}
-              onDeleteCard={handleDeleteCreditCard}
+              filter={filter}
+              onFilterChange={setFilter}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              pinAccumulated={pinAccumulated}
+              onTogglePinAccumulated={() => setPinAccumulated(!pinAccumulated)}
+              onOpenAddModal={() => {
+                setEditingTx(null);
+                setIsTxModalOpen(true);
+              }}
+              onEditTransaction={(tx) => {
+                setEditingTx(tx);
+                setIsTxModalOpen(true);
+              }}
+              onDeleteTransaction={handleDeleteRequest}
+              onDuplicateTransaction={handleDuplicateTransaction}
+              onMoveTransaction={handleMoveTransaction}
+              onToggleDone={handleToggleDone}
+              onOpenAmortizationModal={(tx) => {
+                setAmortizationTx(tx);
+                setIsAmortizationOpen(true);
+              }}
             />
-          </div>
 
-          {/* Capital Disponible en Préstamos (Bolsa de Liquidez) */}
-          <div className="xl:col-span-4">
-            <LiquidityPoolSection
-              creditLines={creditLines}
-              language={language}
-              onUpdateCreditLine={handleUpdateCreditLine}
-              onAddCreditLine={handleAddCreditLine}
-              onDeleteCreditLine={handleDeleteCreditLine}
-            />
-          </div>
-        </div>
+            {/* 5. Paneles Inferiores: Tarjetas de Crédito y Bolsa de Liquidez */}
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 mt-2">
+              {/* Tarjetas de Crédito Quincenales */}
+              <div className="xl:col-span-8">
+                <CreditCardsSection
+                  creditCards={currentMonthData.creditCards || []}
+                  selectedMonth={selectedMonth}
+                  year={selectedYear}
+                  language={language}
+                  onUpdateCard={handleUpdateCreditCard}
+                  onAddCard={handleAddCreditCard}
+                  onDeleteCard={handleDeleteCreditCard}
+                />
+              </div>
+
+              {/* Capital Disponible en Préstamos (Bolsa de Liquidez) */}
+              <div className="xl:col-span-4">
+                <LiquidityPoolSection
+                  creditLines={creditLines}
+                  language={language}
+                  onUpdateCreditLine={handleUpdateCreditLine}
+                  onAddCreditLine={handleAddCreditLine}
+                  onDeleteCreditLine={handleDeleteCreditLine}
+                />
+              </div>
+            </div>
+          </>
+        )}
 
       </main>
 

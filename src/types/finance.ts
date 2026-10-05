@@ -76,6 +76,7 @@ export type Language = 'es' | 'en';
 export type ThemeMode = 'dark' | 'light';
 export type FilterType = 'all' | 'q1' | 'q2' | 'done' | 'pending';
 export type PeriodView = 'month' | 'q1' | 'q2';
+export type ActiveView = 'monthly' | 'annual';
 
 export interface QuincenaSummary {
   quincena: 1 | 2;

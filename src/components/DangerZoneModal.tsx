@@ -39,23 +39,36 @@ export const DangerZoneModal: React.FC<DangerZoneModalProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'purge' | 'demo'>('purge');
   const [confirmText, setConfirmText] = useState('');
+  const [demoConfirmText, setDemoConfirmText] = useState('');
 
   if (!isOpen) return null;
 
   const isEs = language === 'es';
   const isCloud = userSession.userMode === 'cloud';
   const targetConfirmation = isEs ? 'ELIMINAR' : 'DELETE';
+  const targetDemoConfirmation = isEs ? 'RESTAURAR' : 'RESTORE';
   const canDelete = confirmText.trim().toUpperCase() === targetConfirmation;
+  const canLoadDemo = demoConfirmText.trim().toUpperCase() === targetDemoConfirmation;
 
   const handlePurge = () => {
     if (!canDelete) return;
     onPurgeData();
     setConfirmText('');
+    setDemoConfirmText('');
     onClose();
   };
 
   const handleLoadDemo = () => {
+    if (!canLoadDemo) return;
     onLoadDemoData();
+    setConfirmText('');
+    setDemoConfirmText('');
+    onClose();
+  };
+
+  const handleClose = () => {
+    setConfirmText('');
+    setDemoConfirmText('');
     onClose();
   };
 
@@ -81,7 +94,7 @@ export const DangerZoneModal: React.FC<DangerZoneModalProps> = ({
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="text-slate-400 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-neutral-800 transition-colors"
           >
             <X className="w-5 h-5" />
@@ -209,25 +222,41 @@ export const DangerZoneModal: React.FC<DangerZoneModalProps> = ({
               </button>
             </div>
           ) : (
-            /* Tab 2: Cargar datos de demostración */
-            <div className="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-500/5 border border-emerald-300 dark:border-emerald-500/30 flex flex-col gap-3">
-              <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold">
+            /* Tab 2: Cargar datos de demostración con confirmación protegida */
+            <div className="p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-500/5 border border-amber-300 dark:border-amber-500/30 flex flex-col gap-3">
+              <div className="flex items-center gap-2 text-amber-800 dark:text-amber-400 font-bold">
                 <RotateCcw className="w-4 h-4" />
-                <span>{isEs ? 'Cargar Plantilla con Datos de Demostración' : 'Load Template with Demo Data'}</span>
+                <span>{isEs ? 'Restablecer y Cargar Plantilla con Datos de Demostración' : 'Reset and Load Template with Demo Data'}</span>
               </div>
 
               <p className="text-[11px] text-slate-600 dark:text-neutral-400 leading-relaxed">
                 {isEs 
-                  ? 'Reemplaza el espacio activo con la plantilla contable completa que incluye transacciones, préstamos a plazos, tarjetas y líneas de crédito.'
-                  : 'Replaces active workspace with the complete accounting template including transactions, installment loans, cards, and credit lines.'}
+                  ? 'Esta acción sobrescribirá y reemplazará todos tus movimientos, préstamos, tarjetas y líneas de crédito actuales por los datos de la plantilla de ejemplo. Para evitar restablecer por accidente, debes confirmar la palabra clave antes de proceder.'
+                  : 'This action will overwrite and replace all your current transactions, loans, cards, and credit lines with sample demo data. To prevent accidental reset, type the confirmation keyword below to proceed.'}
               </p>
+
+              <div>
+                <label className="text-slate-700 dark:text-neutral-300 font-semibold mb-1 block text-[11px]">
+                  {isEs ? 'Escribe ' : 'Type '}
+                  <span className="font-extrabold text-amber-700 dark:text-amber-400 uppercase tracking-wider">{targetDemoConfirmation}</span>
+                  {isEs ? ' para confirmar:' : ' to confirm:'}
+                </label>
+                <input
+                  type="text"
+                  value={demoConfirmText}
+                  onChange={e => setDemoConfirmText(e.target.value)}
+                  placeholder={targetDemoConfirmation}
+                  className="w-full bg-white dark:bg-neutral-950 border border-slate-300 dark:border-neutral-800 rounded-xl px-3 py-2 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-amber-500 font-semibold"
+                />
+              </div>
 
               <button
                 onClick={handleLoadDemo}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-all shadow-xs"
+                disabled={!canLoadDemo}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 disabled:opacity-30 disabled:hover:bg-amber-600 text-white font-bold text-xs transition-all shadow-xs cursor-pointer disabled:cursor-not-allowed"
               >
                 <RotateCcw className="w-4 h-4" />
-                <span>{isEs ? 'Cargar Plantilla de Ejemplo' : 'Load Sample Template'}</span>
+                <span>{isEs ? 'Restablecer y Cargar Plantilla de Ejemplo' : 'Reset and Load Sample Template'}</span>
               </button>
             </div>
           )}
@@ -237,7 +266,7 @@ export const DangerZoneModal: React.FC<DangerZoneModalProps> = ({
         {/* Footer */}
         <div className="p-4 border-t border-slate-200 dark:border-neutral-800 bg-slate-50 dark:bg-neutral-950/60 flex justify-end">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="px-4 py-1.5 rounded-xl border border-slate-300 dark:border-neutral-800 text-slate-700 dark:text-neutral-300 hover:text-slate-900 dark:hover:text-white text-xs font-semibold hover:bg-slate-100 dark:hover:bg-neutral-800 transition-colors"
           >
             {isEs ? 'Cerrar' : 'Close'}
