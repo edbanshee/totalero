@@ -6,8 +6,6 @@ import {
   Moon, 
   Globe, 
   Database, 
-  Edit3, 
-  Check, 
   LogOut, 
   WalletCards,
   Calendar,
@@ -20,9 +18,7 @@ import { TRANSLATIONS, MONTH_NAMES } from '../utils/translations';
 interface HeaderProps {
   year: number;
   month: number;
-  monthTitle?: string;
   onYearChange: (newYear: number) => void;
-  onUpdateMonthTitle: (newTitle: string) => void;
   language: Language;
   onLanguageToggle: () => void;
   theme: ThemeMode;
@@ -36,9 +32,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   year,
   month,
-  monthTitle,
   onYearChange,
-  onUpdateMonthTitle,
   language,
   onLanguageToggle,
   theme,
@@ -49,11 +43,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenDangerZone
 }) => {
   const t = TRANSLATIONS[language];
-  const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [tempTitle, setTempTitle] = useState('');
-
   const displayMonthName = MONTH_NAMES[language][month];
-  const currentTitle = monthTitle || `${displayMonthName} (${year})`;
 
   // Años consecutivos inmediatos alrededor del año activo
   const quickYears = useMemo(() => {
@@ -75,18 +65,6 @@ export const Header: React.FC<HeaderProps> = ({
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
-
-  const handleStartEditTitle = () => {
-    setTempTitle(currentTitle);
-    setIsEditingTitle(true);
-  };
-
-  const handleSaveTitle = () => {
-    if (tempTitle.trim()) {
-      onUpdateMonthTitle(tempTitle.trim());
-    }
-    setIsEditingTitle(false);
-  };
 
   return (
     <header className="w-full transition-colors">
@@ -149,40 +127,11 @@ export const Header: React.FC<HeaderProps> = ({
               ))}
             </div>
 
-            {/* Month Title & Customization */}
-            <div className="hidden sm:flex items-center gap-2 border-l border-slate-200 dark:border-neutral-800 pl-3">
-              {isEditingTitle ? (
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="text"
-                    value={tempTitle}
-                    onChange={(e) => setTempTitle(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSaveTitle()}
-                    className="bg-white dark:bg-neutral-900 border border-emerald-500/50 rounded px-2 py-0.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-400 w-48 font-medium shadow-xs"
-                    autoFocus
-                  />
-                  <button
-                    onClick={handleSaveTitle}
-                    className="p-1 rounded bg-emerald-600 text-white hover:bg-emerald-500 transition-colors shadow-xs"
-                    title={t.saveTitle}
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
-                    {currentTitle}
-                  </h2>
-                  <button
-                    onClick={handleStartEditTitle}
-                    className="text-slate-400 dark:text-neutral-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors p-1"
-                    title={t.editMonthTitle}
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
+            {/* Month Title strictly composed from current selection */}
+            <div className="hidden sm:flex items-center border-l border-slate-200 dark:border-neutral-800 pl-3">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
+                {displayMonthName} ({year})
+              </h2>
             </div>
           </div>
 

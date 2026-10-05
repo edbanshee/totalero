@@ -9,8 +9,7 @@ import {
   ShieldCheck,
   ShieldAlert,
   Zap,
-  Calendar,
-  ArrowRightLeft
+  Calendar
 } from 'lucide-react';
 import { Language, Transaction, PeriodView } from '../types/finance';
 import { TRANSLATIONS } from '../utils/translations';
@@ -316,7 +315,7 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
             {formatCurrency(card3Value)}
           </div>
 
-          {/* Breakdown detallado y switcher rápido en 1 clic */}
+          {/* Breakdown detallado */}
           <div className="flex flex-col gap-1.5 mt-1 pt-1.5 border-t border-slate-100 dark:border-neutral-800/80 text-[11px]">
             <div className="flex items-center justify-between text-slate-500 dark:text-neutral-400">
               <span className="flex items-center gap-1">
@@ -330,28 +329,6 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
                 </span>
               </span>
             </div>
-
-            {/* Chip de alternar a la otra base en 1 clic */}
-            <button
-              type="button"
-              onClick={() => handleSetLoanTotalBasis(loanTotalBasis === 'actual' ? 'projected' : 'actual')}
-              className="w-full mt-0.5 flex items-center justify-between px-2 py-1 rounded-md bg-slate-50 hover:bg-slate-100 dark:bg-neutral-950/60 dark:hover:bg-neutral-800/50 text-[10px] text-slate-500 dark:text-neutral-400 hover:text-slate-800 dark:hover:text-neutral-200 transition-colors border border-slate-200/60 dark:border-neutral-800/60"
-            >
-              <span className="flex items-center gap-1">
-                <ArrowRightLeft className="w-3 h-3 text-slate-400 dark:text-neutral-500" />
-                <span>
-                  {loanTotalBasis === 'actual'
-                    ? (periodView === 'q1' 
-                        ? (language === 'es' ? 'Ver Saldo al 15 + Préstamos:' : 'View Day 15 + Loans:')
-                        : (language === 'es' ? 'Ver Fin de Mes + Préstamos:' : 'View Month End + Loans:'))
-                    : (language === 'es' ? 'Ver Total Actual + Préstamos:' : 'View Current Actual + Loans:')
-                  }
-                </span>
-              </span>
-              <span className="font-bold tabular-nums text-slate-700 dark:text-neutral-300">
-                {formatCurrency(loanTotalBasis === 'actual' ? projectedTotalWithLoans : actualTotalWithLoans)}
-              </span>
-            </button>
           </div>
         </div>
 

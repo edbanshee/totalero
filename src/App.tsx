@@ -538,6 +538,25 @@ export default function App() {
     });
   };
 
+  // Navegación mensual y anual mediante flechas laterales
+  const handlePrevMonth = () => {
+    if (selectedMonth > 0) {
+      setSelectedMonth(prev => prev - 1);
+    } else if (selectedYear > MIN_CATALOG_YEAR) {
+      setSelectedYear(prev => prev - 1);
+      setSelectedMonth(11);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (selectedMonth < 11) {
+      setSelectedMonth(prev => prev + 1);
+    } else if (selectedYear < MAX_CATALOG_YEAR) {
+      setSelectedYear(prev => prev + 1);
+      setSelectedMonth(0);
+    }
+  };
+
   // Login Local
   const handleLoginLocal = (startFromScratch: boolean) => {
     const session: UserSession = {
@@ -697,17 +716,6 @@ export default function App() {
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
-  };
-
-  // Update Month Title
-  const handleUpdateMonthTitle = (newTitle: string) => {
-    setMonths(prev => ({
-      ...prev,
-      [currentKey]: {
-        ...currentMonthData,
-        title: newTitle
-      }
-    }));
   };
 
   // Transaction CRUD & Cascading Carryover
@@ -1796,9 +1804,7 @@ export default function App() {
         <Header
           year={selectedYear}
           month={selectedMonth}
-          monthTitle={currentMonthData.title}
           onYearChange={setSelectedYear}
-          onUpdateMonthTitle={handleUpdateMonthTitle}
           language={language}
           onLanguageToggle={handleLanguageToggle}
           theme={theme}
@@ -1814,6 +1820,8 @@ export default function App() {
             selectedMonth={selectedMonth}
             monthsData={months}
             onSelectMonth={setSelectedMonth}
+            onPrevMonth={handlePrevMonth}
+            onNextMonth={handleNextMonth}
             language={language}
           />
         </div>
@@ -1897,8 +1905,8 @@ export default function App() {
       </main>
 
       {/* Footer Discreto */}
-      <footer className="py-4 text-center text-xs text-neutral-500 border-t border-neutral-900 mt-6">
-        <span>Totalero Pro · Hoja de Cálculo Inteligente de Flujo de Caja · {selectedYear}</span>
+      <footer className="py-4 text-center text-xs text-slate-400 dark:text-neutral-500 border-t border-slate-200 dark:border-neutral-900 mt-6">
+        <span>Totalero · Flujo de Caja · 2026</span>
       </footer>
 
       {/* Modal Agregar / Editar Transacción */}
