@@ -441,7 +441,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-5 flex-1 overflow-y-auto flex flex-col gap-4 text-xs">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-5 pb-16 flex-1 overflow-y-auto flex flex-col gap-4 text-xs scroll-smooth">
           
           {/* 1. Etiqueta / Tipo (Chips) */}
           <div>
@@ -610,7 +610,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
           {/* 6. ¿Vincular a Préstamo / Deuda a Plazos? (Solo transacciones regulares) */}
           {!isAccumulatedTx && (
-            <div className="border border-slate-200 dark:border-neutral-800 rounded-xl bg-slate-50/50 dark:bg-neutral-950/40 overflow-hidden">
+            <div className="border border-slate-200 dark:border-neutral-800 rounded-xl bg-slate-50/50 dark:bg-neutral-950/40 overflow-hidden shadow-xs">
             <button
               type="button"
               onClick={() => setHasLoan(!hasLoan)}
@@ -621,6 +621,11 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 <span className="font-bold text-slate-900 dark:text-white text-xs">
                   {t.fieldLinkLoan}
                 </span>
+                {hasLoan && (
+                  <span className="hidden sm:inline text-[10px] text-amber-700/80 dark:text-amber-400/80 font-normal">
+                    · {language === 'es' ? 'Desplazamiento interno' : 'Internal scroll'}
+                  </span>
+                )}
               </div>
               <span className={`text-[11px] px-2.5 py-0.5 rounded font-bold ${
                 hasLoan 
@@ -632,7 +637,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             </button>
 
             {hasLoan && (
-              <div className="p-4 sm:p-5 flex flex-col gap-4 bg-white dark:bg-neutral-950/80 border-t border-slate-200 dark:border-neutral-800">
+              <div className="p-4 sm:p-5 pb-14 sm:pb-20 flex flex-col gap-4 bg-white dark:bg-neutral-950/80 border-t border-slate-200 dark:border-neutral-800 max-h-[60vh] sm:max-h-[560px] overflow-y-auto pr-2.5 sm:pr-3 scroll-smooth">
                 
                 {/* Banner informativo cuando la cuota actual es mayor a 1 */}
                 {currentTerm > 1 && (
@@ -1080,6 +1085,11 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   )}
                 </div>
 
+                {/* Indicador de fin de sección */}
+                <div className="pt-2.5 pb-2.5 px-3 text-center text-[11px] text-slate-500 dark:text-neutral-400 font-medium bg-slate-50/80 dark:bg-neutral-900/60 rounded-xl border border-dashed border-slate-300 dark:border-neutral-700">
+                  {language === 'es' ? '✓ Has llegado al final de los datos del préstamo' : '✓ You have reached the end of loan details'}
+                </div>
+
               </div>
             )}
           </div>
@@ -1158,7 +1168,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           </div>
 
           {/* Footer Actions */}
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-neutral-800 mt-2">
+          <div className="sticky bottom-0 z-10 flex items-center justify-end gap-2.5 pt-3 pb-1 border-t border-slate-200 dark:border-neutral-800 mt-2 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xs">
             <button
               type="button"
               onClick={onClose}

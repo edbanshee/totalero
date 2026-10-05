@@ -154,10 +154,10 @@ export const AmortizationModal: React.FC<AmortizationModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/50 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-      <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden my-auto max-h-[95vh] flex flex-col text-slate-900 dark:text-neutral-100 transition-colors">
+      <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden my-auto max-h-[90vh] flex flex-col text-slate-900 dark:text-neutral-100 transition-colors">
         
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 dark:border-neutral-800 bg-slate-50 dark:bg-neutral-950/60">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 dark:border-neutral-800 bg-slate-50 dark:bg-neutral-950/60 shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400">
               <Calculator className="w-4 h-4" />
@@ -180,7 +180,7 @@ export const AmortizationModal: React.FC<AmortizationModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-5 flex-1 overflow-y-auto flex flex-col gap-5 text-xs">
+        <div className="p-5 flex-1 min-h-0 overflow-y-auto flex flex-col gap-5 text-xs scrollbar-thin">
           
           {/* Tarjetas de Diagnóstico Actual */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -344,7 +344,7 @@ export const AmortizationModal: React.FC<AmortizationModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 border-t border-slate-200 dark:border-neutral-800 bg-slate-50 dark:bg-neutral-950/60 flex justify-end">
+        <div className="px-5 py-3 border-t border-slate-200 dark:border-neutral-800 bg-slate-50 dark:bg-neutral-950/60 flex justify-end shrink-0">
           <button
             type="button"
             onClick={onClose}

@@ -41,7 +41,7 @@ interface CashFlowTableProps {
   onOpenAmortizationModal: (tx: Transaction) => void;
 }
 
-// Estilos automáticos por ETIQUETA (Fila completa, borde lateral y badge con saturación media equilibrada)
+// Estilos automáticos por ETIQUETA (Fila completa con saturación media visible y equilibrada, borde lateral y badge)
 const LABEL_ROW_STYLES: Record<TransactionLabel, {
   rowClass: string;
   badgeBg: string;
@@ -49,52 +49,52 @@ const LABEL_ROW_STYLES: Record<TransactionLabel, {
   badgeBorder: string;
 }> = {
   Ingreso: {
-    rowClass: 'bg-emerald-100/50 hover:bg-emerald-100/75 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/65 border-l-4 border-l-emerald-500',
-    badgeBg: 'bg-emerald-200/80 dark:bg-emerald-500/25',
-    badgeText: 'text-emerald-900 dark:text-emerald-200 font-bold',
-    badgeBorder: 'border-emerald-400 dark:border-emerald-500/40'
+    rowClass: 'bg-emerald-100/90 hover:bg-emerald-200/75 dark:bg-emerald-900/45 dark:hover:bg-emerald-900/65 border-l-4 border-l-emerald-500',
+    badgeBg: 'bg-emerald-200/90 dark:bg-emerald-500/30',
+    badgeText: 'text-emerald-950 dark:text-emerald-100 font-bold',
+    badgeBorder: 'border-emerald-400 dark:border-emerald-400/60'
   },
   Gasto: {
-    rowClass: 'bg-rose-100/50 hover:bg-rose-100/75 dark:bg-rose-950/50 dark:hover:bg-rose-900/65 border-l-4 border-l-rose-500',
-    badgeBg: 'bg-rose-200/80 dark:bg-rose-500/25',
-    badgeText: 'text-rose-900 dark:text-rose-200 font-bold',
-    badgeBorder: 'border-rose-400 dark:border-rose-500/40'
+    rowClass: 'bg-rose-100/90 hover:bg-rose-200/75 dark:bg-rose-900/45 dark:hover:bg-rose-900/65 border-l-4 border-l-rose-500',
+    badgeBg: 'bg-rose-200/90 dark:bg-rose-500/30',
+    badgeText: 'text-rose-950 dark:text-rose-100 font-bold',
+    badgeBorder: 'border-rose-400 dark:border-rose-400/60'
   },
   Préstamo: {
-    rowClass: 'bg-purple-100/50 hover:bg-purple-100/75 dark:bg-purple-950/50 dark:hover:bg-purple-900/65 border-l-4 border-l-purple-500',
-    badgeBg: 'bg-purple-200/80 dark:bg-purple-500/25',
-    badgeText: 'text-purple-900 dark:text-purple-200 font-bold',
-    badgeBorder: 'border-purple-400 dark:border-purple-500/40'
+    rowClass: 'bg-purple-100/90 hover:bg-purple-200/75 dark:bg-purple-900/45 dark:hover:bg-purple-900/65 border-l-4 border-l-purple-500',
+    badgeBg: 'bg-purple-200/90 dark:bg-purple-500/30',
+    badgeText: 'text-purple-950 dark:text-purple-100 font-bold',
+    badgeBorder: 'border-purple-400 dark:border-purple-400/60'
   },
   Servicio: {
-    rowClass: 'bg-amber-100/50 hover:bg-amber-100/75 dark:bg-amber-950/50 dark:hover:bg-amber-900/65 border-l-4 border-l-amber-500',
-    badgeBg: 'bg-amber-200/80 dark:bg-amber-500/25',
-    badgeText: 'text-amber-900 dark:text-amber-200 font-bold',
-    badgeBorder: 'border-amber-400 dark:border-amber-500/40'
+    rowClass: 'bg-amber-100/90 hover:bg-amber-200/75 dark:bg-amber-900/45 dark:hover:bg-amber-900/65 border-l-4 border-l-amber-500',
+    badgeBg: 'bg-amber-200/90 dark:bg-amber-500/30',
+    badgeText: 'text-amber-950 dark:text-amber-100 font-bold',
+    badgeBorder: 'border-amber-400 dark:border-amber-400/60'
   },
   Crédito: {
-    rowClass: 'bg-indigo-100/50 hover:bg-indigo-100/75 dark:bg-indigo-950/50 dark:hover:bg-indigo-900/65 border-l-4 border-l-indigo-500',
-    badgeBg: 'bg-indigo-200/80 dark:bg-indigo-500/25',
-    badgeText: 'text-indigo-900 dark:text-indigo-200 font-bold',
-    badgeBorder: 'border-indigo-400 dark:border-indigo-500/40'
+    rowClass: 'bg-indigo-100/90 hover:bg-indigo-200/75 dark:bg-indigo-900/45 dark:hover:bg-indigo-900/65 border-l-4 border-l-indigo-500',
+    badgeBg: 'bg-indigo-200/90 dark:bg-indigo-500/30',
+    badgeText: 'text-indigo-950 dark:text-indigo-100 font-bold',
+    badgeBorder: 'border-indigo-400 dark:border-indigo-400/60'
   },
   Neto: {
-    rowClass: 'bg-teal-100/60 hover:bg-teal-100/85 dark:bg-teal-950/60 dark:hover:bg-teal-900/70 border-l-4 border-l-teal-500 font-semibold',
-    badgeBg: 'bg-teal-200/80 dark:bg-teal-500/25',
-    badgeText: 'text-teal-900 dark:text-teal-200 font-bold',
-    badgeBorder: 'border-teal-400 dark:border-teal-500/40'
+    rowClass: 'bg-teal-100/90 hover:bg-teal-200/75 dark:bg-teal-900/45 dark:hover:bg-teal-900/65 border-l-4 border-l-teal-500 font-semibold',
+    badgeBg: 'bg-teal-200/90 dark:bg-teal-500/30',
+    badgeText: 'text-teal-950 dark:text-teal-100 font-bold',
+    badgeBorder: 'border-teal-400 dark:border-teal-400/60'
   },
   Coppel: {
-    rowClass: 'bg-yellow-100/60 hover:bg-yellow-100/85 dark:bg-yellow-950/50 dark:hover:bg-yellow-900/65 border-l-4 border-l-yellow-500',
-    badgeBg: 'bg-yellow-200/80 dark:bg-yellow-500/30',
-    badgeText: 'text-yellow-900 dark:text-yellow-200 font-bold',
-    badgeBorder: 'border-yellow-400 dark:border-yellow-500/50'
+    rowClass: 'bg-yellow-100/95 hover:bg-yellow-200/85 dark:bg-yellow-900/40 dark:hover:bg-yellow-900/60 border-l-4 border-l-yellow-500',
+    badgeBg: 'bg-yellow-200/95 dark:bg-yellow-500/35',
+    badgeText: 'text-yellow-950 dark:text-yellow-100 font-bold',
+    badgeBorder: 'border-yellow-400 dark:border-yellow-500/60'
   },
   Otro: {
-    rowClass: 'bg-slate-100/60 hover:bg-slate-100/85 dark:bg-neutral-900/60 dark:hover:bg-neutral-800/75 border-l-4 border-l-slate-400',
-    badgeBg: 'bg-slate-200/80 dark:bg-neutral-700/50',
-    badgeText: 'text-slate-900 dark:text-neutral-200 font-bold',
-    badgeBorder: 'border-slate-400 dark:border-neutral-600/50'
+    rowClass: 'bg-slate-200/75 hover:bg-slate-200/95 dark:bg-neutral-800/60 dark:hover:bg-neutral-800/80 border-l-4 border-l-slate-400',
+    badgeBg: 'bg-slate-300/80 dark:bg-neutral-700/80',
+    badgeText: 'text-slate-950 dark:text-neutral-100 font-bold',
+    badgeBorder: 'border-slate-400 dark:border-neutral-600/60'
   }
 };
 
