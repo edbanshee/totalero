@@ -7,8 +7,8 @@ import {
   Trash2, 
   Copy, 
   Check, 
-  Calculator, 
-  CalendarClock
+  Calculator,
+  ChevronDown
 } from 'lucide-react';
 import { 
   Transaction, 
@@ -48,7 +48,7 @@ interface CashFlowTableProps {
   onOpenAmortizationModal: (tx: Transaction) => void;
 }
 
-// Estilos automáticos por ETIQUETA (Fila completa con saturación media visible y equilibrada, borde lateral y badge)
+// Estilos automáticos por ETIQUETA
 const LABEL_ROW_STYLES: Record<TransactionLabel, {
   rowClass: string;
   badgeBg: string;
@@ -133,10 +133,10 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
   const t = TRANSLATIONS[language];
   const monthName = MONTH_NAMES[language][selectedMonth];
 
-  // Separar Acumulado si está fijado arriba (identificando la fila principal de Acumulado)
+  // Separar Acumulado si está fijado arriba
   const accumulatedRow = transactions.find(tx => tx.isAutoAccumulated || tx.concept.trim().toLowerCase() === 'acumulado');
 
-  // ORDENADO AUTOMÁTICO POR FECHA (Día 1 al 31) para el resto de las filas
+  // ORDENADO AUTOMÁTICO POR FECHA (Día 1 al 31)
   const regularRows = [...transactions]
     .filter(tx => tx.id !== accumulatedRow?.id)
     .sort((a, b) => (Number(a.day) || 0) - (Number(b.day) || 0) || a.concept.localeCompare(b.concept));
@@ -181,112 +181,134 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
         : filteredRows);
 
   return (
-    <div className="w-full flex flex-col gap-3">
+    <div className="w-full flex flex-col gap-2.5 sm:gap-3">
 
       {/* Toolbar: Búsqueda, Filtros y Acciones */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-neutral-900/60 p-2.5 rounded-xl border border-slate-200 dark:border-neutral-800 shadow-xs">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3 bg-white dark:bg-neutral-900/60 p-2 sm:p-2.5 rounded-xl border border-slate-200 dark:border-neutral-800 shadow-2xs">
         
         {/* Barra de búsqueda */}
-        <div className="relative flex-1 min-w-[240px] max-w-md">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-neutral-400" />
+        <div className="relative flex-1 min-w-0">
+          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-neutral-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder={t.searchPlaceholder}
-            className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-slate-50 dark:bg-neutral-950/80 border border-slate-200 dark:border-neutral-800 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-neutral-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:bg-white dark:focus:bg-neutral-900 transition-colors"
+            className="w-full pl-8 pr-2.5 py-1 sm:py-1.5 rounded-lg bg-slate-50 dark:bg-neutral-950/80 border border-slate-200 dark:border-neutral-800 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-neutral-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
           />
         </div>
 
-        {/* Filtros rápidos (Todas las filas | 1ª Quincena | 2ª Quincena | Hechas | Pendientes) */}
-        <div className="flex items-center gap-1 bg-slate-100 dark:bg-neutral-950/80 p-1 rounded-lg border border-slate-200 dark:border-neutral-800 flex-wrap">
-          <button
-            onClick={() => onFilterChange('all')}
-            className={`px-2.5 py-1 rounded text-xs font-bold transition-all ${
-              filter === 'all'
-                ? 'bg-slate-800 text-white dark:bg-neutral-800 dark:text-white shadow-xs'
-                : 'text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            {t.allRows}
-          </button>
-          
-          <button
-            onClick={() => onFilterChange('q1')}
-            className={`px-2.5 py-1 rounded text-xs font-bold transition-all flex items-center gap-1 ${
-              filter === 'q1'
-                ? 'bg-teal-600 text-white dark:bg-teal-500/20 dark:text-teal-300 shadow-xs dark:border dark:border-teal-500/30'
-                : 'text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <span>🌓</span>
-            <span>{t.filterQ1}</span>
-          </button>
+        {/* Filtros: Mobile Dropdown (< sm) vs Desktop Pills (sm:) */}
+        <div className="flex items-center gap-1.5 justify-between sm:justify-start">
+          {/* Mobile Filter Selector */}
+          <div className="flex sm:hidden relative flex-1 items-center">
+            <select
+              value={filter}
+              onChange={(e) => onFilterChange(e.target.value as FilterType)}
+              className="w-full appearance-none bg-slate-100 dark:bg-neutral-950 border border-slate-200 dark:border-neutral-800 text-[11px] font-bold text-slate-800 dark:text-neutral-200 rounded-lg pl-2.5 pr-6 py-1 focus:outline-none cursor-pointer"
+              aria-label="Filtrar movimientos"
+            >
+              <option value="all">📋 {t.allRows}</option>
+              <option value="q1">🌓 {t.filterQ1}</option>
+              <option value="q2">🌔 {t.filterQ2}</option>
+              <option value="done">✓ {t.onlyDone}</option>
+              <option value="pending">⏳ {t.onlyPending}</option>
+            </select>
+            <ChevronDown className="w-3 h-3 text-slate-400 pointer-events-none absolute right-2" />
+          </div>
 
-          <button
-            onClick={() => onFilterChange('q2')}
-            className={`px-2.5 py-1 rounded text-xs font-bold transition-all flex items-center gap-1 ${
-              filter === 'q2'
-                ? 'bg-sky-600 text-white dark:bg-sky-500/20 dark:text-sky-300 shadow-xs dark:border dark:border-sky-500/30'
-                : 'text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <span>🌔</span>
-            <span>{t.filterQ2}</span>
-          </button>
+          {/* Desktop Filter Pills */}
+          <div className="hidden sm:flex items-center gap-1 bg-slate-100 dark:bg-neutral-950/80 p-0.5 rounded-lg border border-slate-200 dark:border-neutral-800 flex-wrap">
+            <button
+              onClick={() => onFilterChange('all')}
+              className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all cursor-pointer ${
+                filter === 'all'
+                  ? 'bg-slate-800 text-white dark:bg-neutral-800 dark:text-white shadow-2xs'
+                  : 'text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              {t.allRows}
+            </button>
+            
+            <button
+              onClick={() => onFilterChange('q1')}
+              className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all flex items-center gap-0.5 cursor-pointer ${
+                filter === 'q1'
+                  ? 'bg-teal-600 text-white dark:bg-teal-500/20 dark:text-teal-300 shadow-2xs dark:border dark:border-teal-500/30'
+                  : 'text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <span>🌓</span>
+              <span>{t.filterQ1}</span>
+            </button>
 
-          <button
-            onClick={() => onFilterChange('done')}
-            className={`px-2.5 py-1 rounded text-xs font-bold transition-all ${
-              filter === 'done'
-                ? 'bg-emerald-600 text-white dark:bg-emerald-500/20 dark:text-emerald-300 shadow-xs dark:border dark:border-emerald-500/30'
-                : 'text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            {t.onlyDone}
-          </button>
+            <button
+              onClick={() => onFilterChange('q2')}
+              className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all flex items-center gap-0.5 cursor-pointer ${
+                filter === 'q2'
+                  ? 'bg-sky-600 text-white dark:bg-sky-500/20 dark:text-sky-300 shadow-2xs dark:border dark:border-sky-500/30'
+                  : 'text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <span>🌔</span>
+              <span>{t.filterQ2}</span>
+            </button>
 
-          <button
-            onClick={() => onFilterChange('pending')}
-            className={`px-2.5 py-1 rounded text-xs font-bold transition-all ${
-              filter === 'pending'
-                ? 'bg-amber-600 text-white dark:bg-amber-500/20 dark:text-amber-300 shadow-xs dark:border dark:border-amber-500/30'
-                : 'text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            {t.onlyPending}
-          </button>
-        </div>
+            <button
+              onClick={() => onFilterChange('done')}
+              className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all cursor-pointer ${
+                filter === 'done'
+                  ? 'bg-emerald-600 text-white dark:bg-emerald-500/20 dark:text-emerald-300 shadow-2xs dark:border dark:border-emerald-500/30'
+                  : 'text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              {t.onlyDone}
+            </button>
 
-        {/* Botones de acción */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onTogglePinAccumulated}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
-              pinAccumulated
-                ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-400 dark:border-emerald-500/40 text-emerald-800 dark:text-emerald-400'
-                : 'bg-white dark:bg-neutral-950/80 border-slate-200 dark:border-neutral-800 text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-            title="Mantiene la fila de Acumulado siempre en la primera posición"
-          >
-            <Pin className={`w-3.5 h-3.5 ${pinAccumulated ? 'fill-current text-emerald-600 dark:text-emerald-400' : ''}`} />
-            <span className="hidden sm:inline">
-              {pinAccumulated ? t.unpinAccumulated : t.pinAccumulated}
-            </span>
-          </button>
+            <button
+              onClick={() => onFilterChange('pending')}
+              className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all cursor-pointer ${
+                filter === 'pending'
+                  ? 'bg-amber-600 text-white dark:bg-amber-500/20 dark:text-amber-300 shadow-2xs dark:border dark:border-amber-500/30'
+                  : 'text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              {t.onlyPending}
+            </button>
+          </div>
 
-          <button
-            onClick={onOpenAddModal}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            <span>{t.addTransaction}</span>
-          </button>
+          {/* Botones de acción */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={onTogglePinAccumulated}
+              className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all border cursor-pointer ${
+                pinAccumulated
+                  ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-400 dark:border-emerald-500/40 text-emerald-800 dark:text-emerald-400'
+                  : 'bg-white dark:bg-neutral-950/80 border-slate-200 dark:border-neutral-800 text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+              title="Mantiene la fila de Acumulado siempre en la primera posición"
+            >
+              <Pin className={`w-3 h-3 ${pinAccumulated ? 'fill-current text-emerald-600 dark:text-emerald-400' : ''}`} />
+              <span className="hidden md:inline">
+                {pinAccumulated ? t.unpinAccumulated : t.pinAccumulated}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={onOpenAddModal}
+              className="flex items-center gap-1 px-2.5 sm:px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] sm:text-xs shadow-2xs transition-all cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5 stroke-[3]" />
+              <span>{language === 'es' ? 'Movimiento' : 'Transaction'}</span>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Barra de estado y conteo de filas */}
-      <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-neutral-400 px-1 font-medium">
+      <div className="flex items-center justify-between text-[10px] sm:text-[11px] text-slate-500 dark:text-neutral-400 px-1 font-medium">
         <span className="font-semibold text-slate-800 dark:text-neutral-200">
           {monthName} {year}
         </span>
@@ -295,32 +317,32 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
         </span>
       </div>
 
-      {/* Tabla Principal */}
-      <div className="w-full overflow-x-auto rounded-2xl border border-slate-200 dark:border-neutral-800 bg-white dark:bg-neutral-950/90 shadow-sm scrollbar-thin">
-        <table className="w-full text-left text-xs border-collapse">
+      {/* Tabla Principal con Scroll Horizontal */}
+      <div className="w-full overflow-x-auto rounded-xl sm:rounded-2xl border border-slate-200 dark:border-neutral-800 bg-white dark:bg-neutral-950/90 shadow-2xs scrollbar-thin">
+        <table className="w-full text-left text-xs border-collapse min-w-[760px]">
           <thead>
-            <tr className="border-b border-slate-300 dark:border-neutral-800 bg-slate-100 dark:bg-neutral-900/90 text-slate-700 dark:text-neutral-400 font-bold uppercase tracking-wider text-[11px]">
-              <th className="py-2.5 px-3 w-10 text-center">{t.colNumber}</th>
-              <th className="py-2.5 px-3 w-28">{t.colLabel}</th>
-              <th className="py-2.5 px-3 w-28">{t.colDate}</th>
-              <th className="py-2.5 px-3 min-w-[200px]">{t.colConcept}</th>
-              <th className="py-2.5 px-3 w-32 text-right">{t.colAmount}</th>
-              <th className="py-2.5 px-3 w-32 text-right">{t.colInitialDebt}</th>
-              <th className="py-2.5 px-3 w-32 text-right">{t.colFinalDebt}</th>
-              <th className="py-2.5 px-3 w-32 text-right">{t.colPayoff}</th>
-              <th className="py-2.5 px-3 w-32 text-right">{t.colInterestSaved}</th>
-              <th className="py-2.5 px-3 w-32 text-right">{t.colActualAmount}</th>
-              <th className="py-2.5 px-3 w-16 text-center">{t.colDone}</th>
-              <th className="py-2.5 px-3 w-24 text-center">{t.colActions}</th>
+            <tr className="border-b border-slate-300 dark:border-neutral-800 bg-slate-100 dark:bg-neutral-900/90 text-slate-700 dark:text-neutral-400 font-bold uppercase tracking-wider text-[10px] sm:text-[11px]">
+              <th className="py-2 px-2.5 w-9 text-center">{t.colNumber}</th>
+              <th className="py-2 px-2.5 w-24">{t.colLabel}</th>
+              <th className="py-2 px-2.5 w-24">{t.colDate}</th>
+              <th className="py-2 px-2.5 min-w-[180px]">{t.colConcept}</th>
+              <th className="py-2 px-2.5 w-28 text-right">{t.colAmount}</th>
+              <th className="py-2 px-2.5 w-28 text-right">{t.colInitialDebt}</th>
+              <th className="py-2 px-2.5 w-28 text-right">{t.colFinalDebt}</th>
+              <th className="py-2 px-2.5 w-28 text-right">{t.colPayoff}</th>
+              <th className="py-2 px-2.5 w-28 text-right">{t.colInterestSaved}</th>
+              <th className="py-2 px-2.5 w-28 text-right">{t.colActualAmount}</th>
+              <th className="py-2 px-2.5 w-14 text-center">{t.colDone}</th>
+              <th className="py-2 px-2.5 w-20 text-center">{t.colActions}</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-200 dark:divide-neutral-800/60">
+          <tbody className="divide-y divide-slate-200 dark:divide-neutral-800/60 text-xs">
             {displayRows.length === 0 ? (
               <tr>
-                <td colSpan={12} className="py-12 text-center text-slate-500 dark:text-neutral-500 text-sm">
+                <td colSpan={12} className="py-8 text-center text-slate-500 dark:text-neutral-500 text-xs">
                   {language === 'es' 
-                    ? 'No hay movimientos en este periodo con los filtros seleccionados. ¡Haz clic en "+ Agregar Transacción"!'
-                    : 'No entries for this period matching filters. Click "+ Add Transaction"!'}
+                    ? 'No hay movimientos con los filtros seleccionados.' 
+                    : 'No entries matching filters.'}
                 </td>
               </tr>
             ) : (
@@ -335,28 +357,28 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
                     className={`transition-colors duration-150 ${style.rowClass}`}
                   >
                     {/* 1. Row Number */}
-                    <td className="py-2.5 px-3 text-center text-slate-400 dark:text-neutral-500 font-medium tabular-nums text-xs">
+                    <td className="py-2 px-2.5 text-center text-slate-400 dark:text-neutral-500 font-medium tabular-nums text-[11px]">
                       {idx + 1}
                     </td>
 
-                    {/* 2. Etiqueta / Tipo (Color Automático) */}
-                    <td className="py-2.5 px-3 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border ${style.badgeBg} ${style.badgeText} ${style.badgeBorder}`}>
+                    {/* 2. Etiqueta / Tipo */}
+                    <td className="py-2 px-2.5 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${style.badgeBg} ${style.badgeText} ${style.badgeBorder}`}>
                         {tx.label}
                       </span>
                     </td>
 
-                    {/* 3. Fecha con Badge Quincenal (1ªQ o 2ªQ) */}
-                    <td className="py-2.5 px-3 text-slate-700 dark:text-neutral-300 whitespace-nowrap font-medium text-xs tabular-nums">
+                    {/* 3. Fecha */}
+                    <td className="py-2 px-2.5 text-slate-700 dark:text-neutral-300 whitespace-nowrap font-medium text-xs tabular-nums">
                       {(() => {
                         const targetDay = tx.recurringOriginalDay || tx.day;
                         const validDay = isAccumulated ? 1 : clampDayToMonth(targetDay, year, selectedMonth);
                         const safeDateString = getDateString(validDay, selectedMonth, language, year);
                         return (
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1">
                             <span>{safeDateString}</span>
                             {!isAccumulated && (
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold border ${
+                              <span className={`text-[9px] px-1 py-0.2 rounded font-bold border ${
                                 validDay <= 15 
                                   ? 'bg-teal-100 dark:bg-teal-500/20 text-teal-800 dark:text-teal-300 border-teal-300 dark:border-teal-500/30' 
                                   : 'bg-sky-100 dark:bg-sky-500/20 text-sky-800 dark:text-sky-300 border-sky-300 dark:border-sky-500/30'
@@ -370,17 +392,17 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
                     </td>
 
                     {/* 4. Concepto */}
-                    <td className="py-2.5 px-3 text-slate-900 dark:text-white font-medium text-sm">
-                      <div className="flex items-center gap-2 flex-wrap">
+                    <td className="py-2 px-2.5 text-slate-900 dark:text-white font-medium text-xs sm:text-sm">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span>{tx.concept}</span>
                         {isAccumulated && (
-                          <span className="px-1.5 py-0.5 rounded bg-teal-100 dark:bg-teal-500/20 text-teal-800 dark:text-teal-300 text-[10px] border border-teal-300 dark:border-teal-500/30 font-bold uppercase tracking-wider">
+                          <span className="px-1.5 py-0.2 rounded bg-teal-100 dark:bg-teal-500/20 text-teal-800 dark:text-teal-300 text-[9px] border border-teal-300 dark:border-teal-500/30 font-bold uppercase">
                             {t.autoBadge}
                           </span>
                         )}
                         {tx.isRecurring && !isAccumulated && (
                           <span 
-                            className="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300 text-[10px] font-bold" 
+                            className="px-1 py-0.2 rounded bg-slate-200 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300 text-[9px] font-bold" 
                             title={tx.recurrenceFrequency === 'annual' ? (language === 'es' ? 'Recurrente anual' : 'Annual recurring') : (language === 'es' ? 'Recurrente mensual' : 'Monthly recurring')}
                           >
                             {tx.recurrenceFrequency === 'annual' ? (language === 'es' ? '↻ Anual' : '↻ Annual') : '↻'}
@@ -390,7 +412,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
                     </td>
 
                     {/* 5. Monto */}
-                    <td className={`py-2.5 px-3 text-right font-semibold whitespace-nowrap tabular-nums text-sm ${
+                    <td className={`py-2 px-2.5 text-right font-semibold whitespace-nowrap tabular-nums text-xs sm:text-sm ${
                       tx.amount > 0 
                         ? 'text-emerald-700 dark:text-emerald-400 font-bold' 
                         : tx.amount < 0 
@@ -401,7 +423,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
                     </td>
 
                     {/* 6. Deuda (Inicial) */}
-                    <td className={`py-2.5 px-3 text-right font-semibold whitespace-nowrap tabular-nums text-xs ${
+                    <td className={`py-2 px-2.5 text-right font-semibold whitespace-nowrap tabular-nums text-[11px] sm:text-xs ${
                       (tx.loanDetails?.loanType === 'receivable' || tx.amount > 0)
                         ? 'text-teal-700 dark:text-teal-400'
                         : 'text-rose-700 dark:text-rose-400'
@@ -410,12 +432,12 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
                     </td>
 
                     {/* 7. Final (Restante) */}
-                    <td className="py-2.5 px-3 text-right text-slate-700 dark:text-neutral-300 font-semibold whitespace-nowrap tabular-nums text-xs">
+                    <td className="py-2 px-2.5 text-right text-slate-700 dark:text-neutral-300 font-semibold whitespace-nowrap tabular-nums text-[11px] sm:text-xs">
                       {tx.loanDetails?.finalDebt ? formatCurrency(tx.loanDetails.finalDebt) : '-'}
                     </td>
 
                     {/* 8. Liquidación */}
-                    <td className="py-2.5 px-3 text-right text-amber-800 dark:text-amber-300 font-semibold whitespace-nowrap tabular-nums text-xs">
+                    <td className="py-2 px-2.5 text-right text-amber-800 dark:text-amber-300 font-semibold whitespace-nowrap tabular-nums text-[11px] sm:text-xs">
                       {(() => {
                         if (!tx.loanDetails) return '-';
                         const auto = computePayoffAndSavings({
@@ -433,7 +455,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
                     </td>
 
                     {/* 9. Ahorro Interés */}
-                    <td className="py-2.5 px-3 text-right text-emerald-800 dark:text-emerald-400 font-semibold whitespace-nowrap tabular-nums text-xs">
+                    <td className="py-2 px-2.5 text-right text-emerald-800 dark:text-emerald-400 font-semibold whitespace-nowrap tabular-nums text-[11px] sm:text-xs">
                       {(() => {
                         if (!tx.loanDetails) return '-';
                         const auto = computePayoffAndSavings({
@@ -451,7 +473,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
                     </td>
 
                     {/* 10. Actual (Real) */}
-                    <td className="py-2.5 px-3 text-right font-semibold whitespace-nowrap tabular-nums text-sm text-emerald-700 dark:text-emerald-400">
+                    <td className="py-2 px-2.5 text-right font-semibold whitespace-nowrap tabular-nums text-xs sm:text-sm text-emerald-700 dark:text-emerald-400">
                       {tx.isDone 
                         ? formatCurrency(tx.actualAmount !== null ? tx.actualAmount : tx.amount)
                         : <span className="text-slate-400 dark:text-neutral-500 font-normal">-</span>
@@ -459,29 +481,31 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
                     </td>
 
                     {/* 11. Hecho (Checkbox) */}
-                    <td className="py-2.5 px-3 text-center">
+                    <td className="py-2 px-2 text-center">
                       <button
+                        type="button"
                         onClick={() => onToggleDone(tx.id)}
-                        className={`w-6 h-6 rounded-md flex items-center justify-center transition-all ${
+                        className={`w-5 h-5 mx-auto rounded flex items-center justify-center transition-all cursor-pointer ${
                           tx.isDone
-                            ? 'bg-emerald-600 text-white font-bold shadow-xs'
+                            ? 'bg-emerald-600 text-white font-bold shadow-2xs'
                             : 'bg-white dark:bg-neutral-900 border border-slate-300 dark:border-neutral-700 text-transparent hover:border-slate-500 dark:hover:border-neutral-500'
                         }`}
                         title={tx.isDone ? 'Marcado como hecho' : 'Marcar como hecho'}
                       >
-                        <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        <Check className="w-3 h-3 stroke-[3]" />
                       </button>
                     </td>
 
                     {/* 12. Acciones */}
-                    <td className="py-2.5 px-3 text-center whitespace-nowrap">
-                      <div className="flex items-center justify-center gap-1 text-slate-500 dark:text-neutral-400">
-                        {/* Botón Amortización / Calculadora si es deuda */}
+                    <td className="py-2 px-2 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-0.5 text-slate-500 dark:text-neutral-400">
+                        {/* Botón Amortización */}
                         {tx.loanDetails && (
                           <button
+                            type="button"
                             onClick={() => onOpenAmortizationModal(tx)}
-                            className="p-1 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-slate-200 dark:hover:bg-neutral-800 rounded transition-colors"
-                            title="Abrir simulador de amortización y ahorro"
+                            className="p-1 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-slate-200 dark:hover:bg-neutral-800 rounded transition-colors cursor-pointer"
+                            title="Amortización y ahorro"
                           >
                             <Calculator className="w-3.5 h-3.5" />
                           </button>
@@ -489,8 +513,9 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
 
                         {/* Editar */}
                         <button
+                          type="button"
                           onClick={() => onEditTransaction(tx)}
-                          className="p-1 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-200 dark:hover:bg-neutral-800 rounded transition-colors"
+                          className="p-1 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-200 dark:hover:bg-neutral-800 rounded transition-colors cursor-pointer"
                           title="Editar"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
@@ -499,8 +524,9 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
                         {/* Duplicar */}
                         {!isPrimaryAccumulated && (
                           <button
+                            type="button"
                             onClick={() => onDuplicateTransaction(tx)}
-                            className="p-1 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-slate-200 dark:hover:bg-neutral-800 rounded transition-colors"
+                            className="p-1 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-slate-200 dark:hover:bg-neutral-800 rounded transition-colors cursor-pointer"
                             title="Duplicar"
                           >
                             <Copy className="w-3.5 h-3.5" />
@@ -510,8 +536,9 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
                         {/* Eliminar */}
                         {!isPrimaryAccumulated && (
                           <button
+                            type="button"
                             onClick={() => onDeleteTransaction(tx)}
-                            className="p-1 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-slate-200 dark:hover:bg-neutral-800 rounded transition-colors"
+                            className="p-1 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-slate-200 dark:hover:bg-neutral-800 rounded transition-colors cursor-pointer"
                             title="Eliminar"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -525,18 +552,18 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
             )}
           </tbody>
 
-          {/* Fila Inferior de Totales y Subtotales Quincenales */}
+          {/* Fila Inferior de Totales */}
           <tfoot>
             <tr className="border-t-2 border-slate-300 dark:border-neutral-700 bg-slate-50 dark:bg-neutral-900 font-bold text-slate-900 dark:text-white text-xs">
-              <td className="py-3 px-3 text-center text-emerald-700 dark:text-emerald-400 uppercase tracking-wider font-extrabold" colSpan={4}>
+              <td className="py-2.5 px-2.5 text-center text-emerald-700 dark:text-emerald-400 uppercase tracking-wider font-extrabold text-[11px]" colSpan={4}>
                 {filter === 'q1' 
                   ? (language === 'es' ? 'SUBTOTAL 1ª QUINCENA' : 'SUBTOTAL 1ST BIWEEK')
                   : filter === 'q2'
                     ? (language === 'es' ? 'SUBTOTAL 2ª QUINCENA' : 'SUBTOTAL 2ND BIWEEK')
                     : t.totals}
               </td>
-              {/* Total Fin de Mes / Quincena en columna de Monto */}
-              <td className="py-3 px-3 text-right text-emerald-700 dark:text-emerald-400 tabular-nums text-sm font-bold">
+              {/* Total Fin de Mes / Quincena */}
+              <td className="py-2.5 px-2.5 text-right text-emerald-700 dark:text-emerald-400 tabular-nums text-xs sm:text-sm font-bold">
                 <div>
                   {formatCurrency(
                     filter === 'q1'
@@ -546,16 +573,16 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
                         : totals.endOfMonthTotal
                   )}
                 </div>
-                <div className="text-[10px] text-slate-500 dark:text-neutral-400 font-normal">
+                <div className="text-[9px] text-slate-500 dark:text-neutral-400 font-normal">
                   {filter === 'q1'
-                    ? (language === 'es' ? 'saldo proyectado al 15' : 'balance by day 15')
+                    ? (language === 'es' ? 'al 15' : 'by day 15')
                     : filter === 'q2'
-                      ? (language === 'es' ? 'saldo a fin de mes' : 'month end balance')
+                      ? (language === 'es' ? 'fin de mes' : 'month end')
                       : t.totalEndOfMonthFoot}
                 </div>
               </td>
               {/* Total Deuda Inicial */}
-              <td className="py-3 px-3 text-right text-rose-700 dark:text-rose-400 tabular-nums font-semibold text-xs">
+              <td className="py-2.5 px-2.5 text-right text-rose-700 dark:text-rose-400 tabular-nums font-semibold text-[11px] sm:text-xs">
                 {formatCurrency(
                   (filter === 'all' && !searchQuery.trim())
                     ? (totals.totalInitialDebt + totals.totalInitialReceivable)
@@ -563,21 +590,21 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
                 )}
               </td>
               {/* Total Deuda Final */}
-              <td className="py-3 px-3 text-right text-slate-700 dark:text-neutral-300 tabular-nums font-semibold text-xs">
+              <td className="py-2.5 px-2.5 text-right text-slate-700 dark:text-neutral-300 tabular-nums font-semibold text-[11px] sm:text-xs">
                 {formatCurrency(
                   (filter === 'all' && !searchQuery.trim())
                     ? (totals.totalFinalDebt + totals.totalFinalReceivable)
                     : displayRows.reduce((sum, tx) => sum + (tx.loanDetails?.finalDebt || 0), 0)
                 )}
               </td>
-              <td className="py-3 px-3 text-right text-slate-400 dark:text-neutral-500 tabular-nums text-xs">
+              <td className="py-2.5 px-2.5 text-right text-slate-400 dark:text-neutral-500 tabular-nums text-xs">
                 -
               </td>
-              <td className="py-3 px-3 text-right text-slate-400 dark:text-neutral-500 tabular-nums text-xs">
+              <td className="py-2.5 px-2.5 text-right text-slate-400 dark:text-neutral-500 tabular-nums text-xs">
                 -
               </td>
-              {/* Total Actual (Real ejecutado) */}
-              <td className="py-3 px-3 text-right text-emerald-700 dark:text-emerald-300 tabular-nums text-sm font-bold">
+              {/* Total Actual */}
+              <td className="py-2.5 px-2.5 text-right text-emerald-700 dark:text-emerald-300 tabular-nums text-xs sm:text-sm font-bold">
                 <div>
                   {formatCurrency(
                     filter === 'q1'
@@ -587,10 +614,10 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
                         : totals.totalActual
                   )}
                 </div>
-                <div className="text-[10px] text-slate-500 dark:text-neutral-400 font-normal">{t.totalActualFoot}</div>
+                <div className="text-[9px] text-slate-500 dark:text-neutral-400 font-normal">{t.totalActualFoot}</div>
               </td>
               {/* Items Hechos */}
-              <td className="py-3 px-3 text-center text-slate-800 dark:text-neutral-300 text-xs font-semibold tabular-nums">
+              <td className="py-2.5 px-2 text-center text-slate-800 dark:text-neutral-300 text-xs font-semibold tabular-nums">
                 {filter === 'q1' ? biweekly.q1.doneCount : filter === 'q2' ? biweekly.q2.doneCount : totals.doneCount}
               </td>
               <td></td>
