@@ -12,16 +12,18 @@ import {
   CheckCircle2, 
   AlertTriangle, 
   XCircle, 
+  CreditCard, 
   Building2, 
   ShieldCheck, 
   ShieldAlert, 
   PiggyBank, 
+  Scale, 
   Layers, 
   ExternalLink,
+  Printer,
   FileDown,
   Loader2,
-  Check,
-  ChevronDown
+  Check
 } from 'lucide-react';
 import { 
   MonthData, 
@@ -179,25 +181,21 @@ export const AnnualOverview: React.FC<AnnualOverviewProps> = ({
       ? (annualNetSavings / totalAnnualIncome) * 100 
       : 0;
 
-    const avgMonthlyIncome = totalAnnualIncome / 12;
-    const avgMonthlyExpense = totalAnnualExpense / 12;
-    const avgMonthlyNetSavings = annualNetSavings / 12;
-
     return {
       startOfYearBalance,
       endOfYearBalance,
       totalAnnualIncome,
       totalAnnualExpense,
-      totalAnnualActual,
-      totalAnnualCards,
-      totalAnnualLoanPayments,
       annualNetSavings,
       netCapitalChange,
       capitalChangePct,
       savingsRate,
-      avgMonthlyIncome,
-      avgMonthlyExpense,
-      avgMonthlyNetSavings,
+      avgMonthlyIncome: totalAnnualIncome / 12,
+      avgMonthlyExpense: totalAnnualExpense / 12,
+      avgMonthlyNetFlow: annualNetSavings / 12,
+      totalAnnualActual,
+      totalAnnualCards,
+      totalAnnualLoanPayments,
       highestIncomeMonth,
       highestExpenseMonth,
       lowestBalanceMonth,
@@ -408,21 +406,21 @@ export const AnnualOverview: React.FC<AnnualOverviewProps> = ({
         formatCurrency(annualAggregates.endOfYearBalance),
         formatCurrency(annualAggregates.totalAnnualActual),
         formatCurrency(annualAggregates.totalAnnualLoanPayments + annualAggregates.totalAnnualCards),
-        `${annualAggregates.solventCount}/12`
+        `${annualAggregates.solventCount} / 12`
       ]];
 
       autoTable(doc, {
+        startY: 146,
         head: tableHead,
         body: tableBody,
         foot: tableFoot,
-        startY: 146,
-        margin: { left: marginX, right: marginX },
         theme: 'grid',
         styles: {
           fontSize: 8,
           cellPadding: 4,
-          font: 'helvetica',
-          textColor: [30, 41, 59]
+          textColor: [30, 41, 59],
+          lineColor: [226, 232, 240],
+          lineWidth: 0.5
         },
         headStyles: {
           fillColor: [30, 41, 59],
@@ -433,15 +431,14 @@ export const AnnualOverview: React.FC<AnnualOverviewProps> = ({
         footStyles: {
           fillColor: [241, 245, 249],
           textColor: [15, 23, 42],
-          fontStyle: 'bold',
-          halign: 'center'
+          fontStyle: 'bold'
         },
         columnStyles: {
-          0: { halign: 'center', cellWidth: 20 },
-          1: { fontStyle: 'bold', halign: 'left', cellWidth: 60 },
+          0: { halign: 'center', cellWidth: 22 },
+          1: { fontStyle: 'bold', cellWidth: 70 },
           2: { halign: 'right' },
-          3: { halign: 'right', textColor: [5, 150, 105], fontStyle: 'bold' },
-          4: { halign: 'right', textColor: [225, 29, 72], fontStyle: 'bold' },
+          3: { halign: 'right', textColor: [5, 150, 105] },
+          4: { halign: 'right', textColor: [225, 29, 72] },
           5: { halign: 'right', fontStyle: 'bold' },
           6: { halign: 'right', fontStyle: 'bold' },
           7: { halign: 'right' },
@@ -450,82 +447,115 @@ export const AnnualOverview: React.FC<AnnualOverviewProps> = ({
         },
         alternateRowStyles: {
           fillColor: [248, 250, 252]
-        }
+        },
+        margin: { left: marginX, right: marginX }
       });
+
+      // Pie de página de documento
+      const pageHeight = doc.internal.pageSize.getHeight();
+      doc.setFontSize(8);
+      doc.setTextColor(148, 163, 184);
+      doc.text(
+        'Totalero · Flujo de Caja · 2026 · Reporte Ejecutivo Confidencial',
+        pageWidth / 2,
+        pageHeight - 12,
+        { align: 'center' }
+      );
 
       doc.save(`Totalero_Reporte_Anual_${year}.pdf`);
       setPdfSuccess(true);
       setTimeout(() => setPdfSuccess(false), 3000);
     } catch (err) {
-      console.error('Error exportando PDF:', err);
+      console.error('Error generating PDF:', err);
     } finally {
       setIsExportingPdf(false);
     }
   };
 
   return (
-    <div className="w-full flex flex-col gap-4 sm:gap-5 animate-in fade-in duration-200">
+    <div className="w-full flex flex-col gap-6">
       
-      {/* 1. Header del Panorama Anual */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-slate-200 dark:border-neutral-800">
+      {/* 1. Header de Control Anual */}
+      <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
-              {language === 'es' ? `Panorama Anual ${year}` : `Annual Overview ${year}`}
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+              <Scale className="w-4 h-4" />
+            </div>
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+              {language === 'es' ? 'Panorama Financiero Anual' : 'Annual Financial Overview'} · {year}
             </h1>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30">
-              12 {language === 'es' ? 'Meses' : 'Months'}
-            </span>
           </div>
-          <p className="text-[11px] sm:text-xs text-slate-500 dark:text-neutral-400 mt-0.5">
+          <p className="text-xs text-slate-500 dark:text-neutral-400">
             {language === 'es' 
-              ? 'Diagnóstico consolidado de liquidez, solvencia y flujo de tesorería mensual.' 
-              : 'Consolidated overview of annual liquidity, solvency, and monthly treasury.'}
+              ? 'Comparativa ejecutiva de los 12 meses: proyección de balance, ingresos, gastos y diagnóstico de solvencia.'
+              : 'Executive 12-month comparison: balance projection, income, expenses, and solvency diagnostic.'}
           </p>
         </div>
 
-        {/* Acciones y selector de año */}
-        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-          {/* Volver */}
+        {/* Selector de Año y Acciones */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Botón Volver al Flujo Mensual */}
           {onBackToMonthly && (
             <button
               type="button"
               onClick={onBackToMonthly}
-              className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg border border-emerald-300 dark:border-emerald-500/40 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 shadow-2xs transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl border border-emerald-300 dark:border-emerald-500/40 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 shadow-xs transition-colors cursor-pointer"
+              title={language === 'es' ? 'Volver a la hoja mensual' : 'Back to monthly sheet'}
             >
-              <ChevronLeft className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>{language === 'es' ? 'Volver' : 'Back'}</span>
+              <ChevronLeft className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span>{language === 'es' ? 'Volver al Flujo Mensual' : 'Back to Monthly'}</span>
             </button>
           )}
 
           {/* Controles de año */}
-          <div className="flex items-center bg-slate-100 dark:bg-neutral-950 border border-slate-200 dark:border-neutral-800 rounded-lg p-0.5">
+          <div className="flex items-center bg-slate-100 dark:bg-neutral-950 border border-slate-200 dark:border-neutral-800 rounded-xl p-1">
             <button
               onClick={() => onYearChange(Math.max(MIN_CATALOG_YEAR, year - 1))}
               disabled={year <= MIN_CATALOG_YEAR}
-              className="p-1 hover:bg-white dark:hover:bg-neutral-800 text-slate-700 dark:text-neutral-300 rounded disabled:opacity-25 transition-colors cursor-pointer"
+              title={year > MIN_CATALOG_YEAR ? `${year - 1}` : undefined}
+              className="p-1.5 hover:bg-white dark:hover:bg-neutral-800 text-slate-700 dark:text-neutral-300 rounded-lg disabled:opacity-25 transition-colors cursor-pointer"
             >
-              <ChevronLeft className="w-3.5 h-3.5" />
+              <ChevronLeft className="w-4 h-4" />
             </button>
-            <div className="px-2 py-0.5 text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1 tabular-nums">
-              <Calendar className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+            <div className="px-3 py-1 text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5 tabular-nums">
+              <Calendar className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               <span>{year}</span>
             </div>
             <button
               onClick={() => onYearChange(Math.min(MAX_CATALOG_YEAR, year + 1))}
               disabled={year >= MAX_CATALOG_YEAR}
-              className="p-1 hover:bg-white dark:hover:bg-neutral-800 text-slate-700 dark:text-neutral-300 rounded disabled:opacity-25 transition-colors cursor-pointer"
+              title={year < MAX_CATALOG_YEAR ? `${year + 1}` : undefined}
+              className="p-1.5 hover:bg-white dark:hover:bg-neutral-800 text-slate-700 dark:text-neutral-300 rounded-lg disabled:opacity-25 transition-colors cursor-pointer"
             >
-              <ChevronRight className="w-3.5 h-3.5" />
+              <ChevronRight className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Descargar PDF */}
+          {/* Años rápidos */}
+          <div className="hidden lg:flex items-center gap-1">
+            {quickYears.map(yr => (
+              <button
+                key={yr}
+                onClick={() => onYearChange(yr)}
+                className={`text-xs px-2.5 py-1.5 rounded-lg font-bold tabular-nums transition-all ${
+                  yr === year
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-neutral-800'
+                }`}
+              >
+                {yr}
+              </button>
+            ))}
+          </div>
+
+          {/* Botón Descargar PDF / Imprimir */}
           <button
             type="button"
             onClick={handleExportPdf}
             disabled={isExportingPdf}
-            className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg border border-slate-200 dark:border-neutral-800 bg-white hover:bg-slate-100 dark:bg-neutral-900 dark:hover:bg-neutral-800 text-slate-800 dark:text-neutral-200 shadow-2xs transition-colors cursor-pointer disabled:opacity-60"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 dark:border-neutral-800 bg-white hover:bg-slate-100 dark:bg-neutral-900 dark:hover:bg-neutral-800 text-slate-800 dark:text-neutral-200 shadow-xs transition-colors cursor-pointer disabled:opacity-60"
+            title={language === 'es' ? 'Descargar reporte anual en PDF' : 'Download annual report in PDF'}
           >
             {isExportingPdf ? (
               <Loader2 className="w-3.5 h-3.5 text-emerald-600 animate-spin" />
@@ -534,79 +564,81 @@ export const AnnualOverview: React.FC<AnnualOverviewProps> = ({
             ) : (
               <FileDown className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             )}
-            <span>
+            <span className="hidden sm:inline">
               {isExportingPdf
-                ? (language === 'es' ? 'Generando...' : 'Generating...')
+                ? (language === 'es' ? 'Generando PDF...' : 'Generating...')
                 : pdfSuccess
-                  ? '¡Listo!'
-                  : (language === 'es' ? 'PDF' : 'PDF')}
+                  ? (language === 'es' ? '¡PDF Descargado!' : 'PDF Downloaded!')
+                  : (language === 'es' ? 'Descargar PDF' : 'Download PDF')}
             </span>
           </button>
         </div>
       </div>
 
-      {/* Banner Ejecutivo de Solvencia Anual */}
-      <div className={`rounded-xl sm:rounded-2xl p-3 sm:p-4 border transition-all shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3 ${
+      {/* 1.5 Banner Ejecutivo de Solvencia Anual: "¿Tendré Solvencia en este año?" */}
+      <div className={`rounded-2xl p-4 sm:p-5 border transition-all shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 ${
         annualAggregates.deficitCount === 0
           ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-950 dark:text-emerald-100'
           : 'bg-rose-500/10 border-rose-500/30 text-rose-950 dark:text-rose-100'
       }`}>
-        <div className="flex items-start gap-2.5">
-          <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+        <div className="flex items-start gap-3">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
             annualAggregates.deficitCount === 0
-              ? 'bg-emerald-500 text-white'
-              : 'bg-rose-500 text-white'
+              ? 'bg-emerald-500 text-white shadow-sm'
+              : 'bg-rose-500 text-white shadow-sm'
           }`}>
             {annualAggregates.deficitCount === 0 ? (
-              <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" />
+              <ShieldCheck className="w-5 h-5" />
             ) : (
-              <ShieldAlert className="w-4 h-4 sm:w-5 sm:h-5" />
+              <ShieldAlert className="w-5 h-5" />
             )}
           </div>
-          <div className="flex flex-col gap-0.5">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <h2 className="text-sm sm:text-base font-black tracking-tight">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-base sm:text-lg font-black tracking-tight">
                 {annualAggregates.deficitCount === 0
-                  ? (language === 'es' ? `✓ Solvencia Garantizada en ${year}` : `✓ Full Solvency in ${year}`)
-                  : (language === 'es' ? `⚠️ Alerta: ${annualAggregates.deficitCount} mes(es) en déficit` : `⚠️ Alert: ${annualAggregates.deficitCount} deficit month(s)`)
+                  ? (language === 'es' ? `✓ Solvencia Garantizada para todo ${year}` : `✓ Full Solvency Confirmed for ${year}`)
+                  : (language === 'es' ? `⚠️ Alerta de Solvencia: ${annualAggregates.deficitCount} mes(es) con déficit proyectado` : `⚠️ Solvency Alert: ${annualAggregates.deficitCount} deficit month(s) projected`)
                 }
               </h2>
-              <span className={`text-[9px] sm:text-[10px] font-bold px-2 py-0.2 rounded-full uppercase tracking-wider ${
+              <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
                 annualAggregates.deficitCount === 0
                   ? 'bg-emerald-600 text-white'
                   : 'bg-rose-600 text-white'
               }`}>
-                {annualAggregates.solventCount}/12 {language === 'es' ? 'Solventes' : 'Solvent'}
+                {annualAggregates.deficitCount === 0 
+                  ? (language === 'es' ? '12/12 Meses Solventes' : '12/12 Solvent Months') 
+                  : (language === 'es' ? `${annualAggregates.solventCount}/12 Solventes` : `${annualAggregates.solventCount}/12 Solvent`)}
               </span>
             </div>
-            <p className="text-[11px] sm:text-xs opacity-90 leading-relaxed max-w-3xl">
+            <p className="text-xs opacity-90 leading-relaxed max-w-3xl">
               {annualAggregates.deficitCount === 0
                 ? (language === 'es' 
-                    ? `Todos los meses concluyen en positivo. Saldo a dic: ${formatCurrency(annualAggregates.endOfYearBalance)}. Ahorro neto: ${formatCurrency(annualAggregates.annualNetSavings)} (${annualAggregates.savingsRate.toFixed(1)}%). Mes más vulnerable: ${annualAggregates.lowestBalanceMonth?.name} (${formatCurrency(annualAggregates.lowestBalanceMonth?.totals.endOfMonthTotal || 0)}).`
-                    : `Every month closes positive. Dec balance: ${formatCurrency(annualAggregates.endOfYearBalance)}. Net savings: ${formatCurrency(annualAggregates.annualNetSavings)} (${annualAggregates.savingsRate.toFixed(1)}%). Lowest month: ${annualAggregates.lowestBalanceMonth?.name} (${formatCurrency(annualAggregates.lowestBalanceMonth?.totals.endOfMonthTotal || 0)}).`)
+                    ? `Todos los meses del año concluyen con saldo a favor. Tu saldo final proyectado a diciembre es de ${formatCurrency(annualAggregates.endOfYearBalance)}, habiendo generado un ahorro neto de ${formatCurrency(annualAggregates.annualNetSavings)} con una tasa de ahorro del ${annualAggregates.savingsRate.toFixed(1)}%. Tu mes más vulnerable es ${annualAggregates.lowestBalanceMonth?.name} con ${formatCurrency(annualAggregates.lowestBalanceMonth?.totals.endOfMonthTotal || 0)}.`
+                    : `Every month of the year projects a positive closing balance. Projected December closing balance is ${formatCurrency(annualAggregates.endOfYearBalance)}, accumulating ${formatCurrency(annualAggregates.annualNetSavings)} in net savings with a ${annualAggregates.savingsRate.toFixed(1)}% savings rate. Your tightest month is ${annualAggregates.lowestBalanceMonth?.name} at ${formatCurrency(annualAggregates.lowestBalanceMonth?.totals.endOfMonthTotal || 0)}.`)
                 : (language === 'es'
-                    ? `Se proyecta déficit en ${annualAggregates.deficitCount} mes(es) (punto crítico: ${annualAggregates.lowestBalanceMonth?.name} con ${formatCurrency(annualAggregates.lowestBalanceMonth?.totals.endOfMonthTotal || 0)}). Bolsa de crédito disponible: ${formatCurrency(totalLiquidity)}.`
-                    : `${annualAggregates.deficitCount} deficit month(s) projected (critical: ${annualAggregates.lowestBalanceMonth?.name} at ${formatCurrency(annualAggregates.lowestBalanceMonth?.totals.endOfMonthTotal || 0)}). Available credit: ${formatCurrency(totalLiquidity)}.`)}
+                    ? `Se detectaron meses que cierran en negativo (punto crítico en ${annualAggregates.lowestBalanceMonth?.name} con saldo proyectado de ${formatCurrency(annualAggregates.lowestBalanceMonth?.totals.endOfMonthTotal || 0)}). Cuentas con una bolsa de crédito disponible de ${formatCurrency(totalLiquidity)}, ${totalLiquidity >= Math.abs(annualAggregates.lowestBalanceMonth?.totals.endOfMonthTotal || 0) ? 'suficiente para cubrir la brecha temporal mediante financiamiento sin descapitalizarte.' : 'lo cual requiere programar líneas adicionales o diferir pagos.'}`
+                    : `Some months close in negative balance (critical lowest month is ${annualAggregates.lowestBalanceMonth?.name} at ${formatCurrency(annualAggregates.lowestBalanceMonth?.totals.endOfMonthTotal || 0)}). You have ${formatCurrency(totalLiquidity)} in available credit backing, ${totalLiquidity >= Math.abs(annualAggregates.lowestBalanceMonth?.totals.endOfMonthTotal || 0) ? 'sufficient to bridge cash shortfalls without insolvency.' : 'which requires securing further liquidity or deferring outlays.'}`)}
             </p>
           </div>
         </div>
 
-        {/* Respaldo */}
-        <div className="flex items-center gap-2.5 shrink-0 self-start md:self-center bg-white/70 dark:bg-neutral-900/70 p-2 sm:p-2.5 rounded-lg border border-current/20 text-xs">
+        {/* Cifras de Respaldo Inmediatas */}
+        <div className="flex items-center gap-3 shrink-0 self-start md:self-center bg-white/70 dark:bg-neutral-900/70 backdrop-blur-xs p-3 rounded-xl border border-current/20">
           <div className="flex flex-col text-right">
-            <span className="text-[9px] uppercase font-bold text-slate-500 dark:text-neutral-400">
-              {language === 'es' ? 'Crédito' : 'Credit'}
+            <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-neutral-400">
+              {language === 'es' ? 'Bolsa de Préstamos' : 'Credit Backing'}
             </span>
-            <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white tabular-nums">
+            <span className="text-sm font-black text-slate-900 dark:text-white tabular-nums">
               {formatCurrency(totalLiquidity)}
             </span>
           </div>
-          <div className="w-px h-6 bg-current/20" />
+          <div className="w-px h-7 bg-current/20" />
           <div className="flex flex-col text-right">
-            <span className="text-[9px] uppercase font-bold text-slate-500 dark:text-neutral-400">
-              {language === 'es' ? 'Cierre Dic' : 'Dec Close'}
+            <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-neutral-400">
+              {language === 'es' ? 'Saldo Cierre Dic' : 'Dec Closing'}
             </span>
-            <span className={`text-xs sm:text-sm font-black tabular-nums ${annualAggregates.endOfYearBalance >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+            <span className={`text-sm font-black tabular-nums ${annualAggregates.endOfYearBalance >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
               {formatCurrency(annualAggregates.endOfYearBalance)}
             </span>
           </div>
@@ -614,20 +646,21 @@ export const AnnualOverview: React.FC<AnnualOverviewProps> = ({
       </div>
 
       {/* 2. Cuatro Tarjetas Maestras de KPIs Anuales */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
-        {/* Card 1: Saldo de Cierre */}
-        <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-2xs flex flex-col justify-between">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        {/* Card 1: Saldo de Cierre Anual Proyectado */}
+        <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-neutral-400 mb-0.5">
-              <span className="font-semibold text-xs">{language === 'es' ? 'Saldo Cierre Anual' : 'Annual Close'}</span>
-              <PiggyBank className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-neutral-400 mb-1">
+              <span className="font-semibold">{language === 'es' ? 'Saldo de Cierre Anual' : 'Annual Closing Balance'}</span>
+              <PiggyBank className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <div className="text-lg sm:text-xl lg:text-2xl font-black text-slate-900 dark:text-white tracking-tight tabular-nums my-0.5">
+            <div className="text-2xl font-black text-slate-900 dark:text-white tracking-tight tabular-nums my-1">
               {formatCurrency(annualAggregates.endOfYearBalance)}
             </div>
           </div>
-          <div className="pt-1.5 border-t border-slate-100 dark:border-neutral-800 text-[10px] sm:text-[11px] text-slate-500 dark:text-neutral-400 flex items-center justify-between">
-            <span>{language === 'es' ? 'Inicio Ene:' : 'Jan:'} <strong className="text-slate-700 dark:text-neutral-300">{formatCurrency(annualAggregates.startOfYearBalance)}</strong></span>
+          <div className="pt-2 border-t border-slate-100 dark:border-neutral-800 text-[11px] text-slate-500 dark:text-neutral-400 flex items-center justify-between">
+            <span>{language === 'es' ? 'Inicio en Ene:' : 'Jan Start:'} <strong className="text-slate-700 dark:text-neutral-300">{formatCurrency(annualAggregates.startOfYearBalance)}</strong></span>
             <span className={`font-bold flex items-center gap-0.5 ${annualAggregates.netCapitalChange >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
               {annualAggregates.netCapitalChange >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
               {annualAggregates.netCapitalChange >= 0 ? '+' : ''}{formatCurrency(annualAggregates.netCapitalChange)}
@@ -635,57 +668,57 @@ export const AnnualOverview: React.FC<AnnualOverviewProps> = ({
           </div>
         </div>
 
-        {/* Card 2: Ingresos Anuales */}
-        <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-2xs flex flex-col justify-between">
+        {/* Card 2: Ingresos Totales del Año */}
+        <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-neutral-400 mb-0.5">
-              <span className="font-semibold text-xs">{language === 'es' ? 'Ingresos Anuales' : 'Total Income'}</span>
-              <TrendingUp className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-neutral-400 mb-1">
+              <span className="font-semibold">{language === 'es' ? 'Ingresos Anuales' : 'Total Annual Income'}</span>
+              <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <div className="text-lg sm:text-xl lg:text-2xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight tabular-nums my-0.5">
+            <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight tabular-nums my-1">
               {formatCurrency(annualAggregates.totalAnnualIncome)}
             </div>
           </div>
-          <div className="pt-1.5 border-t border-slate-100 dark:border-neutral-800 text-[10px] sm:text-[11px] text-slate-500 dark:text-neutral-400 flex items-center justify-between">
-            <span>{language === 'es' ? 'Promedio/mes:' : 'Monthly avg:'}</span>
+          <div className="pt-2 border-t border-slate-100 dark:border-neutral-800 text-[11px] text-slate-500 dark:text-neutral-400 flex items-center justify-between">
+            <span>{language === 'es' ? 'Promedio mensual:' : 'Monthly average:'}</span>
             <span className="font-bold text-slate-700 dark:text-neutral-300">{formatCurrency(annualAggregates.avgMonthlyIncome)}</span>
           </div>
         </div>
 
-        {/* Card 3: Gastos Anuales */}
-        <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-2xs flex flex-col justify-between">
+        {/* Card 3: Gastos Totales del Año */}
+        <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-neutral-400 mb-0.5">
-              <span className="font-semibold text-xs">{language === 'es' ? 'Gastos Anuales' : 'Total Expenses'}</span>
-              <TrendingDown className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-neutral-400 mb-1">
+              <span className="font-semibold">{language === 'es' ? 'Gastos Anuales' : 'Total Annual Expenses'}</span>
+              <TrendingDown className="w-4 h-4 text-rose-600 dark:text-rose-400" />
             </div>
-            <div className="text-lg sm:text-xl lg:text-2xl font-black text-rose-600 dark:text-rose-400 tracking-tight tabular-nums my-0.5">
+            <div className="text-2xl font-black text-rose-600 dark:text-rose-400 tracking-tight tabular-nums my-1">
               {formatCurrency(annualAggregates.totalAnnualExpense)}
             </div>
           </div>
-          <div className="pt-1.5 border-t border-slate-100 dark:border-neutral-800 text-[10px] sm:text-[11px] text-slate-500 dark:text-neutral-400 flex items-center justify-between">
-            <span>{language === 'es' ? 'Deudas+Tarjetas:' : 'Loans+Cards:'}</span>
+          <div className="pt-2 border-t border-slate-100 dark:border-neutral-800 text-[11px] text-slate-500 dark:text-neutral-400 flex items-center justify-between">
+            <span>{language === 'es' ? 'Deudas + Tarjetas:' : 'Loans + Cards:'}</span>
             <span className="font-bold text-slate-700 dark:text-neutral-300">{formatCurrency(annualAggregates.totalAnnualLoanPayments + annualAggregates.totalAnnualCards)}</span>
           </div>
         </div>
 
-        {/* Card 4: Flujo Neto */}
-        <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-2xs flex flex-col justify-between">
+        {/* Card 4: Flujo Operativo Neto y Solvencia */}
+        <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-neutral-400 mb-0.5">
-              <span className="font-semibold text-xs">{language === 'es' ? 'Flujo Neto Operativo' : 'Net Savings'}</span>
+            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-neutral-400 mb-1">
+              <span className="font-semibold">{language === 'es' ? 'Flujo Neto Operativo' : 'Net Annual Savings'}</span>
               {annualAggregates.deficitCount === 0 ? (
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               ) : (
-                <ShieldAlert className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+                <ShieldAlert className="w-4 h-4 text-rose-600 dark:text-rose-400" />
               )}
             </div>
-            <div className={`text-lg sm:text-xl lg:text-2xl font-black tracking-tight tabular-nums my-0.5 ${annualAggregates.annualNetSavings >= 0 ? 'text-slate-900 dark:text-white' : 'text-rose-600 dark:text-rose-400'}`}>
+            <div className={`text-2xl font-black tracking-tight tabular-nums my-1 ${annualAggregates.annualNetSavings >= 0 ? 'text-slate-900 dark:text-white' : 'text-rose-600 dark:text-rose-400'}`}>
               {annualAggregates.annualNetSavings >= 0 ? '+' : ''}{formatCurrency(annualAggregates.annualNetSavings)}
             </div>
           </div>
-          <div className="pt-1.5 border-t border-slate-100 dark:border-neutral-800 text-[10px] sm:text-[11px] text-slate-500 dark:text-neutral-400 flex items-center justify-between">
-            <span>{language === 'es' ? 'Tasa Ahorro:' : 'Savings:'} <strong className="text-slate-700 dark:text-neutral-300">{annualAggregates.savingsRate.toFixed(1)}%</strong></span>
+          <div className="pt-2 border-t border-slate-100 dark:border-neutral-800 text-[11px] text-slate-500 dark:text-neutral-400 flex items-center justify-between">
+            <span>{language === 'es' ? 'Tasa de Ahorro:' : 'Savings Rate:'} <strong className="text-slate-700 dark:text-neutral-300">{annualAggregates.savingsRate.toFixed(1)}%</strong></span>
             <span className="font-semibold text-slate-700 dark:text-neutral-300">
               {annualAggregates.solventCount}/12 {language === 'es' ? 'solventes' : 'solvent'}
             </span>
@@ -693,36 +726,40 @@ export const AnnualOverview: React.FC<AnnualOverviewProps> = ({
         </div>
       </div>
 
-      {/* 3. Visualizador Gráfico de 12 Meses */}
-      <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-2xs flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+      {/* 3. Visualizador de Trayectoria y Comparador Gráfico de 12 Meses */}
+      <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
-              {language === 'es' ? 'Curva de Tesorería y Solvencia Mes a Mes' : 'Monthly Solvency & Treasury Curve'}
+            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <span>{language === 'es' ? 'Curva de Tesorería y Solvencia Mes a Mes' : 'Monthly Solvency & Treasury Curve'}</span>
             </h2>
-            <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-neutral-400">
+            <p className="text-xs text-slate-500 dark:text-neutral-400">
               {language === 'es' 
-                ? 'Monitorea el saldo final proyectado al cierre de cada mes.'
-                : 'Track projected closing balance for each month.'}
+                ? 'Monitorea el saldo final proyectado al cierre de cada mes e identifica los meses críticos antes de que ocurran.'
+                : 'Track the projected end-of-month balance and identify critical deficit months in advance.'}
             </p>
           </div>
 
-          {/* Leyenda */}
-          <div className="flex items-center gap-3 text-[10px] sm:text-[11px] text-slate-600 dark:text-neutral-400">
-            <div className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-xs bg-emerald-500"></span>
-              <span>{language === 'es' ? 'Positivo' : 'Positive'}</span>
+          {/* Leyenda Visual */}
+          <div className="flex items-center gap-4 text-xs text-slate-600 dark:text-neutral-400">
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-xs bg-emerald-500"></span>
+              <span>{language === 'es' ? 'Saldo Positivo' : 'Positive Balance'}</span>
             </div>
-            <div className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-xs bg-rose-500"></span>
-              <span>{language === 'es' ? 'Déficit' : 'Deficit'}</span>
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-xs bg-rose-500"></span>
+              <span>{language === 'es' ? 'Déficit Proyectado' : 'Deficit'}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <span>{language === 'es' ? 'Solvente' : 'Solvent'}</span>
             </div>
           </div>
         </div>
 
-        {/* Gráfico de Barras con scroll horizontal suave */}
-        <div className="w-full overflow-x-auto pb-1 scrollbar-thin">
-          <div className="min-w-[620px] grid grid-cols-12 gap-1.5 pt-4 pb-1">
+        {/* Gráfico de Barras Relativas */}
+        <div className="w-full overflow-x-auto pb-2">
+          <div className="min-w-[720px] grid grid-cols-12 gap-2 pt-6 pb-2">
             {monthlyMetrics.map((m) => {
               const balance = m.totals.endOfMonthTotal;
               const isPositive = balance >= 0;
@@ -733,34 +770,34 @@ export const AnnualOverview: React.FC<AnnualOverviewProps> = ({
                 <div
                   key={m.month}
                   onClick={() => setSelectedChartMonth(isSelected ? null : m.month)}
-                  className={`flex flex-col items-center justify-end h-36 sm:h-40 p-1 rounded-lg border transition-all cursor-pointer select-none ${
+                  className={`flex flex-col items-center justify-end h-44 p-1.5 rounded-xl border transition-all cursor-pointer select-none ${
                     isSelected
-                      ? 'bg-slate-100 dark:bg-neutral-800/80 border-emerald-500 ring-1 ring-emerald-500/30'
+                      ? 'bg-slate-100 dark:bg-neutral-800/80 border-emerald-500 ring-2 ring-emerald-500/30'
                       : 'bg-slate-50 dark:bg-neutral-950/60 hover:bg-slate-100 dark:hover:bg-neutral-800/50 border-slate-200 dark:border-neutral-800'
                   }`}
-                  title={`${m.name}: ${formatCurrency(balance)}`}
+                  title={`${m.name}: Saldo fin de mes ${formatCurrency(balance)}`}
                 >
-                  {/* Monto */}
-                  <span className={`text-[9px] font-bold tabular-nums mb-1 truncate max-w-full text-center ${
+                  {/* Monto Fin de Mes */}
+                  <span className={`text-[10px] font-bold tabular-nums mb-1 truncate max-w-full text-center ${
                     isPositive ? 'text-slate-700 dark:text-neutral-200' : 'text-rose-600 dark:text-rose-400 font-black'
                   }`}>
                     {formatCurrency(balance)}
                   </span>
 
-                  {/* Barra */}
-                  <div className="w-full h-20 flex items-end justify-center px-0.5">
+                  {/* Barra Visual */}
+                  <div className="w-full h-24 flex items-end justify-center px-1">
                     <div
                       style={{ height: `${heightPct}%` }}
-                      className={`w-full max-w-[22px] rounded-t transition-all duration-300 ${
+                      className={`w-full max-w-[28px] rounded-t-md transition-all duration-300 ${
                         isPositive 
-                          ? 'bg-emerald-500 dark:bg-emerald-400' 
-                          : 'bg-rose-500 dark:bg-rose-500'
+                          ? 'bg-emerald-500 dark:bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.3)]' 
+                          : 'bg-rose-500 dark:bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]'
                       }`}
                     />
                   </div>
 
-                  {/* Diagnóstico con dot */}
-                  <div className="flex items-center gap-1 mt-1">
+                  {/* Diagnóstico de Solvencia con Dot */}
+                  <div className="flex items-center gap-1 mt-1.5">
                     <span className={`w-1.5 h-1.5 rounded-full ${
                       m.solvency === 'solvent'
                         ? 'bg-emerald-500'
@@ -768,12 +805,13 @@ export const AnnualOverview: React.FC<AnnualOverviewProps> = ({
                         ? 'bg-amber-500'
                         : 'bg-rose-500'
                     }`} />
-                    <span className="text-[9px] font-bold uppercase tracking-tight text-slate-500 dark:text-neutral-400">
+                    <span className="text-[10px] font-bold uppercase tracking-tight text-slate-500 dark:text-neutral-400">
                       {m.name.slice(0, 3)}
                     </span>
                   </div>
 
-                  <span className={`text-[8px] tabular-nums font-semibold ${
+                  {/* Mini indicador de flujo neto */}
+                  <span className={`text-[9px] tabular-nums font-semibold ${
                     m.netFlow >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
                   }`}>
                     {m.netFlow >= 0 ? '+' : ''}{formatCurrency(m.netFlow).split('.')[0]}
@@ -784,17 +822,17 @@ export const AnnualOverview: React.FC<AnnualOverviewProps> = ({
           </div>
         </div>
 
-        {/* Panel Snapshot Mes Seleccionado */}
+        {/* Panel Desplegable de Mes Seleccionado (Snapshot Rápido) */}
         {activeFocusMonth && (
-          <div className="bg-slate-50 dark:bg-neutral-950 p-2.5 sm:p-3 rounded-xl border border-slate-200 dark:border-neutral-800 flex flex-wrap items-center justify-between gap-2.5 animate-in fade-in duration-150">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold text-xs">
+          <div className="bg-slate-50 dark:bg-neutral-950 p-4 rounded-xl border border-slate-200 dark:border-neutral-800 flex flex-wrap items-center justify-between gap-4 animate-in fade-in duration-150">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-black">
                 {activeFocusMonth.name.slice(0, 3)}
               </div>
               <div>
-                <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <span>{activeFocusMonth.name} ({year})</span>
-                  <span className={`text-[9px] px-1.5 py-0.2 rounded font-semibold border ${
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-semibold border ${
                     activeFocusMonth.solvency === 'solvent'
                       ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/30'
                       : activeFocusMonth.solvency === 'warning'
@@ -804,114 +842,94 @@ export const AnnualOverview: React.FC<AnnualOverviewProps> = ({
                     {activeFocusMonth.solvencyLabel}
                   </span>
                 </h4>
-                <div className="text-[10px] sm:text-[11px] text-slate-500 dark:text-neutral-400 flex items-center gap-1.5 mt-0.5">
-                  <span>{language === 'es' ? 'Saldo Fin Mes:' : 'Close:'} <strong className="text-slate-900 dark:text-white tabular-nums">{formatCurrency(activeFocusMonth.totals.endOfMonthTotal)}</strong></span>
+                <div className="text-xs text-slate-500 dark:text-neutral-400 flex items-center gap-2 mt-0.5">
+                  <span>{language === 'es' ? 'Saldo Fin de Mes:' : 'End of Month:'} <strong className="text-slate-900 dark:text-white tabular-nums">{formatCurrency(activeFocusMonth.totals.endOfMonthTotal)}</strong></span>
                   <span>·</span>
-                  <span>{language === 'es' ? 'Flujo Neto:' : 'Net:'} <strong className="tabular-nums">{activeFocusMonth.netFlow >= 0 ? '+' : ''}{formatCurrency(activeFocusMonth.netFlow)}</strong></span>
+                  <span>{language === 'es' ? 'Flujo Neto:' : 'Net Flow:'} <strong className="tabular-nums">{activeFocusMonth.netFlow >= 0 ? '+' : ''}{formatCurrency(activeFocusMonth.netFlow)}</strong></span>
                 </div>
               </div>
             </div>
 
             <button
               onClick={() => onSelectMonthAndNavigate(activeFocusMonth.month)}
-              className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg bg-emerald-600 text-white hover:bg-emerald-500 transition-colors shadow-2xs cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-emerald-600 text-white hover:bg-emerald-500 transition-colors shadow-xs cursor-pointer"
             >
-              <span>{language === 'es' ? `Ver ${activeFocusMonth.name}` : `Open ${activeFocusMonth.name}`}</span>
-              <ExternalLink className="w-3 h-3" />
+              <span>{language === 'es' ? `Ver hoja de cálculo de ${activeFocusMonth.name}` : `Open ${activeFocusMonth.name} sheet`}</span>
+              <ExternalLink className="w-3.5 h-3.5" />
             </button>
           </div>
         )}
       </div>
 
       {/* 4. Tabla Matriz Comparativa de los 12 Meses */}
-      <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-xl sm:rounded-2xl shadow-2xs overflow-hidden">
-        <div className="p-3 sm:p-4 border-b border-slate-200 dark:border-neutral-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+      <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-2xl shadow-xs overflow-hidden">
+        <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-neutral-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">
               {language === 'es' ? 'Matriz Comparativa de los 12 Meses' : '12-Month Comparative Financial Matrix'}
             </h3>
-            <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-neutral-400">
+            <p className="text-xs text-slate-500 dark:text-neutral-400">
               {language === 'es' 
-                ? 'Indicadores del año mes a mes.'
-                : 'Annual month-by-month indicators.'}
+                ? 'Todos los indicadores del año fila por fila con acceso directo a cada mes.'
+                : 'All annual indicators row-by-row with direct access to each month.'}
             </p>
           </div>
 
-          {/* Filtros: Mobile dropdown vs Desktop pills */}
-          <div className="flex items-center gap-1.5 self-start sm:self-auto">
-            {/* Mobile filter */}
-            <div className="flex sm:hidden relative items-center">
-              <select
-                value={tableFilter}
-                onChange={(e) => setTableFilter(e.target.value as 'all' | 'deficit' | 'solvent')}
-                className="appearance-none bg-slate-100 dark:bg-neutral-950 border border-slate-200 dark:border-neutral-800 text-[10px] font-bold text-slate-800 dark:text-neutral-200 rounded-lg pl-2 pr-6 py-1 focus:outline-none cursor-pointer"
-                aria-label="Filtrar matriz"
-              >
-                <option value="all">{language === 'es' ? 'Todos (12)' : 'All (12)'}</option>
-                <option value="solvent">{language === 'es' ? `Solventes (${annualAggregates.solventCount})` : `Solvent (${annualAggregates.solventCount})`}</option>
-                {annualAggregates.deficitCount > 0 && (
-                  <option value="deficit">{language === 'es' ? `Déficit (${annualAggregates.deficitCount})` : `Deficit (${annualAggregates.deficitCount})`}</option>
-                )}
-              </select>
-              <ChevronDown className="w-3 h-3 text-slate-400 pointer-events-none absolute right-1.5" />
-            </div>
-
-            {/* Desktop pills */}
-            <div className="hidden sm:flex items-center gap-1 bg-slate-100 dark:bg-neutral-950 p-0.5 rounded-lg border border-slate-200 dark:border-neutral-800 text-xs">
+          {/* Filtros Rápidos de la Tabla Matriz */}
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-neutral-950 p-1 rounded-xl border border-slate-200 dark:border-neutral-800 text-xs self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => setTableFilter('all')}
+              className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
+                tableFilter === 'all'
+                  ? 'bg-white dark:bg-neutral-800 text-slate-900 dark:text-white shadow-xs'
+                  : 'text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              {language === 'es' ? 'Todos (12)' : 'All (12)'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setTableFilter('solvent')}
+              className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
+                tableFilter === 'solvent'
+                  ? 'bg-white dark:bg-neutral-800 text-emerald-700 dark:text-emerald-400 shadow-xs'
+                  : 'text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              {language === 'es' ? `Solventes (${annualAggregates.solventCount})` : `Solvent (${annualAggregates.solventCount})`}
+            </button>
+            {annualAggregates.deficitCount > 0 && (
               <button
                 type="button"
-                onClick={() => setTableFilter('all')}
-                className={`px-2 py-0.5 rounded-md font-semibold text-[11px] transition-all cursor-pointer ${
-                  tableFilter === 'all'
-                    ? 'bg-white dark:bg-neutral-800 text-slate-900 dark:text-white shadow-2xs'
-                    : 'text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white'
+                onClick={() => setTableFilter('deficit')}
+                className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
+                  tableFilter === 'deficit'
+                    ? 'bg-rose-600 text-white shadow-xs'
+                    : 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30'
                 }`}
               >
-                {language === 'es' ? 'Todos (12)' : 'All (12)'}
+                {language === 'es' ? `Déficit (${annualAggregates.deficitCount})` : `Deficit (${annualAggregates.deficitCount})`}
               </button>
-              <button
-                type="button"
-                onClick={() => setTableFilter('solvent')}
-                className={`px-2 py-0.5 rounded-md font-semibold text-[11px] transition-all cursor-pointer ${
-                  tableFilter === 'solvent'
-                    ? 'bg-white dark:bg-neutral-800 text-emerald-700 dark:text-emerald-400 shadow-2xs'
-                    : 'text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                {language === 'es' ? `Solventes (${annualAggregates.solventCount})` : `Solvent (${annualAggregates.solventCount})`}
-              </button>
-              {annualAggregates.deficitCount > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setTableFilter('deficit')}
-                  className={`px-2 py-0.5 rounded-md font-semibold text-[11px] transition-all cursor-pointer ${
-                    tableFilter === 'deficit'
-                      ? 'bg-rose-600 text-white shadow-2xs'
-                      : 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30'
-                  }`}
-                >
-                  {language === 'es' ? `Déficit (${annualAggregates.deficitCount})` : `Deficit (${annualAggregates.deficitCount})`}
-                </button>
-              )}
-            </div>
+            )}
           </div>
         </div>
 
-        <div className="overflow-x-auto scrollbar-thin">
-          <table className="w-full text-left text-xs border-collapse min-w-[700px]">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-slate-50 dark:bg-neutral-950/80 border-b border-slate-200 dark:border-neutral-800 text-slate-600 dark:text-neutral-400 font-semibold uppercase tracking-wider text-[10px]">
-                <th className="py-2 px-2.5 text-center">#</th>
-                <th className="py-2 px-2.5">{language === 'es' ? 'Mes' : 'Month'}</th>
-                <th className="py-2 px-2.5 text-right">{language === 'es' ? 'Saldo Inicial' : 'Start'}</th>
-                <th className="py-2 px-2.5 text-right text-emerald-600 dark:text-emerald-400">{language === 'es' ? 'Ingresos (+)' : 'Income (+)'}</th>
-                <th className="py-2 px-2.5 text-right text-rose-600 dark:text-rose-400">{language === 'es' ? 'Gastos (-)' : 'Expenses (-)'}</th>
-                <th className="py-2 px-2.5 text-right">{language === 'es' ? 'Flujo Neto' : 'Net Flow'}</th>
-                <th className="py-2 px-2.5 text-right font-black">{language === 'es' ? 'Saldo Fin Mes' : 'End Month'}</th>
-                <th className="py-2 px-2.5 text-right text-slate-500 dark:text-neutral-400">{language === 'es' ? 'Dinero Real' : 'Actual Bank'}</th>
-                <th className="py-2 px-2.5 text-right">{language === 'es' ? 'Deudas/Tarjetas' : 'Debts/Cards'}</th>
-                <th className="py-2 px-2.5 text-center">{language === 'es' ? 'Solvencia' : 'Solvency'}</th>
-                <th className="py-2 px-2.5 text-center">{language === 'es' ? 'Acción' : 'Action'}</th>
+                <th className="py-3 px-3.5 text-center">#</th>
+                <th className="py-3 px-3.5">{language === 'es' ? 'Mes' : 'Month'}</th>
+                <th className="py-3 px-3.5 text-right">{language === 'es' ? 'Saldo Inicial' : 'Start Balance'}</th>
+                <th className="py-3 px-3.5 text-right text-emerald-600 dark:text-emerald-400">{language === 'es' ? 'Ingresos (+)' : 'Income (+)'}</th>
+                <th className="py-3 px-3.5 text-right text-rose-600 dark:text-rose-400">{language === 'es' ? 'Gastos (-)' : 'Expenses (-)'}</th>
+                <th className="py-3 px-3.5 text-right">{language === 'es' ? 'Flujo Neto' : 'Net Cash Flow'}</th>
+                <th className="py-3 px-3.5 text-right font-black">{language === 'es' ? 'Saldo Fin de Mes' : 'End of Month'}</th>
+                <th className="py-3 px-3.5 text-right text-slate-500 dark:text-neutral-400">{language === 'es' ? 'Dinero Real (✓)' : 'Actual Bank (✓)'}</th>
+                <th className="py-3 px-3.5 text-right">{language === 'es' ? 'Deudas/Tarjetas' : 'Debts/Cards'}</th>
+                <th className="py-3 px-3.5 text-center">{language === 'es' ? 'Solvencia' : 'Solvency'}</th>
+                <th className="py-3 px-3.5 text-center">{language === 'es' ? 'Acción' : 'Action'}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-neutral-800/80">
@@ -930,44 +948,44 @@ export const AnnualOverview: React.FC<AnnualOverviewProps> = ({
                       isDeficit ? 'bg-rose-50/40 dark:bg-rose-950/20' : ''
                     }`}
                   >
-                    <td className="py-2 px-2.5 text-center text-slate-400 dark:text-neutral-500 font-medium tabular-nums text-[11px]">
+                    <td className="py-2.5 px-3.5 text-center text-slate-400 dark:text-neutral-500 font-medium tabular-nums">
                       {m.month + 1}
                     </td>
-                    <td className="py-2 px-2.5 font-bold text-slate-900 dark:text-white whitespace-nowrap text-xs">
-                      <div className="flex items-center gap-1">
+                    <td className="py-2.5 px-3.5 font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                      <div className="flex items-center gap-1.5">
                         <span>{m.name}</span>
                         {m.hasActivity && (
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" title="Mes con actividad activa" />
                         )}
                       </div>
                     </td>
-                    <td className="py-2 px-2.5 text-right tabular-nums text-slate-600 dark:text-neutral-300 font-medium text-xs">
+                    <td className="py-2.5 px-3.5 text-right tabular-nums text-slate-600 dark:text-neutral-300 font-medium">
                       {formatCurrency(m.totals.accumulated)}
                     </td>
-                    <td className="py-2 px-2.5 text-right tabular-nums font-semibold text-emerald-600 dark:text-emerald-400 text-xs">
+                    <td className="py-2.5 px-3.5 text-right tabular-nums font-semibold text-emerald-600 dark:text-emerald-400">
                       +{formatCurrency(m.totals.totalIncome)}
                     </td>
-                    <td className="py-2 px-2.5 text-right tabular-nums font-semibold text-rose-600 dark:text-rose-400 text-xs">
+                    <td className="py-2.5 px-3.5 text-right tabular-nums font-semibold text-rose-600 dark:text-rose-400">
                       -{formatCurrency(m.totals.totalExpense)}
                     </td>
-                    <td className={`py-2 px-2.5 text-right tabular-nums font-bold text-xs ${
+                    <td className={`py-2.5 px-3.5 text-right tabular-nums font-bold ${
                       m.netFlow >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
                     }`}>
                       {m.netFlow >= 0 ? '+' : ''}{formatCurrency(m.netFlow)}
                     </td>
-                    <td className={`py-2 px-2.5 text-right tabular-nums font-black text-xs ${
+                    <td className={`py-2.5 px-3.5 text-right tabular-nums font-black ${
                       isDeficit ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-white'
                     }`}>
                       {formatCurrency(m.totals.endOfMonthTotal)}
                     </td>
-                    <td className="py-2 px-2.5 text-right tabular-nums text-slate-500 dark:text-neutral-400 text-xs">
+                    <td className="py-2.5 px-3.5 text-right tabular-nums text-slate-500 dark:text-neutral-400">
                       {formatCurrency(m.totals.totalActual)}
                     </td>
-                    <td className="py-2 px-2.5 text-right tabular-nums text-slate-600 dark:text-neutral-400 text-xs">
+                    <td className="py-2.5 px-3.5 text-right tabular-nums text-slate-600 dark:text-neutral-400">
                       {formatCurrency(m.totalLoanPayments + m.totalCards)}
                     </td>
-                    <td className="py-2 px-2.5 text-center whitespace-nowrap">
-                      <span className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-bold border ${
+                    <td className="py-2.5 px-3.5 text-center whitespace-nowrap">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border ${
                         m.solvency === 'solvent'
                           ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/30'
                           : m.solvency === 'warning'
@@ -975,22 +993,22 @@ export const AnnualOverview: React.FC<AnnualOverviewProps> = ({
                           : 'bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300 border-rose-300 dark:border-rose-500/30'
                       }`}>
                         {m.solvency === 'solvent' ? (
-                          <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                         ) : m.solvency === 'warning' ? (
-                          <AlertTriangle className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400" />
+                          <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400" />
                         ) : (
-                          <XCircle className="w-2.5 h-2.5 text-rose-600 dark:text-rose-400" />
+                          <XCircle className="w-3 h-3 text-rose-600 dark:text-rose-400" />
                         )}
                         <span>{m.solvencyLabel}</span>
                       </span>
                     </td>
-                    <td className="py-2 px-2.5 text-center">
+                    <td className="py-2.5 px-3.5 text-center">
                       <button
                         onClick={() => onSelectMonthAndNavigate(m.month)}
                         className="p-1 px-2 text-[10px] font-bold rounded-md bg-slate-100 hover:bg-emerald-600 hover:text-white dark:bg-neutral-800 dark:hover:bg-emerald-600 text-slate-700 dark:text-neutral-300 transition-colors cursor-pointer"
-                        title={language === 'es' ? `Abrir ${m.name}` : `Open ${m.name}`}
+                        title={language === 'es' ? `Abrir flujo de caja de ${m.name}` : `Open ${m.name} cash flow`}
                       >
-                        {language === 'es' ? 'Ver' : 'Open'}
+                        {language === 'es' ? 'Ver Mes' : 'Open'}
                       </button>
                     </td>
                   </tr>
@@ -999,35 +1017,35 @@ export const AnnualOverview: React.FC<AnnualOverviewProps> = ({
             </tbody>
             {/* Totales Anuales Footer */}
             <tfoot>
-              <tr className="bg-slate-100 dark:bg-neutral-950 font-bold border-t-2 border-slate-300 dark:border-neutral-700 text-slate-900 dark:text-white text-xs">
-                <td colSpan={2} className="py-2 px-2.5 text-right uppercase tracking-wider text-[10px] sm:text-[11px]">
-                  {language === 'es' ? 'Totales:' : 'Totals:'}
+              <tr className="bg-slate-100 dark:bg-neutral-950 font-bold border-t-2 border-slate-300 dark:border-neutral-700 text-slate-900 dark:text-white">
+                <td colSpan={2} className="py-3 px-3.5 text-right uppercase tracking-wider text-[11px]">
+                  {language === 'es' ? 'Totales del Año:' : 'Year Totals:'}
                 </td>
-                <td className="py-2 px-2.5 text-right tabular-nums text-slate-500 text-xs">
+                <td className="py-3 px-3.5 text-right tabular-nums text-slate-500">
                   -
                 </td>
-                <td className="py-2 px-2.5 text-right tabular-nums text-emerald-600 dark:text-emerald-400 text-xs">
+                <td className="py-3 px-3.5 text-right tabular-nums text-emerald-600 dark:text-emerald-400">
                   +{formatCurrency(annualAggregates.totalAnnualIncome)}
                 </td>
-                <td className="py-2 px-2.5 text-right tabular-nums text-rose-600 dark:text-rose-400 text-xs">
+                <td className="py-3 px-3.5 text-right tabular-nums text-rose-600 dark:text-rose-400">
                   -{formatCurrency(annualAggregates.totalAnnualExpense)}
                 </td>
-                <td className={`py-2 px-2.5 text-right tabular-nums font-black text-xs ${
+                <td className={`py-3 px-3.5 text-right tabular-nums font-black ${
                   annualAggregates.annualNetSavings >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
                 }`}>
                   {annualAggregates.annualNetSavings >= 0 ? '+' : ''}{formatCurrency(annualAggregates.annualNetSavings)}
                 </td>
-                <td className="py-2 px-2.5 text-right tabular-nums font-black text-slate-900 dark:text-white text-xs">
+                <td className="py-3 px-3.5 text-right tabular-nums font-black text-slate-900 dark:text-white">
                   {formatCurrency(annualAggregates.endOfYearBalance)}
                 </td>
-                <td className="py-2 px-2.5 text-right tabular-nums text-slate-500 dark:text-neutral-400 text-xs">
+                <td className="py-3 px-3.5 text-right tabular-nums text-slate-500 dark:text-neutral-400">
                   {formatCurrency(annualAggregates.totalAnnualActual)}
                 </td>
-                <td className="py-2 px-2.5 text-right tabular-nums text-slate-600 dark:text-neutral-400 text-xs">
+                <td className="py-3 px-3.5 text-right tabular-nums text-slate-600 dark:text-neutral-400">
                   {formatCurrency(annualAggregates.totalAnnualLoanPayments + annualAggregates.totalAnnualCards)}
                 </td>
-                <td colSpan={2} className="py-2 px-2.5 text-center text-[10px] text-slate-500">
-                  {annualAggregates.solventCount}/12
+                <td colSpan={2} className="py-3 px-3.5 text-center text-[11px] text-slate-500">
+                  {annualAggregates.solventCount} / 12 {language === 'es' ? 'meses solventes' : 'solvent months'}
                 </td>
               </tr>
             </tfoot>
@@ -1035,111 +1053,122 @@ export const AnnualOverview: React.FC<AnnualOverviewProps> = ({
         </div>
       </div>
 
-      {/* 5. Dos Paneles Inferiores: Diagnóstico y Distribución */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* 5. Dos Paneles Inferiores: Diagnóstico y Distribución por Categorías */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
-        {/* Panel Izquierdo: Diagnóstico */}
-        <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-3">
+        {/* Panel Izquierdo: Diagnóstico Inteligente y Puntos Clave del Año */}
+        <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-2xl p-5 shadow-xs flex flex-col justify-between gap-4">
           <div>
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <div className="w-6 h-6 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                <CheckCircle2 className="w-3.5 h-3.5" />
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                <CheckCircle2 className="w-4 h-4" />
               </div>
-              <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
                 {language === 'es' ? 'Diagnóstico Anual de Solvencia' : 'Annual Solvency Diagnostic'}
               </h3>
             </div>
+            <p className="text-xs text-slate-500 dark:text-neutral-400 mb-4">
+              {language === 'es' 
+                ? 'Lectura ejecutiva de tu perfil financiero y puntos de liquidez más relevantes para este año.'
+                : 'Executive reading of your financial profile and key liquidity milestones for this year.'}
+            </p>
 
-            <div className="flex flex-col gap-2 text-xs mt-2">
-              {/* Punto 1 */}
-              <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-neutral-950/60 border border-slate-200 dark:border-neutral-800 flex items-start gap-2">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
-                <div className="flex flex-col">
-                  <span className="font-bold text-slate-800 dark:text-neutral-200 text-xs">
-                    {language === 'es' ? 'Punto de Menor Liquidez:' : 'Lowest Liquidity:'} {annualAggregates.lowestBalanceMonth?.name}
+            <div className="flex flex-col gap-3 text-xs">
+              
+              {/* Punto 1: Mes más vulnerable */}
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-neutral-950/60 border border-slate-200 dark:border-neutral-800 flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-bold text-slate-800 dark:text-neutral-200">
+                    {language === 'es' ? 'Punto de Menor Liquidez del Año:' : 'Lowest Liquidity Month:'} {annualAggregates.lowestBalanceMonth?.name}
                   </span>
-                  <span className="text-[11px] text-slate-500 dark:text-neutral-400">
+                  <span className="text-slate-500 dark:text-neutral-400">
                     {language === 'es' 
-                      ? `${annualAggregates.lowestBalanceMonth?.name} proyecta un saldo de ${formatCurrency(annualAggregates.lowestBalanceMonth?.totals.endOfMonthTotal || 0)}.`
-                      : `${annualAggregates.lowestBalanceMonth?.name} projects ${formatCurrency(annualAggregates.lowestBalanceMonth?.totals.endOfMonthTotal || 0)}.`}
+                      ? `El mes con saldo más ajustado es ${annualAggregates.lowestBalanceMonth?.name} con un balance proyectado de ${formatCurrency(annualAggregates.lowestBalanceMonth?.totals.endOfMonthTotal || 0)}.`
+                      : `The tightest month is ${annualAggregates.lowestBalanceMonth?.name} projecting a balance of ${formatCurrency(annualAggregates.lowestBalanceMonth?.totals.endOfMonthTotal || 0)}.`}
                   </span>
                 </div>
               </div>
 
-              {/* Punto 2 */}
-              <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-neutral-950/60 border border-slate-200 dark:border-neutral-800 flex items-start gap-2">
-                <TrendingUp className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                <div className="flex flex-col">
-                  <span className="font-bold text-slate-800 dark:text-neutral-200 text-xs">
-                    {language === 'es' ? 'Mayor Superávit:' : 'Peak Month:'} {annualAggregates.highestBalanceMonth?.name}
+              {/* Punto 2: Mes de mayor crecimiento */}
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-neutral-950/60 border border-slate-200 dark:border-neutral-800 flex items-start gap-2.5">
+                <TrendingUp className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-bold text-slate-800 dark:text-neutral-200">
+                    {language === 'es' ? 'Mes de Mayor Superávit:' : 'Peak Month:'} {annualAggregates.highestBalanceMonth?.name}
                   </span>
-                  <span className="text-[11px] text-slate-500 dark:text-neutral-400">
+                  <span className="text-slate-500 dark:text-neutral-400">
                     {language === 'es' 
-                      ? `Cierra con ${formatCurrency(annualAggregates.highestBalanceMonth?.totals.endOfMonthTotal || 0)}.`
-                      : `Closes at ${formatCurrency(annualAggregates.highestBalanceMonth?.totals.endOfMonthTotal || 0)}.`}
+                      ? `Cierra con ${formatCurrency(annualAggregates.highestBalanceMonth?.totals.endOfMonthTotal || 0)}, consolidando tu mayor reserva de capital.`
+                      : `Closes at ${formatCurrency(annualAggregates.highestBalanceMonth?.totals.endOfMonthTotal || 0)}, consolidating your biggest capital reserve.`}
                   </span>
                 </div>
               </div>
 
-              {/* Punto 3 */}
-              <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-neutral-950/60 border border-slate-200 dark:border-neutral-800 flex items-start gap-2">
-                <Building2 className="w-3.5 h-3.5 text-sky-500 shrink-0 mt-0.5" />
-                <div className="flex flex-col">
-                  <span className="font-bold text-slate-800 dark:text-neutral-200 text-xs">
-                    {language === 'es' ? 'Líneas de Crédito:' : 'Credit Line Backing:'} {formatCurrency(totalLiquidity)}
+              {/* Punto 3: Respaldo de Crédito */}
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-neutral-950/60 border border-slate-200 dark:border-neutral-800 flex items-start gap-2.5">
+                <Building2 className="w-4 h-4 text-sky-500 shrink-0 mt-0.5" />
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-bold text-slate-800 dark:text-neutral-200">
+                    {language === 'es' ? 'Bolsa de Liquidez en Préstamos:' : 'Credit Line Backing:'} {formatCurrency(totalLiquidity)}
                   </span>
-                  <span className="text-[11px] text-slate-500 dark:text-neutral-400">
+                  <span className="text-slate-500 dark:text-neutral-400">
                     {language === 'es' 
-                      ? `${formatCurrency(totalLiquidity)} en líneas disponibles de respaldo.`
-                      : `${formatCurrency(totalLiquidity)} available in backup credit lines.`}
+                      ? `Cuentas con ${formatCurrency(totalLiquidity)} en líneas de crédito disponibles para solventar cualquier eventualidad en meses con saldo ajustado.`
+                      : `You have ${formatCurrency(totalLiquidity)} in available credit lines to absorb unexpected expenses during tight months.`}
                   </span>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="pt-2 border-t border-slate-100 dark:border-neutral-800 flex items-center justify-between text-[11px] text-slate-500">
-            <span>{language === 'es' ? 'Diagnóstico:' : 'Diagnostic:'}</span>
+          <div className="pt-3 border-t border-slate-100 dark:border-neutral-800 flex items-center justify-between text-xs text-slate-500">
+            <span>{language === 'es' ? 'Diagnóstico global:' : 'Global diagnostic:'}</span>
             <span className="font-bold text-emerald-600 dark:text-emerald-400">
               {annualAggregates.deficitCount === 0 
-                ? (language === 'es' ? '✓ 100% Solvente en el año' : '✓ 100% Solvent')
-                : (language === 'es' ? `⚠️ ${annualAggregates.deficitCount} mes(es) con déficit` : `⚠️ ${annualAggregates.deficitCount} deficit month(s)`)}
+                ? (language === 'es' ? '✓ 100% Solvente durante todo el año' : '✓ 100% Solvent across entire year')
+                : (language === 'es' ? `⚠️ ${annualAggregates.deficitCount} mes(es) requieren financiamiento` : `⚠️ ${annualAggregates.deficitCount} month(s) project deficit`)}
             </span>
           </div>
         </div>
 
-        {/* Panel Derecho: Categorías */}
-        <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-2xs flex flex-col justify-between gap-3">
+        {/* Panel Derecho: Desglose Anual por Categorías */}
+        <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-2xl p-5 shadow-xs flex flex-col justify-between gap-4">
           <div>
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <div className="w-6 h-6 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                <Layers className="w-3.5 h-3.5" />
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                <Layers className="w-4 h-4" />
               </div>
-              <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
                 {language === 'es' ? 'Desglose Anual por Categorías' : 'Annual Category Distribution'}
               </h3>
             </div>
+            <p className="text-xs text-slate-500 dark:text-neutral-400 mb-4">
+              {language === 'es' 
+                ? 'Distribución consolidada de todos tus egresos presupuestados durante el año.'
+                : 'Consolidated breakdown of your expenses across all categories for the year.'}
+            </p>
 
-            <div className="flex flex-col gap-2 mt-2">
-              {categoryBreakdown.expenses.slice(0, 5).map(item => {
+            <div className="flex flex-col gap-3">
+              {categoryBreakdown.expenses.slice(0, 6).map(item => {
                 const pct = annualAggregates.totalAnnualExpense > 0 
                   ? (item.amount / annualAggregates.totalAnnualExpense) * 100 
                   : 0;
 
                 return (
-                  <div key={item.label} className="flex flex-col gap-0.5">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="font-semibold text-slate-800 dark:text-neutral-200 flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  <div key={item.label} className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-slate-800 dark:text-neutral-200 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
                         <span>{item.label}</span>
-                        <span className="text-[9px] text-slate-400">({item.count})</span>
+                        <span className="text-[10px] text-slate-400">({item.count} movs)</span>
                       </span>
-                      <span className="tabular-nums font-bold text-slate-900 dark:text-white text-xs">
-                        {formatCurrency(item.amount)} <span className="text-[9px] text-slate-400 font-normal">({pct.toFixed(1)}%)</span>
+                      <span className="tabular-nums font-bold text-slate-900 dark:text-white">
+                        {formatCurrency(item.amount)} <span className="text-[10px] text-slate-400 font-normal">({pct.toFixed(1)}%)</span>
                       </span>
                     </div>
-                    {/* Barra */}
-                    <div className="w-full h-1 bg-slate-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                    {/* Progress Bar */}
+                    <div className="w-full h-1.5 bg-slate-100 dark:bg-neutral-800 rounded-full overflow-hidden">
                       <div 
                         style={{ width: `${pct}%` }} 
                         className="h-full bg-emerald-500 dark:bg-emerald-400 rounded-full transition-all"
@@ -1151,9 +1180,9 @@ export const AnnualOverview: React.FC<AnnualOverviewProps> = ({
             </div>
           </div>
 
-          <div className="pt-2 border-t border-slate-100 dark:border-neutral-800 flex items-center justify-between text-[11px] text-slate-500">
-            <span>{language === 'es' ? 'Total Egresos:' : 'Total Outflows:'}</span>
-            <span className="font-bold text-rose-600 dark:text-rose-400 tabular-nums text-xs">
+          <div className="pt-3 border-t border-slate-100 dark:border-neutral-800 flex items-center justify-between text-xs text-slate-500">
+            <span>{language === 'es' ? 'Total Egresos Anuales:' : 'Total Annual Outflows:'}</span>
+            <span className="font-bold text-rose-600 dark:text-rose-400 tabular-nums">
               {formatCurrency(annualAggregates.totalAnnualExpense)}
             </span>
           </div>
