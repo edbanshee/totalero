@@ -1,25 +1,30 @@
 export const MIN_CATALOG_YEAR = 2024;
 export const MAX_CATALOG_YEAR = 2050;
 
-export type TransactionLabel = 'Ingreso' | 'Gasto' | 'Servicio' | 'Neto' | 'Préstamo' | 'Crédito' | 'Otro' | 'Coppel';
+export type TransactionLabel = 'Ingreso' | 'Gasto' | 'Servicio' | 'Suscripción' | 'Neto' | 'Préstamo' | 'Crédito' | 'Otro' | 'Coppel';
 
 export type RowHighlight = 'none' | 'yellow' | 'blue' | 'green';
+
+export type LoanType = 'payable' | 'receivable';
 
 export interface LoanDetails {
   loanId?: string;
   institutionName: string;
+  loanType?: LoanType; // 'payable' (Deuda por pagar) | 'receivable' (Me deben a mí / Por cobrar inverso)
   totalTermMonths: number;
   currentTermMonth: number;
-  initialDebt: number; // Saldo de deuda inicial del mes
-  finalDebt: number; // Saldo de deuda restante tras efectuar el pago
-  originalPrincipal?: number; // Precio de contado / Capital inicial financiado
+  initialDebt: number; // Saldo de deuda inicial del mes (o saldo por cobrar)
+  finalDebt: number; // Saldo de deuda restante tras efectuar el pago (o restante por cobrar)
+  originalPrincipal?: number; // Precio de contado / Capital inicial financiado o prestado
   annualInterestRate?: number; // Tasa de Interés Anual APR %
-  totalToPay?: number; // Total a pagar a plazos
+  totalToPay?: number; // Total a pagar a plazos (o total a cobrar)
   totalInterest?: number; // Total de intereses acumulados del crédito
   payoffDiscount?: number; // Monto estimado de liquidación inmediata
   interestSaved?: number; // Ahorro en intereses
   mode: 'totalPay' | 'interestRate';
 }
+
+export type RecurrenceFrequency = 'monthly' | 'annual';
 
 export interface Transaction {
   id: string;
@@ -28,7 +33,10 @@ export interface Transaction {
   amount: number; // Positivo para Ingreso, negativo para Gasto
   day: number; // 1 - 31
   dateString: string; // ej. "15-nov", "16-sep"
-  isRecurring: boolean; // Si se proyecta a meses futuros
+  isRecurring: boolean; // Si se proyecta a meses/años futuros
+  recurrenceFrequency?: RecurrenceFrequency; // 'monthly' (mensual) | 'annual' (anual)
+  recurringGroupId?: string; // ID de grupo único para aislar series recurrentes independientes
+  recurringOriginalDay?: number; // Día original deseado (ej. 30 o 31) para preservar el día en meses de diferente longitud
   isDone: boolean; // Estado [✓ Hecho]
   actualAmount: number | null; // Monto real en cuenta bancaria
   highlight: RowHighlight;
@@ -45,6 +53,8 @@ export interface CreditCard {
   amount: number;
   isPaid: boolean;
   notes?: string;
+  cutMonthOffset?: number; // -1 = mes anterior, 0 = mes actual (default: payDay < cutDay ? -1 : 0)
+  payMonthOffset?: number; // 0 = mes actual, 1 = mes siguiente (default: 0)
 }
 
 export interface CreditLine {

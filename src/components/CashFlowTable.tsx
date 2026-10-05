@@ -17,7 +17,14 @@ import {
   FilterType 
 } from '../types/finance';
 import { TRANSLATIONS, MONTH_NAMES } from '../utils/translations';
-import { MonthTotals, formatCurrency, computePayoffAndSavings, computeQuincenaTotals } from '../utils/calculations';
+import { 
+  MonthTotals, 
+  formatCurrency, 
+  computePayoffAndSavings, 
+  computeQuincenaTotals,
+  getDateString,
+  clampDayToMonth
+} from '../utils/calculations';
 
 interface CashFlowTableProps {
   transactions: Transaction[];
@@ -71,6 +78,12 @@ const LABEL_ROW_STYLES: Record<TransactionLabel, {
     badgeBg: 'bg-amber-200/90 dark:bg-amber-500/30',
     badgeText: 'text-amber-950 dark:text-amber-100 font-bold',
     badgeBorder: 'border-amber-400 dark:border-amber-400/60'
+  },
+  Suscripción: {
+    rowClass: 'bg-blue-100/90 hover:bg-blue-200/75 dark:bg-blue-950/45 dark:hover:bg-blue-900/60 border-l-4 border-l-blue-500',
+    badgeBg: 'bg-blue-200/90 dark:bg-blue-500/30',
+    badgeText: 'text-blue-950 dark:text-blue-100 font-bold',
+    badgeBorder: 'border-blue-400 dark:border-blue-400/60'
   },
   Crédito: {
     rowClass: 'bg-indigo-100/90 hover:bg-indigo-200/75 dark:bg-indigo-900/45 dark:hover:bg-indigo-900/65 border-l-4 border-l-indigo-500',
@@ -169,24 +182,6 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
 
   return (
     <div className="w-full flex flex-col gap-3">
-      
-      {/* Banner de Arrastre Automático & Orden Cronológico */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-500/30 text-emerald-900 dark:text-emerald-300 text-xs shadow-xs">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="px-2 py-0.5 rounded bg-emerald-600 text-white font-bold text-[10px] tracking-wide uppercase shadow-xs">
-            {language === 'es' ? 'Arrastre Automático' : 'Auto Carryover'}
-          </span>
-          <span className="font-semibold text-emerald-800 dark:text-emerald-200">
-            {t.accumulatedSyncBanner}
-          </span>
-          <span className="text-emerald-600 dark:text-emerald-400 text-[11px] hidden sm:inline">
-            · {language === 'es' ? 'Orden cronológico automático por fecha (Días 1 - 31)' : 'Automatic chronological sorting by date (Days 1 - 31)'}
-          </span>
-        </div>
-        <span className="font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-300 dark:border-emerald-500/20 text-xs">
-          {monthName} {year}
-        </span>
-      </div>
 
       {/* Toolbar: Búsqueda, Filtros y Acciones */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-neutral-900/60 p-2.5 rounded-xl border border-slate-200 dark:border-neutral-800 shadow-xs">
@@ -290,16 +285,11 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
         </div>
       </div>
 
-      {/* Indicador de filas y ordenamiento */}
-      <div className="flex items-center justify-between text-[11px] text-slate-600 dark:text-neutral-400 px-1 font-medium">
-        <div className="flex items-center gap-2">
-          <CalendarClock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-          <span>
-            {language === 'es' 
-              ? 'Filas ordenadas automáticamente por fecha (del día 1 al 31). Colores asignados por etiqueta.' 
-              : 'Rows automatically sorted chronologically (day 1 to 31). Colors auto-assigned by tag.'}
-          </span>
-        </div>
+      {/* Barra de estado y conteo de filas */}
+      <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-neutral-400 px-1 font-medium">
+        <span className="font-semibold text-slate-800 dark:text-neutral-200">
+          {monthName} {year}
+        </span>
         <span className="font-semibold text-slate-700 dark:text-neutral-300 tabular-nums">
           {displayRows.length} / {transactions.length} {t.itemsCount}
         </span>
@@ -358,18 +348,25 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
 
                     {/* 3. Fecha con Badge Quincenal (1ªQ o 2ªQ) */}
                     <td className="py-2.5 px-3 text-slate-700 dark:text-neutral-300 whitespace-nowrap font-medium text-xs tabular-nums">
-                      <div className="flex items-center gap-1.5">
-                        <span>{tx.dateString}</span>
-                        {!isAccumulated && (
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold border ${
-                            tx.day <= 15 
-                              ? 'bg-teal-100 dark:bg-teal-500/20 text-teal-800 dark:text-teal-300 border-teal-300 dark:border-teal-500/30' 
-                              : 'bg-sky-100 dark:bg-sky-500/20 text-sky-800 dark:text-sky-300 border-sky-300 dark:border-sky-500/30'
-                          }`}>
-                            {tx.day <= 15 ? '1ªQ' : '2ªQ'}
-                          </span>
-                        )}
-                      </div>
+                      {(() => {
+                        const targetDay = tx.recurringOriginalDay || tx.day;
+                        const validDay = isAccumulated ? 1 : clampDayToMonth(targetDay, year, selectedMonth);
+                        const safeDateString = getDateString(validDay, selectedMonth, language, year);
+                        return (
+                          <div className="flex items-center gap-1.5">
+                            <span>{safeDateString}</span>
+                            {!isAccumulated && (
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold border ${
+                                validDay <= 15 
+                                  ? 'bg-teal-100 dark:bg-teal-500/20 text-teal-800 dark:text-teal-300 border-teal-300 dark:border-teal-500/30' 
+                                  : 'bg-sky-100 dark:bg-sky-500/20 text-sky-800 dark:text-sky-300 border-sky-300 dark:border-sky-500/30'
+                              }`}>
+                                {validDay <= 15 ? '1ªQ' : '2ªQ'}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </td>
 
                     {/* 4. Concepto */}
@@ -382,8 +379,11 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
                           </span>
                         )}
                         {tx.isRecurring && !isAccumulated && (
-                          <span className="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300 text-[10px] font-bold" title="Recurrente mensual">
-                            ↻
+                          <span 
+                            className="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300 text-[10px] font-bold" 
+                            title={tx.recurrenceFrequency === 'annual' ? (language === 'es' ? 'Recurrente anual' : 'Annual recurring') : (language === 'es' ? 'Recurrente mensual' : 'Monthly recurring')}
+                          >
+                            {tx.recurrenceFrequency === 'annual' ? (language === 'es' ? '↻ Anual' : '↻ Annual') : '↻'}
                           </span>
                         )}
                       </div>
@@ -401,7 +401,11 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
                     </td>
 
                     {/* 6. Deuda (Inicial) */}
-                    <td className="py-2.5 px-3 text-right text-rose-700 dark:text-rose-400 font-semibold whitespace-nowrap tabular-nums text-xs">
+                    <td className={`py-2.5 px-3 text-right font-semibold whitespace-nowrap tabular-nums text-xs ${
+                      (tx.loanDetails?.loanType === 'receivable' || tx.amount > 0)
+                        ? 'text-teal-700 dark:text-teal-400'
+                        : 'text-rose-700 dark:text-rose-400'
+                    }`}>
                       {tx.loanDetails?.initialDebt ? formatCurrency(tx.loanDetails.initialDebt) : '-'}
                     </td>
 
@@ -552,11 +556,19 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
               </td>
               {/* Total Deuda Inicial */}
               <td className="py-3 px-3 text-right text-rose-700 dark:text-rose-400 tabular-nums font-semibold text-xs">
-                {formatCurrency(totals.totalInitialDebt)}
+                {formatCurrency(
+                  (filter === 'all' && !searchQuery.trim())
+                    ? (totals.totalInitialDebt + totals.totalInitialReceivable)
+                    : displayRows.reduce((sum, tx) => sum + (tx.loanDetails?.initialDebt || 0), 0)
+                )}
               </td>
               {/* Total Deuda Final */}
               <td className="py-3 px-3 text-right text-slate-700 dark:text-neutral-300 tabular-nums font-semibold text-xs">
-                {formatCurrency(totals.totalFinalDebt)}
+                {formatCurrency(
+                  (filter === 'all' && !searchQuery.trim())
+                    ? (totals.totalFinalDebt + totals.totalFinalReceivable)
+                    : displayRows.reduce((sum, tx) => sum + (tx.loanDetails?.finalDebt || 0), 0)
+                )}
               </td>
               <td className="py-3 px-3 text-right text-slate-400 dark:text-neutral-500 tabular-nums text-xs">
                 -

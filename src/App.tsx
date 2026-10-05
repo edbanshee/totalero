@@ -25,6 +25,8 @@ import {
   sanitizeAndDeduplicateMonths,
   getPreviousMonthTotals,
   getDateString,
+  clampDayToMonth,
+  getDaysInMonth,
   computePayoffAndSavings 
 } from './utils/calculations';
 import { 
@@ -58,6 +60,8 @@ import { LiquidityPoolSection } from './components/LiquidityPoolSection';
 import { TransactionModal } from './components/TransactionModal';
 import { AmortizationModal } from './components/AmortizationModal';
 import { LoanDeleteModal, LoanDeleteAction } from './components/LoanDeleteModal';
+import { RecurringDeleteModal, RecurringDeleteAction } from './components/RecurringDeleteModal';
+import { SingleDeleteModal } from './components/SingleDeleteModal';
 import { LoginGateway } from './components/LoginGateway';
 import { BackupModal } from './components/BackupModal';
 import { SyncPromptModal } from './components/SyncPromptModal';
@@ -65,6 +69,30 @@ import { DangerZoneModal } from './components/DangerZoneModal';
 
 const STORAGE_LOCAL_KEY = CANONICAL_LOCAL_DATA_KEY;
 const STORAGE_SESSION_KEY = CANONICAL_SESSION_KEY;
+
+function getInheritedCreditCards(monthsRecord: Record<string, MonthData>, fallbackMonthIndex: number): CreditCard[] {
+  for (const m of Object.values(monthsRecord)) {
+    if (m.creditCards && m.creditCards.length > 0) {
+      return m.creditCards.map(c => ({
+        ...c,
+        isPaid: false
+      }));
+    }
+  }
+  return createDefaultCreditCards(fallbackMonthIndex);
+}
+
+// Helper para extraer el identificador base o de serie recurrente aislando prefijos de proyección
+export function getTransactionRecurringId(tx: Transaction): string {
+  if (tx.recurringGroupId) return tx.recurringGroupId;
+  let id = tx.id;
+  let prev = '';
+  while (id !== prev) {
+    prev = id;
+    id = id.replace(/^(tx-fwd-(annual-)?\d+-\d+-|tx-rec-\d+-)/, '');
+  }
+  return id;
+}
 
 export default function App() {
   // App Preferences
@@ -102,6 +130,8 @@ export default function App() {
   const [isAmortizationOpen, setIsAmortizationOpen] = useState(false);
   const [amortizationTx, setAmortizationTx] = useState<Transaction | null>(null);
   const [deletingLoanTx, setDeletingLoanTx] = useState<Transaction | null>(null);
+  const [deletingRecurringTx, setDeletingRecurringTx] = useState<Transaction | null>(null);
+  const [deletingSingleTx, setDeletingSingleTx] = useState<Transaction | null>(null);
   const [isBackupOpen, setIsBackupOpen] = useState(false);
   const [isDangerZoneOpen, setIsDangerZoneOpen] = useState(false);
 
@@ -304,6 +334,69 @@ export default function App() {
     }
   }, [months, language]);
 
+  // Sincronización del catálogo de tarjetas de crédito en todos los meses:
+  // Todas las tarjetas aparecen en todos los meses; el estado isPaid es independiente para cada mes.
+  useEffect(() => {
+    if (Object.keys(months).length === 0) return;
+
+    const cardMap = new Map<string, CreditCard>();
+    Object.values(months).forEach(m => {
+      (m.creditCards || []).forEach(c => {
+        if (!cardMap.has(c.id)) {
+          cardMap.set(c.id, c);
+        }
+      });
+    });
+
+    if (cardMap.size === 0) return;
+    const allCards = Array.from(cardMap.values());
+
+    let needsSync = false;
+    for (const m of Object.values(months)) {
+      const currentList = m.creditCards || [];
+      if (currentList.length !== allCards.length) {
+        needsSync = true;
+        break;
+      }
+      for (const baseCard of allCards) {
+        const found = currentList.find(c => c.id === baseCard.id);
+        if (!found || found.name !== baseCard.name || found.payDay !== baseCard.payDay || found.cutDay !== baseCard.cutDay || found.cutMonthOffset !== baseCard.cutMonthOffset || found.payMonthOffset !== baseCard.payMonthOffset) {
+          needsSync = true;
+          break;
+        }
+      }
+      if (needsSync) break;
+    }
+
+    if (needsSync) {
+      setMonths(prev => {
+        const updated: Record<string, MonthData> = {};
+        Object.entries(prev).forEach(([key, m]) => {
+          const currentList = m.creditCards || [];
+          const updatedCards = allCards.map(baseCard => {
+            const existing = currentList.find(c => c.id === baseCard.id);
+            if (existing) {
+              return {
+                ...baseCard,
+                amount: existing.amount !== undefined ? existing.amount : baseCard.amount,
+                isPaid: existing.isPaid // Estado independiente por mes
+              };
+            }
+            return {
+              ...baseCard,
+              isPaid: false // Estado independiente por mes
+            };
+          });
+          updated[key] = {
+            ...m,
+            creditCards: updatedCards
+          };
+        });
+        return updated;
+      });
+    }
+  }, [months]);
+
   // Active month data
   const currentKey = `${selectedYear}-${selectedMonth}`;
   const currentMonthData = months[currentKey] || {
@@ -394,15 +487,20 @@ export default function App() {
         lastPopulatedMonthData.transactions.forEach(oldTx => {
           // Solo heredamos transacciones recurrentes continuas (sin préstamos y NUNCA Acumulados)
           if (oldTx.isRecurring && !oldTx.loanDetails && !oldTx.isAutoAccumulated && oldTx.concept.trim().toLowerCase() !== 'acumulado') {
-            const cleanBaseId = oldTx.id.replace(/^tx-fwd-\d+-\d+-/, '');
+            const cleanBaseId = getTransactionRecurringId(oldTx);
+            const baseOriginalDay = oldTx.recurringOriginalDay || oldTx.day;
+            const clampedDay = clampDayToMonth(baseOriginalDay, selectedYear, selectedMonth);
             inheritedTransactions.push({
               id: `tx-fwd-${selectedYear}-${selectedMonth}-${cleanBaseId}`,
+              recurringGroupId: oldTx.recurringGroupId || cleanBaseId,
+              recurringOriginalDay: baseOriginalDay,
               label: oldTx.label,
               concept: oldTx.concept,
               amount: oldTx.amount,
-              day: oldTx.day,
-              dateString: getDateString(oldTx.day, selectedMonth, language),
+              day: clampedDay,
+              dateString: getDateString(clampedDay, selectedMonth, language, selectedYear),
               isRecurring: true,
+              recurrenceFrequency: oldTx.recurrenceFrequency || 'monthly',
               isDone: false,
               actualAmount: null,
               highlight: oldTx.highlight
@@ -418,7 +516,7 @@ export default function App() {
           month: selectedMonth,
           title: monthTitle,
           transactions: inheritedTransactions,
-          creditCards: createDefaultCreditCards(selectedMonth),
+          creditCards: getInheritedCreditCards(prev, selectedMonth),
           hasUserActivity: false
         }
       }));
@@ -645,13 +743,29 @@ export default function App() {
       );
 
       const newId = isAccumulated ? `acc-${selectedYear}-${selectedMonth}` : (editingTx ? editingTx.id : `tx-${Date.now()}`);
+      const recurringGroupId = txData.isRecurring
+        ? (txData.recurringGroupId || editingTx?.recurringGroupId || (editingTx ? getTransactionRecurringId(editingTx) : `rec-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`))
+        : undefined;
+
+      const loanId = txData.loanDetails
+        ? (txData.loanDetails.loanId || editingTx?.loanDetails?.loanId || `loan-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`)
+        : undefined;
+
+      const baseOriginalDay = txData.recurringOriginalDay || editingTx?.recurringOriginalDay || txData.day;
+      const validDay = isAccumulated ? 1 : clampDayToMonth(baseOriginalDay, selectedYear, selectedMonth);
+
       const newTx: Transaction = {
         ...txData,
         id: newId,
+        recurringGroupId,
+        recurringOriginalDay: (txData.isRecurring || txData.loanDetails) ? baseOriginalDay : undefined,
+        loanDetails: txData.loanDetails ? { ...txData.loanDetails, loanId: loanId! } : undefined,
         label: isAccumulated ? 'Neto' : txData.label,
         concept: isAccumulated ? 'Acumulado' : txData.concept,
-        day: isAccumulated ? 1 : txData.day,
-        dateString: isAccumulated ? getDateString(1, selectedMonth, language) : txData.dateString,
+        day: validDay,
+        dateString: isAccumulated 
+          ? getDateString(1, selectedMonth, language, selectedYear) 
+          : getDateString(validDay, selectedMonth, language, selectedYear),
         isRecurring: isAccumulated ? false : txData.isRecurring,
         isAutoAccumulated: isAccumulated ? true : undefined,
         hasCustomActual: isAccumulated ? (txData.actualAmount !== null && txData.actualAmount !== undefined) : undefined
@@ -686,9 +800,11 @@ export default function App() {
         const totalMonths = loan.totalTermMonths;
         const currentCuota = loan.currentTermMonth;
         const monthlyPayment = Math.abs(txData.amount);
-        const currentInitial = loan.initialDebt;
-        const currentFinal = loan.finalDebt;
+        const currentInitial = Math.abs(loan.initialDebt);
+        const currentFinal = Math.abs(loan.finalDebt);
         const day = txData.day;
+        const isReceivable = (loan.loanType === 'receivable') || txData.amount > 0 || txData.label === 'Ingreso';
+        const directionalPayment = isReceivable ? monthlyPayment : -monthlyPayment;
 
         // A) CREACIÓN RETROACTIVA DE CUOTAS ANTERIORES (si se añade a partir de una cuota > 1)
         if (currentCuota > 1) {
@@ -707,7 +823,7 @@ export default function App() {
                 year: prevY,
                 month: prevM,
                 transactions: [],
-                creditCards: createDefaultCreditCards(prevM),
+                creditCards: getInheritedCreditCards(updatedMonths, prevM),
                 hasUserActivity: true
               };
             }
@@ -725,20 +841,24 @@ export default function App() {
               initialDebt: kInitialDebt
             });
 
+            const baseLoanDay = txData.recurringOriginalDay || editingTx?.recurringOriginalDay || day;
+            const prevDay = clampDayToMonth(baseLoanDay, prevY, prevM);
             const prevTx: Transaction = {
               id: `tx-backfill-${prevY}-${prevM}-${loanId}-c${k}`,
               label: txData.label,
               concept: `${inst} ${k} de ${totalMonths}`,
-              amount: -monthlyPayment,
-              day: day,
-              dateString: getDateString(day, prevM, language),
+              amount: directionalPayment,
+              day: prevDay,
+              recurringOriginalDay: baseLoanDay,
+              dateString: getDateString(prevDay, prevM, language, prevY),
               isRecurring: true,
-              isDone: true, // Marcada como pagada en el historial
-              actualAmount: -monthlyPayment,
+              isDone: true, // Marcada como cobrada o pagada en el historial
+              actualAmount: directionalPayment,
               highlight: txData.highlight,
               loanDetails: {
                 ...loan,
                 loanId,
+                loanType: isReceivable ? 'receivable' : 'payable',
                 currentTermMonth: k,
                 initialDebt: Math.round(kInitialDebt * 100) / 100,
                 finalDebt: Math.round(kFinalDebt * 100) / 100,
@@ -783,7 +903,7 @@ export default function App() {
                 year: nextY,
                 month: nextM,
                 transactions: [],
-                creditCards: createDefaultCreditCards(nextM),
+                creditCards: getInheritedCreditCards(updatedMonths, nextM),
                 hasUserActivity: true
               };
             }
@@ -800,20 +920,24 @@ export default function App() {
               initialDebt: jInitialDebt
             });
 
+            const baseLoanDay = txData.recurringOriginalDay || editingTx?.recurringOriginalDay || day;
+            const fwdDay = clampDayToMonth(baseLoanDay, nextY, nextM);
             const fwdTx: Transaction = {
               id: `tx-fwd-${nextY}-${nextM}-${loanId}-c${j}`,
               label: txData.label,
               concept: `${inst} ${j} de ${totalMonths}`,
-              amount: -monthlyPayment,
-              day: day,
-              dateString: getDateString(day, nextM, language),
+              amount: directionalPayment,
+              day: fwdDay,
+              recurringOriginalDay: baseLoanDay,
+              dateString: getDateString(fwdDay, nextM, language, nextY),
               isRecurring: true,
-              isDone: false, // Cuota futura pendiente
+              isDone: false, // Cuota/cobro futuro pendiente
               actualAmount: null,
               highlight: txData.highlight,
               loanDetails: {
                 ...loan,
                 loanId,
+                loanType: isReceivable ? 'receivable' : 'payable',
                 currentTermMonth: j,
                 initialDebt: Math.round(jInitialDebt * 100) / 100,
                 finalDebt: Math.round(jFinalDebt * 100) / 100,
@@ -841,64 +965,162 @@ export default function App() {
           }
         }
       } else if (txData.isRecurring && !isAccumulated) {
-        // Gasto / Ingreso recurrente regular proyectado en los meses futuros (hasta 5 años / 60 meses o MAX_CATALOG_YEAR 2050)
-        const totalMonthsToProject = Math.min(60, (MAX_CATALOG_YEAR - selectedYear) * 12 + (11 - selectedMonth));
+        const isAnnual = txData.recurrenceFrequency === 'annual';
+        const baseRecurringId = editingTx ? getTransactionRecurringId(editingTx) : newId;
 
-        for (let step = 1; step <= totalMonthsToProject; step++) {
-          const rawM = selectedMonth + step;
-          const nextM = rawM % 12;
-          const nextY = selectedYear + Math.floor(rawM / 12);
-          if (nextY > MAX_CATALOG_YEAR) break;
+        if (isAnnual) {
+          // Si antes era recurrente mensual, limpiar proyecciones mensuales huérfanas en meses distintos
+          if (editingTx && editingTx.recurrenceFrequency !== 'annual') {
+            Object.keys(updatedMonths).forEach(key => {
+              const mData = updatedMonths[key];
+              if (mData.year > selectedYear || (mData.year === selectedYear && mData.month !== selectedMonth)) {
+                if (mData.month !== selectedMonth) {
+                  updatedMonths[key] = {
+                    ...mData,
+                    transactions: mData.transactions.filter(t => !isMatchingRecurringTx(t, editingTx, false))
+                  };
+                }
+              }
+            });
+          }
 
-          const nextKey = `${nextY}-${nextM}`;
-          if (!updatedMonths[nextKey]) {
-            const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+          // Proyección anual: cada año futuro en este mismo mes y día hasta MAX_CATALOG_YEAR (2050)
+          for (let nextY = selectedYear + 1; nextY <= MAX_CATALOG_YEAR; nextY++) {
+            const nextKey = `${nextY}-${selectedMonth}`;
+            if (!updatedMonths[nextKey]) {
+              const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+              updatedMonths[nextKey] = {
+                year: nextY,
+                month: selectedMonth,
+                title: `${monthNames[selectedMonth]} (${nextY})`,
+                transactions: [],
+                creditCards: getInheritedCreditCards(updatedMonths, selectedMonth),
+                hasUserActivity: true
+              };
+            }
+
+            const forwardTxList = [...updatedMonths[nextKey].transactions];
+
+            const existingIdx = forwardTxList.findIndex(t => 
+              t.id === `tx-fwd-annual-${nextY}-${selectedMonth}-${baseRecurringId}` ||
+              t.id === `tx-fwd-${nextY}-${selectedMonth}-${baseRecurringId}` ||
+              (editingTx && isMatchingRecurringTx(t, editingTx, false))
+            );
+
+            const fwdAnnualDay = clampDayToMonth(baseOriginalDay, nextY, selectedMonth);
+            const fwdTx: Transaction = {
+              id: `tx-fwd-annual-${nextY}-${selectedMonth}-${baseRecurringId}`,
+              recurringGroupId,
+              recurringOriginalDay: baseOriginalDay,
+              label: txData.label,
+              concept: txData.concept,
+              amount: txData.amount,
+              day: fwdAnnualDay,
+              dateString: getDateString(fwdAnnualDay, selectedMonth, language, nextY),
+              isRecurring: true,
+              recurrenceFrequency: 'annual',
+              isDone: false,
+              actualAmount: null,
+              highlight: txData.highlight
+            };
+
+            if (existingIdx >= 0) {
+              forwardTxList[existingIdx] = fwdTx;
+            } else {
+              forwardTxList.push(fwdTx);
+            }
+
             updatedMonths[nextKey] = {
-              year: nextY,
-              month: nextM,
-              title: `${monthNames[nextM]} (${nextY})`,
-              transactions: [],
-              creditCards: createDefaultCreditCards(nextM),
+              ...updatedMonths[nextKey],
+              transactions: forwardTxList,
               hasUserActivity: true
             };
           }
-
-          const forwardTxList = [...updatedMonths[nextKey].transactions];
-          
-          // Buscar si ya existe la proyección de esta transacción
-          const existingIdx = forwardTxList.findIndex(t => 
-            t.id === `tx-fwd-${nextY}-${nextM}-${newId}` ||
-            (editingTx && (
-              t.id === `tx-fwd-${nextY}-${nextM}-${editingTx.id}` || 
-              (t.concept.trim().toLowerCase() === editingTx.concept.trim().toLowerCase() && t.isRecurring && !t.loanDetails)
-            ))
-          );
-
-          const fwdTx: Transaction = {
-            id: `tx-fwd-${nextY}-${nextM}-${newId}`,
-            label: txData.label,
-            concept: txData.concept,
-            amount: txData.amount,
-            day: txData.day,
-            dateString: getDateString(txData.day, nextM, language),
-            isRecurring: true,
-            isDone: false,
-            actualAmount: null,
-            highlight: txData.highlight
-          };
-
-          if (existingIdx >= 0) {
-            forwardTxList[existingIdx] = fwdTx;
-          } else {
-            forwardTxList.push(fwdTx);
+        } else {
+          // Gasto / Ingreso recurrente regular proyectado en los meses futuros (hasta 5 años / 60 meses o MAX_CATALOG_YEAR 2050)
+          if (editingTx && editingTx.recurrenceFrequency === 'annual') {
+            Object.keys(updatedMonths).forEach(key => {
+              const mData = updatedMonths[key];
+              if (mData.year > selectedYear) {
+                updatedMonths[key] = {
+                  ...mData,
+                  transactions: mData.transactions.filter(t => !isMatchingRecurringTx(t, editingTx, false))
+                };
+              }
+            });
           }
 
-          updatedMonths[nextKey] = {
-            ...updatedMonths[nextKey],
-            transactions: forwardTxList,
-            hasUserActivity: true
-          };
+          const totalMonthsToProject = Math.min(60, (MAX_CATALOG_YEAR - selectedYear) * 12 + (11 - selectedMonth));
+
+          for (let step = 1; step <= totalMonthsToProject; step++) {
+            const rawM = selectedMonth + step;
+            const nextM = rawM % 12;
+            const nextY = selectedYear + Math.floor(rawM / 12);
+            if (nextY > MAX_CATALOG_YEAR) break;
+
+            const nextKey = `${nextY}-${nextM}`;
+            if (!updatedMonths[nextKey]) {
+              const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+              updatedMonths[nextKey] = {
+                year: nextY,
+                month: nextM,
+                title: `${monthNames[nextM]} (${nextY})`,
+                transactions: [],
+                creditCards: getInheritedCreditCards(updatedMonths, nextM),
+                hasUserActivity: true
+              };
+            }
+
+            const forwardTxList = [...updatedMonths[nextKey].transactions];
+            
+            // Buscar si ya existe la proyección de esta transacción
+            const existingIdx = forwardTxList.findIndex(t => 
+              t.id === `tx-fwd-${nextY}-${nextM}-${baseRecurringId}` ||
+              t.id === `tx-fwd-annual-${nextY}-${nextM}-${baseRecurringId}` ||
+              (editingTx && isMatchingRecurringTx(t, editingTx, false))
+            );
+
+            const fwdMonthlyDay = clampDayToMonth(baseOriginalDay, nextY, nextM);
+            const fwdTx: Transaction = {
+              id: `tx-fwd-${nextY}-${nextM}-${baseRecurringId}`,
+              recurringGroupId,
+              recurringOriginalDay: baseOriginalDay,
+              label: txData.label,
+              concept: txData.concept,
+              amount: txData.amount,
+              day: fwdMonthlyDay,
+              dateString: getDateString(fwdMonthlyDay, nextM, language, nextY),
+              isRecurring: true,
+              recurrenceFrequency: 'monthly',
+              isDone: false,
+              actualAmount: null,
+              highlight: txData.highlight
+            };
+
+            if (existingIdx >= 0) {
+              forwardTxList[existingIdx] = fwdTx;
+            } else {
+              forwardTxList.push(fwdTx);
+            }
+
+            updatedMonths[nextKey] = {
+              ...updatedMonths[nextKey],
+              transactions: forwardTxList,
+              hasUserActivity: true
+            };
+          }
         }
+      } else if (!txData.isRecurring && editingTx && editingTx.isRecurring && !isAccumulated) {
+        // Desmarcado de recurrencia: limpiar proyecciones futuras
+        Object.keys(updatedMonths).forEach(key => {
+          const mData = updatedMonths[key];
+          if (mData.year > selectedYear || (mData.year === selectedYear && mData.month > selectedMonth)) {
+            updatedMonths[key] = {
+              ...mData,
+              transactions: mData.transactions.filter(t => !isMatchingRecurringTx(t, editingTx, false))
+            };
+          }
+        });
       }
 
       // Si hubo ajuste de plazo (ej. de 12 a 9 meses desde el simulador)
@@ -916,9 +1138,10 @@ export default function App() {
 
             nextTxs = nextTxs.map(t => {
               if (t.loanDetails && t.loanDetails.institutionName === institution) {
+                const isRec = t.loanDetails.loanType === 'receivable' || t.amount > 0 || t.label === 'Ingreso';
                 return {
                   ...t,
-                  amount: -monthlyPayment,
+                  amount: isRec ? monthlyPayment : -monthlyPayment,
                   concept: `${institution} ${t.loanDetails.currentTermMonth} de ${newTerm}`,
                   loanDetails: {
                     ...t.loanDetails,
@@ -994,12 +1217,158 @@ export default function App() {
     });
   };
 
+  // Helper to match recurring instances belonging to the exact same recurring series across months
+  const isMatchingRecurringTx = (t: Transaction, target: Transaction, isSameOriginMonth: boolean = false): boolean => {
+    // 1. Accumulator and loan transactions are never regular recurring matches
+    if (t.isAutoAccumulated || target.isAutoAccumulated) return false;
+    if (t.loanDetails || target.loanDetails) return false;
+
+    // 2. Exact same transaction instance
+    if (t.id === target.id) return true;
+
+    // 3. In the same origin month (where user clicked delete), NEVER match or delete any other transaction!
+    // Even if it has the exact same concept name, category or amount, two items in the same month are distinct.
+    if (isSameOriginMonth) {
+      return false;
+    }
+
+    // 4. In other months, only transactions marked as recurring can belong to a recurring series
+    if (!t.isRecurring) {
+      return false;
+    }
+
+    // 5. Match by explicit recurringGroupId
+    if (t.recurringGroupId && target.recurringGroupId) {
+      return t.recurringGroupId === target.recurringGroupId;
+    }
+
+    // 6. Match by unwound base ID
+    const baseTargetId = getTransactionRecurringId(target);
+    const baseTId = getTransactionRecurringId(t);
+    if (baseTargetId && baseTId && baseTargetId === baseTId) {
+      return true;
+    }
+
+    return false;
+  };
+
   const handleDeleteRequest = (tx: Transaction) => {
     if (tx.loanDetails) {
       setDeletingLoanTx(tx);
-    } else {
-      handleDeleteTransaction(tx.id);
+      return;
     }
+
+    // Check if it's recurring or present in other months
+    const isRecurringOrShared = tx.isRecurring || Object.entries(months).some(([k, mData]) => {
+      if (k === currentKey) return false;
+      return mData.transactions.some(t => isMatchingRecurringTx(t, tx, false));
+    });
+
+    if (isRecurringOrShared) {
+      setDeletingRecurringTx(tx);
+    } else {
+      setDeletingSingleTx(tx);
+    }
+  };
+
+  const handleRecurringDeleteAction = (action: RecurringDeleteAction, tx: Transaction) => {
+    setDeletingRecurringTx(null);
+
+    setMonths(prev => {
+      let updatedMonths = { ...prev };
+
+      if (action === 'single') {
+        const monthData = updatedMonths[currentKey];
+        if (monthData) {
+          updatedMonths[currentKey] = {
+            ...monthData,
+            transactions: monthData.transactions.filter(t => t.id !== tx.id)
+          };
+        }
+        return cascadeAccumulatedBalances(updatedMonths, selectedYear, selectedMonth, language);
+      }
+
+      if (action === 'forward') {
+        // Borrar este mes y todos los siguientes hacia adelante
+        Object.keys(updatedMonths).forEach(key => {
+          const mData = updatedMonths[key];
+          const isOriginMonth = (mData.year === selectedYear && mData.month === selectedMonth);
+          if (mData.year > selectedYear || (mData.year === selectedYear && mData.month >= selectedMonth)) {
+            updatedMonths[key] = {
+              ...mData,
+              transactions: mData.transactions.filter(t => {
+                if (isOriginMonth) {
+                  // En el mes de origen, ÚNICAMENTE borrar la transacción exacta sobre la que se hizo clic
+                  return t.id !== tx.id;
+                }
+                return !isMatchingRecurringTx(t, tx, false);
+              })
+            };
+          }
+        });
+        return cascadeAccumulatedBalances(updatedMonths, selectedYear, selectedMonth, language);
+      }
+
+      if (action === 'backward') {
+        // Borrar este mes y todos los anteriores hacia atrás
+        let earliestYear = selectedYear;
+        let earliestMonth = selectedMonth;
+
+        Object.keys(updatedMonths).forEach(key => {
+          const mData = updatedMonths[key];
+          const isOriginMonth = (mData.year === selectedYear && mData.month === selectedMonth);
+          if (mData.year < selectedYear || (mData.year === selectedYear && mData.month <= selectedMonth)) {
+            const hasMatch = mData.transactions.some(t => isOriginMonth ? t.id === tx.id : isMatchingRecurringTx(t, tx, false));
+            if (hasMatch) {
+              if (mData.year < earliestYear || (mData.year === earliestYear && mData.month < earliestMonth)) {
+                earliestYear = mData.year;
+                earliestMonth = mData.month;
+              }
+            }
+            updatedMonths[key] = {
+              ...mData,
+              transactions: mData.transactions.filter(t => {
+                if (isOriginMonth) {
+                  return t.id !== tx.id;
+                }
+                return !isMatchingRecurringTx(t, tx, false);
+              })
+            };
+          }
+        });
+        return cascadeAccumulatedBalances(updatedMonths, earliestYear, earliestMonth, language);
+      }
+
+      if (action === 'all') {
+        // Borrar de todos los meses pasados y futuros
+        let earliestYear = selectedYear;
+        let earliestMonth = selectedMonth;
+
+        Object.keys(updatedMonths).forEach(key => {
+          const mData = updatedMonths[key];
+          const isOriginMonth = (mData.year === selectedYear && mData.month === selectedMonth);
+          const hasMatch = mData.transactions.some(t => isOriginMonth ? t.id === tx.id : isMatchingRecurringTx(t, tx, false));
+          if (hasMatch) {
+            if (mData.year < earliestYear || (mData.year === earliestYear && mData.month < earliestMonth)) {
+              earliestYear = mData.year;
+              earliestMonth = mData.month;
+            }
+          }
+          updatedMonths[key] = {
+            ...mData,
+            transactions: mData.transactions.filter(t => {
+              if (isOriginMonth) {
+                return t.id !== tx.id;
+              }
+              return !isMatchingRecurringTx(t, tx, false);
+            })
+          };
+        });
+        return cascadeAccumulatedBalances(updatedMonths, earliestYear, earliestMonth, language);
+      }
+
+      return updatedMonths;
+    });
   };
 
   const handleLoanDeleteAction = (action: LoanDeleteAction, tx: Transaction) => {
@@ -1047,20 +1416,28 @@ export default function App() {
             year: nextY,
             month: nextM,
             transactions: [],
-            creditCards: createDefaultCreditCards(nextM),
+            creditCards: getInheritedCreditCards(updatedMonths, nextM),
             hasUserActivity: true
           };
         }
 
         const nextTxList = [...updatedMonths[nextKey].transactions];
         const nextIdx = nextTxList.findIndex(t => 
-          t.loanDetails && (t.loanDetails.loanId === loanId || (t.loanDetails.institutionName === inst && t.loanDetails.currentTermMonth === currentCuota + 1))
+          t.loanDetails && (
+            (loanId && t.loanDetails.loanId ? t.loanDetails.loanId === loanId : (t.loanDetails.institutionName.trim().toLowerCase() === inst.trim().toLowerCase() && t.loanDetails.totalTermMonths === loan.totalTermMonths))
+            && t.loanDetails.currentTermMonth === currentCuota + 1
+          )
         );
 
-        const doubleAmount = - (monthlyPayment * 2);
+        const isRec = loan.loanType === 'receivable' || tx.amount > 0 || tx.label === 'Ingreso';
+        const doubleAmount = isRec ? (monthlyPayment * 2) : -(monthlyPayment * 2);
         const catchUpConcept = language === 'es' 
-          ? `${inst} ${currentCuota + 1} de ${loan.totalTermMonths} (Cuota doble por mes diferido)` 
-          : `${inst} ${currentCuota + 1} of ${loan.totalTermMonths} (Double payment for skipped month)`;
+          ? (isRec
+              ? `${inst} ${currentCuota + 1} de ${loan.totalTermMonths} (Cobro doble por mes diferido)`
+              : `${inst} ${currentCuota + 1} de ${loan.totalTermMonths} (Cuota doble por mes diferido)`)
+          : (isRec
+              ? `${inst} ${currentCuota + 1} of ${loan.totalTermMonths} (Double collection for skipped month)`
+              : `${inst} ${currentCuota + 1} of ${loan.totalTermMonths} (Double payment for skipped month)`);
 
         if (nextIdx >= 0) {
           const existingNext = nextTxList[nextIdx];
@@ -1075,13 +1452,16 @@ export default function App() {
             }
           };
         } else {
+          const baseLoanDay = tx.recurringOriginalDay || tx.day;
+          const dblDay = clampDayToMonth(baseLoanDay, nextY, nextM);
           const newNextTx: Transaction = {
             id: `tx-skip-dbl-${nextY}-${nextM}-${loanId || 'loan'}`,
             label: tx.label,
             concept: catchUpConcept,
             amount: doubleAmount,
-            day: tx.day,
-            dateString: getDateString(tx.day, nextM, language),
+            day: dblDay,
+            recurringOriginalDay: baseLoanDay,
+            dateString: getDateString(dblDay, nextM, language, nextY),
             isRecurring: true,
             isDone: false,
             actualAmount: null,
@@ -1109,13 +1489,20 @@ export default function App() {
         // Borrar esta cuota y todas las siguientes
         Object.keys(updatedMonths).forEach(key => {
           const mData = updatedMonths[key];
+          const isOriginMonth = (mData.year === selectedYear && mData.month === selectedMonth);
           if (mData.year > selectedYear || (mData.year === selectedYear && mData.month >= selectedMonth)) {
             updatedMonths[key] = {
               ...mData,
               transactions: mData.transactions.filter(t => {
+                if (isOriginMonth) {
+                  // En el mes de origen, ÚNICAMENTE borrar la transacción exacta del préstamo seleccionada
+                  return t.id !== tx.id;
+                }
                 if (t.id === tx.id) return false;
                 if (t.loanDetails) {
-                  const isSameLoan = (loanId && t.loanDetails.loanId === loanId) || (t.loanDetails.institutionName === inst);
+                  const isSameLoan = (loanId && t.loanDetails.loanId)
+                    ? t.loanDetails.loanId === loanId
+                    : (t.loanDetails.institutionName.trim().toLowerCase() === inst.trim().toLowerCase() && t.loanDetails.totalTermMonths === loan.totalTermMonths);
                   if (isSameLoan && t.loanDetails.currentTermMonth >= currentCuota) {
                     return false;
                   }
@@ -1125,7 +1512,7 @@ export default function App() {
             };
           }
         });
-        return cascadeAccumulatedBalances(updatedMonths, selectedYear, selectedMonth);
+        return cascadeAccumulatedBalances(updatedMonths, selectedYear, selectedMonth, language);
       }
 
       if (action === 'backward') {
@@ -1133,13 +1520,19 @@ export default function App() {
         const earliestMonth = Math.max(0, selectedMonth - (currentCuota - 1));
         Object.keys(updatedMonths).forEach(key => {
           const mData = updatedMonths[key];
+          const isOriginMonth = (mData.year === selectedYear && mData.month === selectedMonth);
           if (mData.year < selectedYear || (mData.year === selectedYear && mData.month <= selectedMonth)) {
             updatedMonths[key] = {
               ...mData,
               transactions: mData.transactions.filter(t => {
+                if (isOriginMonth) {
+                  return t.id !== tx.id;
+                }
                 if (t.id === tx.id) return false;
                 if (t.loanDetails) {
-                  const isSameLoan = (loanId && t.loanDetails.loanId === loanId) || (t.loanDetails.institutionName === inst);
+                  const isSameLoan = (loanId && t.loanDetails.loanId)
+                    ? t.loanDetails.loanId === loanId
+                    : (t.loanDetails.institutionName.trim().toLowerCase() === inst.trim().toLowerCase() && t.loanDetails.totalTermMonths === loan.totalTermMonths);
                   if (isSameLoan && t.loanDetails.currentTermMonth <= currentCuota) {
                     return false;
                   }
@@ -1149,26 +1542,32 @@ export default function App() {
             };
           }
         });
-        return cascadeAccumulatedBalances(updatedMonths, selectedYear, earliestMonth);
+        return cascadeAccumulatedBalances(updatedMonths, selectedYear, earliestMonth, language);
       }
 
       if (action === 'all') {
         // Borrar todo el crédito en todos los meses
         Object.keys(updatedMonths).forEach(key => {
           const mData = updatedMonths[key];
+          const isOriginMonth = (mData.year === selectedYear && mData.month === selectedMonth);
           updatedMonths[key] = {
             ...mData,
             transactions: mData.transactions.filter(t => {
+              if (isOriginMonth) {
+                return t.id !== tx.id;
+              }
               if (t.id === tx.id) return false;
               if (t.loanDetails) {
-                const isSameLoan = (loanId && t.loanDetails.loanId === loanId) || (t.loanDetails.institutionName === inst);
+                const isSameLoan = (loanId && t.loanDetails.loanId)
+                  ? t.loanDetails.loanId === loanId
+                  : (t.loanDetails.institutionName.trim().toLowerCase() === inst.trim().toLowerCase() && t.loanDetails.totalTermMonths === loan.totalTermMonths);
                 if (isSameLoan) return false;
               }
               return true;
             })
           };
         });
-        return cascadeAccumulatedBalances(updatedMonths, selectedYear, 0);
+        return cascadeAccumulatedBalances(updatedMonths, selectedYear, 0, language);
       }
 
       return updatedMonths;
@@ -1189,8 +1588,9 @@ export default function App() {
 
       const duplicated: Transaction = {
         ...tx,
-        id: `tx-${Date.now()}`,
+        id: `tx-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         concept: `${tx.concept} (Copia)`,
+        recurringGroupId: tx.isRecurring ? `rec-${Date.now()}-${Math.random().toString(36).substring(2, 7)}` : undefined,
         isDone: false,
         actualAmount: null
       };
@@ -1259,54 +1659,78 @@ export default function App() {
   };
 
   // Credit Card Handlers
-  const handleUpdateCreditCard = (updatedCard: CreditCard) => {
+  const handleUpdateCreditCard = (updatedCard: CreditCard, updateAllMonths: boolean = false) => {
     setMonths(prev => {
-      const monthData = prev[currentKey];
-      if (!monthData) return prev;
-
-      const cards = monthData.creditCards.map(c => c.id === updatedCard.id ? updatedCard : c);
-      return {
-        ...prev,
-        [currentKey]: {
-          ...monthData,
-          creditCards: cards
+      const updated: Record<string, MonthData> = {};
+      Object.entries(prev).forEach(([key, mData]) => {
+        if (key === currentKey) {
+          // En el mes activo actualizamos todo (incluyendo su estado isPaid particular y monto)
+          const cards = (mData.creditCards || []).map(c => c.id === updatedCard.id ? updatedCard : c);
+          updated[key] = {
+            ...mData,
+            creditCards: cards
+          };
+        } else if (updateAllMonths) {
+          // Si se editaron los parámetros de la tarjeta (nombre, días y offsets de corte/pago),
+          // se sincronizan en todos los meses, pero manteniendo el estado 'isPaid' particular de cada mes
+          const cards = (mData.creditCards || []).map(c => {
+            if (c.id === updatedCard.id) {
+              return {
+                ...c,
+                name: updatedCard.name,
+                payDay: updatedCard.payDay,
+                payMonthOffset: updatedCard.payMonthOffset,
+                cutDay: updatedCard.cutDay,
+                cutMonthOffset: updatedCard.cutMonthOffset,
+                amount: updatedCard.amount,
+                isPaid: c.isPaid // Estado independiente por mes
+              };
+            }
+            return c;
+          });
+          updated[key] = {
+            ...mData,
+            creditCards: cards
+          };
+        } else {
+          updated[key] = mData;
         }
-      };
+      });
+      return updated;
     });
   };
 
   const handleAddCreditCard = (newCardData: Omit<CreditCard, 'id'>) => {
+    const newCardId = `cc-${Date.now()}`;
+    const newCard: CreditCard = {
+      ...newCardData,
+      id: newCardId
+    };
+
     setMonths(prev => {
-      const monthData = prev[currentKey];
-      if (!monthData) return prev;
-
-      const newCard: CreditCard = {
-        ...newCardData,
-        id: `cc-${Date.now()}`
-      };
-
-      return {
-        ...prev,
-        [currentKey]: {
-          ...monthData,
-          creditCards: [...monthData.creditCards, newCard]
-        }
-      };
+      const updated: Record<string, MonthData> = {};
+      Object.entries(prev).forEach(([key, mData]) => {
+        const existingCards = mData.creditCards || [];
+        // Se añade la tarjeta en todos los meses; el estado isPaid inicia en false en cada mes
+        updated[key] = {
+          ...mData,
+          creditCards: [...existingCards, { ...newCard, isPaid: false }]
+        };
+      });
+      return updated;
     });
   };
 
   const handleDeleteCreditCard = (cardId: string) => {
     setMonths(prev => {
-      const monthData = prev[currentKey];
-      if (!monthData) return prev;
-
-      return {
-        ...prev,
-        [currentKey]: {
-          ...monthData,
-          creditCards: monthData.creditCards.filter(c => c.id !== cardId)
-        }
-      };
+      const updated: Record<string, MonthData> = {};
+      Object.entries(prev).forEach(([key, mData]) => {
+        updated[key] = {
+          ...mData,
+          creditCards: (mData.creditCards || []).filter(c => c.id !== cardId)
+        };
+      });
+      return updated;
     });
   };
 
@@ -1519,6 +1943,32 @@ export default function App() {
           year={selectedYear}
           language={language}
           onConfirm={handleLoanDeleteAction}
+        />
+      )}
+
+      {/* Modal Confirmación para Eliminar Pago Mensual Recurrente */}
+      {deletingRecurringTx && (
+        <RecurringDeleteModal
+          isOpen={!!deletingRecurringTx}
+          onClose={() => setDeletingRecurringTx(null)}
+          transaction={deletingRecurringTx}
+          selectedMonth={selectedMonth}
+          year={selectedYear}
+          language={language}
+          onConfirm={handleRecurringDeleteAction}
+        />
+      )}
+
+      {/* Modal Confirmación para Eliminar Transacción Individual */}
+      {deletingSingleTx && (
+        <SingleDeleteModal
+          isOpen={!!deletingSingleTx}
+          onClose={() => setDeletingSingleTx(null)}
+          transaction={deletingSingleTx}
+          selectedMonth={selectedMonth}
+          year={selectedYear}
+          language={language}
+          onConfirm={(tx) => handleDeleteTransaction(tx.id)}
         />
       )}
 

@@ -123,9 +123,14 @@ export const AmortizationModal: React.FC<AmortizationModalProps> = ({
 
   // Action: Apply new monthly to current row
   const handleApplyTermReduction = () => {
+    const isRec = loan.loanType === 'receivable' || transaction.amount > 0 || transaction.label === 'Ingreso';
+    const finalAmount = isRec 
+      ? Math.round(newMonthlyRequired * 100) / 100 
+      : -Math.round(newMonthlyRequired * 100) / 100;
+
     const updated: Transaction = {
       ...transaction,
-      amount: -Math.round(newMonthlyRequired * 100) / 100,
+      amount: finalAmount,
       loanDetails: {
         ...loan,
         totalTermMonths: currentMonthIndex + targetMonths - 1,

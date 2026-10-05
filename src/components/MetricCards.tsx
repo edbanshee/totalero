@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { 
   CheckCircle2, 
   TrendingUp, 
@@ -7,7 +7,10 @@ import {
   AlertCircle,
   CalendarClock,
   ShieldCheck,
-  ShieldAlert
+  ShieldAlert,
+  Zap,
+  Calendar,
+  ArrowRightLeft
 } from 'lucide-react';
 import { Language, Transaction, PeriodView } from '../types/finance';
 import { TRANSLATIONS } from '../utils/translations';
@@ -43,6 +46,34 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
     return computeQuincenaTotals(transactions, month, year);
   }, [transactions, month, year]);
 
+  // Base para el Total con Préstamos: 'actual' (Total Actual + Préstamos) vs 'projected' (Total Fin de Mes/Quincena + Préstamos)
+  const [loanTotalBasis, setLoanTotalBasis] = useState<'actual' | 'projected'>(() => {
+    try {
+      const saved = localStorage.getItem('totalero_loan_total_basis');
+      if (saved === 'actual' || saved === 'projected') return saved;
+    } catch {}
+    return 'actual';
+  });
+
+  const handleSetLoanTotalBasis = (basis: 'actual' | 'projected') => {
+    setLoanTotalBasis(basis);
+    try {
+      localStorage.setItem('totalero_loan_total_basis', basis);
+    } catch {}
+  };
+
+  // Valores base para el cálculo de Total con Préstamos según el periodo activo:
+  const currentActualBase = periodView === 'q1' 
+    ? biweekly.q1.totalActual 
+    : (periodView === 'q2' ? biweekly.q2.totalActual : totals.totalActual);
+
+  const currentProjectedBase = periodView === 'q1'
+    ? biweekly.q1.projectedClose
+    : (periodView === 'q2' ? biweekly.q2.projectedClose : totals.endOfMonthTotal);
+
+  const actualTotalWithLoans = currentActualBase + totalLiquidity;
+  const projectedTotalWithLoans = currentProjectedBase + totalLiquidity;
+
   // Selección de datos según el periodo activo (Mes Completo, 1ª Q, 2ª Q)
   let card1Title = t.totalActual;
   let card1Value = totals.totalActual;
@@ -56,9 +87,11 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
   let card2FootVal = formatCurrency(totals.endOfMonthTotal - totals.totalActual);
   let card2Positive = totals.endOfMonthTotal >= 0;
 
-  let card3Title = t.totalWithLoans;
-  let card3Value = totals.totalActual + totalLiquidity;
-  let card3Badge = t.finPlusLiquidity;
+  let card3Title = loanTotalBasis === 'actual' ? t.totalActualWithLoans : t.totalEndWithLoans;
+  let card3Value = loanTotalBasis === 'actual' ? actualTotalWithLoans : projectedTotalWithLoans;
+  let card3Badge = loanTotalBasis === 'actual' 
+    ? (language === 'es' ? 'Total Real + Préstamos' : 'Real Cash + Loans') 
+    : (language === 'es' ? 'Fin de Mes + Préstamos' : 'Month End + Loans');
   let card3FootLabel = `${t.capitalAvailable}:`;
   let card3FootVal = `+${formatCurrency(totalLiquidity)}`;
 
@@ -88,10 +121,13 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
       : formatCurrency(biweekly.q1.projectedClose);
     card2Positive = !biweekly.q1.hasDeficit;
 
-    card3Title = language === 'es' ? 'Total con Préstamos (1ª Q)' : 'Total with Loans (1st)';
-    card3Value = biweekly.q1.totalActual + totalLiquidity;
-    card3Badge = language === 'es' ? 'Actual Q1 + Bolsa' : 'Actual Q1 + Pool';
-    card3FootLabel = 'Liquidez:';
+    card3Title = loanTotalBasis === 'actual' 
+      ? (language === 'es' ? 'Total Actual + Préstamos (1ª Q)' : 'Current Actual + Loans (1st Q)')
+      : (language === 'es' ? 'Total al 15 + Préstamos' : 'Total Day 15 + Loans');
+    card3Badge = loanTotalBasis === 'actual' 
+      ? (language === 'es' ? 'Actual Q1 + Préstamos' : 'Actual Q1 + Loans') 
+      : (language === 'es' ? 'Saldo al 15 + Préstamos' : 'Day 15 + Loans');
+    card3FootLabel = 'Líneas disponibles:';
     card3FootVal = `+${formatCurrency(totalLiquidity)}`;
 
     card5Title = language === 'es' ? 'Pagos de Deuda (1ª Q)' : 'Debt Due (1st Bw)';
@@ -112,10 +148,13 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
     card2FootVal = formatCurrency(biweekly.q2.projectedClose);
     card2Positive = !biweekly.q2.hasDeficit;
 
-    card3Title = language === 'es' ? 'Total con Préstamos (2ª Q)' : 'Total with Loans (2nd)';
-    card3Value = biweekly.q2.totalActual + totalLiquidity;
-    card3Badge = language === 'es' ? 'Actual Q2 + Bolsa' : 'Actual Q2 + Pool';
-    card3FootLabel = 'Liquidez:';
+    card3Title = loanTotalBasis === 'actual' 
+      ? (language === 'es' ? 'Total Actual + Préstamos (2ª Q)' : 'Current Actual + Loans (2nd Q)')
+      : (language === 'es' ? 'Total Fin de Mes + Préstamos' : 'Total Month End + Loans');
+    card3Badge = loanTotalBasis === 'actual' 
+      ? (language === 'es' ? 'Actual Q2 + Préstamos' : 'Actual Q2 + Loans') 
+      : (language === 'es' ? 'Fin de Mes + Préstamos' : 'Month End + Loans');
+    card3FootLabel = 'Líneas disponibles:';
     card3FootVal = `+${formatCurrency(totalLiquidity)}`;
 
     card5Title = language === 'es' ? 'Pagos de Deuda (2ª Q)' : 'Debt Due (2nd Bw)';
@@ -134,13 +173,6 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
           <CalendarClock className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
             {language === 'es' ? 'Horizonte Financiero' : 'Financial Horizon'}
-          </span>
-          <span className="text-[11px] text-slate-500 dark:text-neutral-400 hidden sm:inline">
-            · {periodView === 'month' 
-                ? (language === 'es' ? 'Vista mensual acumulada' : 'Full month accumulated view')
-                : periodView === 'q1' 
-                  ? (language === 'es' ? 'Previsión días 1 al 15' : 'Days 1 to 15 forecast')
-                  : (language === 'es' ? `Previsión días 16 al cierre (${biweekly.q2.dayRange})` : `Days 16 to close (${biweekly.q2.dayRange})`)}
           </span>
         </div>
 
@@ -196,9 +228,6 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               <span className="font-bold text-slate-800 dark:text-neutral-200">{card1Title}</span>
             </div>
-            <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-400 text-[11px] font-bold border border-emerald-300 dark:border-emerald-500/20 tabular-nums">
-              {card1Badge}
-            </span>
           </div>
           
           <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight my-1 tabular-nums">
@@ -222,13 +251,6 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
               <TrendingUp className={`w-3.5 h-3.5 ${card2Positive ? 'text-sky-600 dark:text-sky-400' : 'text-rose-600 dark:text-rose-400'}`} />
               <span className="font-bold text-slate-800 dark:text-neutral-200">{card2Title}</span>
             </div>
-            <span className={`px-2 py-0.5 rounded text-[11px] font-bold border tabular-nums ${
-              card2Positive 
-                ? 'bg-sky-100 dark:bg-sky-500/10 text-sky-800 dark:text-sky-400 border-sky-300 dark:border-sky-500/20' 
-                : 'bg-rose-100 dark:bg-rose-500/20 text-rose-800 dark:text-rose-300 border-rose-300 dark:border-rose-500/30'
-            }`}>
-              {card2Badge}
-            </span>
           </div>
 
           <div className={`text-xl sm:text-2xl font-black tracking-tight my-1 tabular-nums ${
@@ -247,25 +269,89 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
 
         {/* 3. Total con Préstamos */}
         <div className="bg-white dark:bg-neutral-900/90 border border-slate-200/90 dark:border-neutral-800/90 rounded-2xl p-4 flex flex-col justify-between shadow-sm hover:shadow-md transition-all">
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-neutral-400 mb-1.5">
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-neutral-400 mb-1.5 gap-1.5 flex-wrap">
             <div className="flex items-center gap-1.5">
-              <Building2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <Building2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <span className="font-bold text-slate-800 dark:text-neutral-200">{card3Title}</span>
             </div>
-            <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-400 text-[11px] font-bold border border-emerald-300 dark:border-emerald-500/20">
-              {card3Badge}
-            </span>
+            
+            {/* Selector Interactivo: Base Actual vs Base Proyectada Fin de Mes/Quincena */}
+            <div className="inline-flex items-center p-0.5 rounded-lg bg-slate-100 dark:bg-neutral-950 border border-slate-200 dark:border-neutral-800 text-[10px] font-bold">
+              <button
+                type="button"
+                onClick={() => handleSetLoanTotalBasis('actual')}
+                className={`px-2 py-0.5 rounded-md transition-all flex items-center gap-1 ${
+                  loanTotalBasis === 'actual'
+                    ? 'bg-emerald-600 text-white dark:bg-emerald-500/20 dark:text-emerald-300 dark:border dark:border-emerald-500/30 shadow-2xs font-extrabold'
+                    : 'text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-neutral-200'
+                }`}
+                title={language === 'es' ? 'Mostrar Total Actual + Préstamos' : 'Show Current Actual + Loans'}
+              >
+                <Zap className="w-3 h-3" />
+                <span>{language === 'es' ? 'Total Actual' : 'Current Actual'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSetLoanTotalBasis('projected')}
+                className={`px-2 py-0.5 rounded-md transition-all flex items-center gap-1 ${
+                  loanTotalBasis === 'projected'
+                    ? 'bg-emerald-600 text-white dark:bg-emerald-500/20 dark:text-emerald-300 dark:border dark:border-emerald-500/30 shadow-2xs font-extrabold'
+                    : 'text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-neutral-200'
+                }`}
+                title={language === 'es' 
+                  ? (periodView === 'q1' ? 'Mostrar Saldo al 15 + Préstamos' : 'Mostrar Fin de Mes + Préstamos')
+                  : (periodView === 'q1' ? 'Show Day 15 close + Loans' : 'Show Month End + Loans')}
+              >
+                <Calendar className="w-3 h-3" />
+                <span>
+                  {periodView === 'q1' 
+                    ? (language === 'es' ? 'Al 15' : 'Day 15')
+                    : (language === 'es' ? 'Fin de Mes' : 'Month End')}
+                </span>
+              </button>
+            </div>
           </div>
 
           <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight my-1 tabular-nums">
             {formatCurrency(card3Value)}
           </div>
 
-          <div className="text-[11px] text-slate-500 dark:text-neutral-400 mt-1 flex items-center justify-between">
-            <span>{card3FootLabel}</span>
-            <span className="text-emerald-700 dark:text-emerald-400 font-bold tabular-nums">
-              {card3FootVal}
-            </span>
+          {/* Breakdown detallado y switcher rápido en 1 clic */}
+          <div className="flex flex-col gap-1.5 mt-1 pt-1.5 border-t border-slate-100 dark:border-neutral-800/80 text-[11px]">
+            <div className="flex items-center justify-between text-slate-500 dark:text-neutral-400">
+              <span className="flex items-center gap-1">
+                <span>{loanTotalBasis === 'actual' ? (language === 'es' ? 'Base real:' : 'Real base:') : (language === 'es' ? 'Base proyectada:' : 'Projected base:')}</span>
+                <span className="font-semibold text-slate-700 dark:text-neutral-300 tabular-nums">
+                  {formatCurrency(loanTotalBasis === 'actual' ? currentActualBase : currentProjectedBase)}
+                </span>
+                <span>+</span>
+                <span className="font-semibold text-emerald-700 dark:text-emerald-400 tabular-nums" title={t.loanLine}>
+                  {formatCurrency(totalLiquidity)}
+                </span>
+              </span>
+            </div>
+
+            {/* Chip de alternar a la otra base en 1 clic */}
+            <button
+              type="button"
+              onClick={() => handleSetLoanTotalBasis(loanTotalBasis === 'actual' ? 'projected' : 'actual')}
+              className="w-full mt-0.5 flex items-center justify-between px-2 py-1 rounded-md bg-slate-50 hover:bg-slate-100 dark:bg-neutral-950/60 dark:hover:bg-neutral-800/50 text-[10px] text-slate-500 dark:text-neutral-400 hover:text-slate-800 dark:hover:text-neutral-200 transition-colors border border-slate-200/60 dark:border-neutral-800/60"
+            >
+              <span className="flex items-center gap-1">
+                <ArrowRightLeft className="w-3 h-3 text-slate-400 dark:text-neutral-500" />
+                <span>
+                  {loanTotalBasis === 'actual'
+                    ? (periodView === 'q1' 
+                        ? (language === 'es' ? 'Ver Saldo al 15 + Préstamos:' : 'View Day 15 + Loans:')
+                        : (language === 'es' ? 'Ver Fin de Mes + Préstamos:' : 'View Month End + Loans:'))
+                    : (language === 'es' ? 'Ver Total Actual + Préstamos:' : 'View Current Actual + Loans:')
+                  }
+                </span>
+              </span>
+              <span className="font-bold tabular-nums text-slate-700 dark:text-neutral-300">
+                {formatCurrency(loanTotalBasis === 'actual' ? projectedTotalWithLoans : actualTotalWithLoans)}
+              </span>
+            </button>
           </div>
         </div>
 
@@ -276,9 +362,6 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
               <CreditCard className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
               <span className="font-bold text-slate-800 dark:text-neutral-200">{card4Title}</span>
             </div>
-            <span className="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-500/10 text-amber-800 dark:text-amber-400 text-[11px] font-bold border border-amber-300 dark:border-amber-500/20">
-              {card4Badge}
-            </span>
           </div>
 
           <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight my-1 tabular-nums">
@@ -297,9 +380,6 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
               <AlertCircle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
               <span className="font-bold text-slate-800 dark:text-neutral-200">{card5Title}</span>
             </div>
-            <span className="px-2 py-0.5 rounded bg-rose-100 dark:bg-rose-500/10 text-rose-800 dark:text-rose-400 text-[11px] font-bold border border-rose-300 dark:border-rose-500/20">
-              {card5Badge}
-            </span>
           </div>
 
           <div className="text-xl sm:text-2xl font-black text-rose-700 dark:text-rose-400 tracking-tight my-1 tabular-nums">
@@ -312,6 +392,13 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
               {card5FootVal}
             </span>
           </div>
+
+          {totals.totalFinalReceivable > 0 && periodView === 'month' && (
+            <div className="text-[10px] text-teal-700 dark:text-teal-400 pt-1.5 mt-1.5 border-t border-slate-200 dark:border-neutral-800 flex items-center justify-between font-semibold">
+              <span>{language === 'es' ? '↗ Préstamos por cobrar:' : '↗ Receivable loans:'}</span>
+              <span className="tabular-nums font-bold">+{formatCurrency(totals.totalFinalReceivable)}</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -488,7 +575,7 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
               <div className="grid grid-cols-3 gap-2 bg-white dark:bg-neutral-950/80 p-2.5 rounded-lg border border-slate-200 dark:border-neutral-800 text-[11px] mb-3 shadow-xs">
                 <div>
                   <span className="text-slate-500 dark:text-neutral-400 block text-[10px]">
-                    {language === 'es' ? 'Arrastre 15' : 'Carry 15th'}
+                    {language === 'es' ? 'Saldo Inicial (15)' : 'Start Balance (15th)'}
                   </span>
                   <span className="font-bold text-slate-900 dark:text-white tabular-nums">
                     {formatCurrency(biweekly.q2.startBalance)}

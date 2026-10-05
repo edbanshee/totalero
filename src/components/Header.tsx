@@ -99,11 +99,8 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-500 dark:text-emerald-400">
                 <WalletCards className="w-5 h-5" />
               </div>
-              <span className="font-extrabold text-xl tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
+              <span className="font-extrabold text-xl tracking-tight text-slate-900 dark:text-white">
                 {t.appName}
-                <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                  Cash Flow
-                </span>
               </span>
             </div>
 
@@ -194,8 +191,6 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="hidden md:flex items-center gap-2 text-xs text-slate-600 dark:text-neutral-400 border border-slate-200 dark:border-neutral-800/80 bg-slate-100 dark:bg-neutral-900/50 px-3 py-1.5 rounded-full">
               <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(52,211,153,0.6)]"></span>
               <span className="text-slate-700 dark:text-neutral-300 font-medium">{t.hasActivity}</span>
-              <span className="text-slate-400 dark:text-neutral-600">·</span>
-              <span className="text-slate-500 dark:text-neutral-400">{t.monthsAvailable}</span>
             </div>
 
             {/* Language Switcher */}

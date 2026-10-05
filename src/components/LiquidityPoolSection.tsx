@@ -162,11 +162,6 @@ export const LiquidityPoolSection: React.FC<LiquidityPoolSectionProps> = ({
           </tfoot>
         </table>
       </div>
-
-      {/* Nota al pie */}
-      <p className="text-[11px] text-slate-500 dark:text-neutral-400 italic">
-        {t.liquidityHelpNote}
-      </p>
     </div>
   );
 };

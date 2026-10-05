@@ -1,5 +1,5 @@
 import { MonthData, CreditLine, Transaction, CreditCard } from '../types/finance';
-import { getDateString, computePayoffAndSavings } from './calculations';
+import { getDateString, clampDayToMonth, computePayoffAndSavings } from './calculations';
 
 export const DEFAULT_CREDIT_LINES: CreditLine[] = [
   { id: 'cl-1', institution: 'Línea de Crédito Bancaria Principal', availableAmount: 25000 },
@@ -128,6 +128,7 @@ export function createInitialSampleMonths(year: number = 2026): Record<string, M
       day: 20,
       dateString: getDateString(20, 0, 'es'),
       isRecurring: true,
+      recurringGroupId: 'tx-7',
       isDone: false,
       actualAmount: null,
       highlight: 'none'
@@ -167,6 +168,7 @@ export function createInitialSampleMonths(year: number = 2026): Record<string, M
       day: 25,
       dateString: getDateString(25, 0, 'es'),
       isRecurring: true,
+      recurringGroupId: 'tx-9',
       isDone: false,
       actualAmount: null,
       highlight: 'none'
@@ -177,8 +179,10 @@ export function createInitialSampleMonths(year: number = 2026): Record<string, M
       concept: 'Segunda Quincena Nómina',
       amount: 15000.00,
       day: 30,
-      dateString: getDateString(30, 0, 'es'),
+      dateString: getDateString(30, 0, 'es', year),
       isRecurring: true,
+      recurringGroupId: 'tx-10',
+      recurringOriginalDay: 30,
       isDone: false,
       actualAmount: null,
       highlight: 'none'
@@ -251,13 +255,16 @@ export function createInitialSampleMonths(year: number = 2026): Record<string, M
             initialDebt: nextInitial
           });
 
+          const baseLoanDay = oldTx.recurringOriginalDay || oldTx.day;
+          const clampedLoanDay = clampDayToMonth(baseLoanDay, year, m);
           newTxs.push({
             id: `tx-loan-${m}-${oldTx.id}`,
             label: oldTx.label,
             concept: `${oldTx.loanDetails.institutionName} Cuota ${nextInstallment} de ${oldTx.loanDetails.totalTermMonths}`,
             amount: oldTx.amount,
-            day: oldTx.day,
-            dateString: getDateString(oldTx.day, m, 'es'),
+            day: clampedLoanDay,
+            recurringOriginalDay: baseLoanDay,
+            dateString: getDateString(clampedLoanDay, m, 'es', year),
             isRecurring: true,
             isDone: false,
             actualAmount: null,
@@ -273,13 +280,17 @@ export function createInitialSampleMonths(year: number = 2026): Record<string, M
           });
         }
       } else if (oldTx.isRecurring) {
+        const baseRecDay = oldTx.recurringOriginalDay || oldTx.day;
+        const clampedRecDay = clampDayToMonth(baseRecDay, year, m);
         newTxs.push({
           id: `tx-rec-${m}-${oldTx.id}`,
+          recurringGroupId: oldTx.recurringGroupId || oldTx.id,
+          recurringOriginalDay: baseRecDay,
           label: oldTx.label,
           concept: oldTx.concept,
           amount: oldTx.amount,
-          day: oldTx.day,
-          dateString: getDateString(oldTx.day, m, 'es'),
+          day: clampedRecDay,
+          dateString: getDateString(clampedRecDay, m, 'es', year),
           isRecurring: true,
           isDone: false,
           actualAmount: null,

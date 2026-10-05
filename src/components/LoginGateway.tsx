@@ -292,8 +292,8 @@ export const LoginGateway: React.FC<LoginGatewayProps> = ({
               <span>Siempre visibles</span>
             </div>
             <div>
-              <span className="font-bold text-slate-700 dark:text-neutral-200 block">Cascada</span>
-              <span>Arrastre automático</span>
+              <span className="font-bold text-slate-700 dark:text-neutral-200 block">{language === 'es' ? 'Flujo de Caja' : 'Cash Flow'}</span>
+              <span>{language === 'es' ? 'Mensual y Anual' : 'Monthly & Annual'}</span>
             </div>
             <div>
               <span className="font-bold text-slate-700 dark:text-neutral-200 block">Simulador</span>

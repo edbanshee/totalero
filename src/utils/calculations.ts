@@ -26,10 +26,49 @@ export function formatCompactCurrency(amount: number): string {
 }
 
 /**
- * Genera la cadena de fecha ej: 15 y mes 8 (septiembre) -> "15-sep"
+ * Determina si un año es bisiesto de acuerdo con el calendario gregoriano.
+ * Un año es bisiesto si es divisible por 4, excepto el final de siglo (divisible por 100),
+ * que solo es bisiesto si también es divisible por 400.
+ * (ej. 2024 y 2028 son bisiestos; 2025, 2026 y 2027 no; 2000 fue bisiesto; 2100 no lo será)
  */
-export function getDateString(day: number, monthIndex: number, lang: Language = 'es'): string {
-  const d = Math.max(1, Math.min(31, day));
+export function isLeapYear(year: number): boolean {
+  return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+}
+
+/**
+ * Retorna el número de días que tiene un mes específico considerando rigurosamente años bisiestos.
+ * monthIndex: 0 = Enero (31), 1 = Febrero (28 o 29), 2 = Marzo (31), 3 = Abril (30),
+ * 4 = Mayo (31), 5 = Junio (30), 6 = Julio (31), 7 = Agosto (31), 8 = Septiembre (30),
+ * 9 = Octubre (31), 10 = Noviembre (30), 11 = Diciembre (31)
+ */
+export function getDaysInMonth(year: number, monthIndex: number): number {
+  if (monthIndex === 1) {
+    return isLeapYear(year) ? 29 : 28;
+  }
+  const daysInMonths = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return daysInMonths[monthIndex] ?? new Date(year, monthIndex + 1, 0).getDate();
+}
+
+/**
+ * Limita el día al rango permitido del mes (ej. si era 30 en febrero -> 28 o 29 en bisiesto; si era 31 en abril -> 30)
+ */
+export function clampDayToMonth(day: number, year: number, monthIndex: number): number {
+  const maxDays = getDaysInMonth(year, monthIndex);
+  return Math.max(1, Math.min(maxDays, Math.round(day) || 1));
+}
+
+/**
+ * Genera la cadena de fecha ej: 15 y mes 8 (septiembre) -> "15-sep"
+ * Limita automáticamente el día al número real de días del mes considerando años bisiestos.
+ */
+export function getDateString(
+  day: number, 
+  monthIndex: number, 
+  lang: Language = 'es',
+  year?: number
+): string {
+  const targetYear = year !== undefined ? year : 2026;
+  const d = clampDayToMonth(day, targetYear, monthIndex);
   const dayStr = d < 10 ? `0${d}` : `${d}`;
   const shortMonth = MONTH_SHORT[lang][monthIndex] || MONTH_SHORT['es'][monthIndex];
   return `${dayStr}-${shortMonth}`;
@@ -333,8 +372,10 @@ export interface MonthTotals {
   totalExpense: number; // Gastos presupuestados
   endOfMonthTotal: number; // Total fin de mes proyectado (Acumulado + Ingresos - Gastos)
   totalActual: number; // Dinero real al momento (solo transacciones con isDone = true)
-  totalInitialDebt: number; // Suma de deuda inicial de préstamos
-  totalFinalDebt: number; // Suma de deuda restante de préstamos
+  totalInitialDebt: number; // Suma de deuda inicial de préstamos por pagar
+  totalFinalDebt: number; // Suma de deuda restante de préstamos por pagar
+  totalInitialReceivable: number; // Suma por cobrar inicial (préstamos inversos)
+  totalFinalReceivable: number; // Suma por cobrar restante (préstamos inversos)
   doneCount: number;
   totalTransactionsCount: number;
 }
@@ -346,6 +387,8 @@ export function computeMonthTotals(transactions: Transaction[]): MonthTotals {
   let totalActual = 0;
   let totalInitialDebt = 0;
   let totalFinalDebt = 0;
+  let totalInitialReceivable = 0;
+  let totalFinalReceivable = 0;
   let doneCount = 0;
 
   transactions.forEach((tx) => {
@@ -371,8 +414,14 @@ export function computeMonthTotals(transactions: Transaction[]): MonthTotals {
     }
 
     if (tx.loanDetails) {
-      totalInitialDebt += tx.loanDetails.initialDebt || 0;
-      totalFinalDebt += tx.loanDetails.finalDebt || 0;
+      const isRec = tx.loanDetails.loanType === 'receivable' || tx.amount > 0 || tx.label === 'Ingreso';
+      if (isRec) {
+        totalInitialReceivable += tx.loanDetails.initialDebt || 0;
+        totalFinalReceivable += tx.loanDetails.finalDebt || 0;
+      } else {
+        totalInitialDebt += tx.loanDetails.initialDebt || 0;
+        totalFinalDebt += tx.loanDetails.finalDebt || 0;
+      }
     }
   });
 
@@ -386,6 +435,8 @@ export function computeMonthTotals(transactions: Transaction[]): MonthTotals {
     totalActual,
     totalInitialDebt,
     totalFinalDebt,
+    totalInitialReceivable,
+    totalFinalReceivable,
     doneCount,
     totalTransactionsCount: transactions.length
   };
@@ -437,7 +488,7 @@ export function computeQuincenaTotals(
       } else {
         q1Expense += Math.abs(tx.amount);
       }
-      if (tx.loanDetails) {
+      if (tx.loanDetails && tx.loanDetails.loanType !== 'receivable' && tx.amount < 0) {
         q1LoanDue += Math.abs(tx.amount);
       }
       if (tx.isDone) {
@@ -451,7 +502,7 @@ export function computeQuincenaTotals(
       } else {
         q2Expense += Math.abs(tx.amount);
       }
-      if (tx.loanDetails) {
+      if (tx.loanDetails && tx.loanDetails.loanType !== 'receivable' && tx.amount < 0) {
         q2LoanDue += Math.abs(tx.amount);
       }
       if (tx.isDone) {
@@ -594,11 +645,64 @@ export function sanitizeAndDeduplicateMonths(
       isAutoAccumulated: true
     };
 
+    // Migración transparente y saneamiento de fechas:
+    // 1. Limitar rigurosamente el día al número real de días del mes (ej. 30 en febrero -> 28 o 29 en bisiesto; 31 en abril -> 30)
+    // 2. Corregir cualquier dateString inválido heredado (ej. "30-feb", "31-abr", etc.)
+    // 3. Preservar recurringOriginalDay para que no se degrade al atravesar meses cortos
+    // 4. Si no tienen IDs únicos de serie recurrente o préstamo, generarlos automáticamente
+    const maxDaysInCurMonth = getDaysInMonth(curYear, curMonth);
+    const normalizedRegularTxs = regularTxs.map(t => {
+      const originalTargetDay = t.recurringOriginalDay || t.day;
+      const validDay = clampDayToMonth(originalTargetDay, curYear, curMonth);
+      const expectedDateString = getDateString(validDay, curMonth, language, curYear);
+      
+      const isDateStringInvalid = !t.dateString || 
+        t.dateString.includes('undefined') || 
+        t.day > maxDaysInCurMonth || 
+        t.day !== validDay ||
+        t.dateString.startsWith('30-feb') ||
+        (t.dateString.startsWith('31-') && [1, 3, 5, 8, 10].includes(curMonth)) ||
+        (curMonth === 1 && !isLeapYear(curYear) && t.dateString.startsWith('29-feb'));
+
+      const dateString = isDateStringInvalid ? expectedDateString : t.dateString;
+
+      let resTx: Transaction = {
+        ...t,
+        day: validDay,
+        recurringOriginalDay: (t.isRecurring || t.loanDetails) ? originalTargetDay : undefined,
+        dateString
+      };
+
+      if (resTx.isRecurring && !resTx.recurringGroupId && !resTx.loanDetails) {
+        let baseId = resTx.id;
+        let prev = '';
+        while (baseId !== prev) {
+          prev = baseId;
+          baseId = baseId.replace(/^(tx-fwd-(annual-)?\d+-\d+-|tx-rec-\d+-)/, '');
+        }
+        resTx = {
+          ...resTx,
+          recurringGroupId: baseId
+        };
+      }
+      if (resTx.loanDetails && !resTx.loanDetails.loanId) {
+        const cleanInst = resTx.loanDetails.institutionName.trim().toLowerCase().replace(/\s+/g, '-');
+        resTx = {
+          ...resTx,
+          loanDetails: {
+            ...resTx.loanDetails,
+            loanId: `loan-${cleanInst}-${resTx.loanDetails.totalTermMonths}`
+          }
+        };
+      }
+      return resTx;
+    });
+
     cleaned[key] = {
       ...monthData,
       year: curYear,
       month: curMonth,
-      transactions: [singleAccumulated, ...regularTxs]
+      transactions: [singleAccumulated, ...normalizedRegularTxs]
     };
   }
 
