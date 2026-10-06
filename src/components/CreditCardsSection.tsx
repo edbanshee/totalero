@@ -31,14 +31,13 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
   // Form state
   const [formName, setFormName] = useState('');
   const [formPayDay, setFormPayDay] = useState(4);
-  const [formPayMonthOffset, setFormPayMonthOffset] = useState<number>(0); // 0 = mes actual, 1 = mes siguiente
+  const [formPayMonthOffset, setFormPayMonthOffset] = useState<number>(0);
   const [formCutDay, setFormCutDay] = useState(22);
-  const [formCutMonthOffset, setFormCutMonthOffset] = useState<number>(-1); // -1 = mes anterior, 0 = mes actual
+  const [formCutMonthOffset, setFormCutMonthOffset] = useState<number>(-1);
   const [formAmount, setFormAmount] = useState<number>(0);
 
   // Helper para calcular las fechas dinámicas de cualquier tarjeta para el mes activo
   const getCardDates = (card: CreditCard) => {
-    // Offset de corte: -1 = mes anterior, 0 = mes actual (default: payDay < cutDay ? -1 : 0)
     const cutOffset = card.cutMonthOffset !== undefined 
       ? card.cutMonthOffset 
       : (card.payDay < card.cutDay ? -1 : 0);
@@ -47,7 +46,6 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
     const cutYear = year + Math.floor(rawCutMonth / 12);
     const cutDateStr = getDateString(card.cutDay, cutMonthIdx, language, cutYear);
 
-    // Offset de pago: 0 = mes actual, 1 = mes siguiente (default: 0)
     const payOffset = card.payMonthOffset !== undefined ? card.payMonthOffset : 0;
     const rawPayMonth = selectedMonth + payOffset;
     const payMonthIdx = (rawPayMonth + 12) % 12;
@@ -62,7 +60,7 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
     };
   };
 
-  // Separar en 1ra y 2da quincena según el día de pago
+  // Separar en 1a y 2a quincena según el día de pago
   const fortnight1 = creditCards.filter(c => c.payDay <= 15);
   const fortnight2 = creditCards.filter(c => c.payDay > 15);
 
@@ -104,7 +102,7 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
         cutDay: formCutDay,
         cutMonthOffset: formCutMonthOffset,
         amount: formAmount
-      }, true); // updateAllMonths = true para sincronizar datos en todos los meses
+      }, true);
     } else {
       onAddCard({
         name: formName.trim(),
@@ -119,12 +117,11 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
     setIsModalOpen(false);
   };
 
-  // El estado de pagado se actualiza de forma INDEPENDIENTE para el mes activo
   const toggleCardPaid = (card: CreditCard) => {
     onUpdateCard({
       ...card,
       isPaid: !card.isPaid
-    }, false); // updateAllMonths = false (solo este mes)
+    }, false);
   };
 
   // Nombres de meses para la vista previa en el modal
@@ -136,7 +133,6 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
   const currMonthShort = MONTH_SHORT[language][selectedMonth];
   const nextMonthShort = MONTH_SHORT[language][(selectedMonth + 1) % 12];
 
-  // Cálculo de vista previa en tiempo real dentro del modal
   const rawPreviewCutMonth = selectedMonth + formCutMonthOffset;
   const previewCutMonthIdx = (rawPreviewCutMonth + 12) % 12;
   const previewCutYear = year + Math.floor(rawPreviewCutMonth / 12);
@@ -147,55 +143,58 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
   const previewPayYear = year + Math.floor(rawPreviewPayMonth / 12);
   const previewPayDateStr = getDateString(formPayDay, previewPayMonthIdx, language, previewPayYear);
 
+  const titleQ1 = language === 'es' ? '1a Quincena' : '1st Fortnight';
+  const titleQ2 = language === 'es' ? '2a Quincena' : '2nd Fortnight';
+
   return (
-    <div className="bg-white dark:bg-neutral-950/70 border border-slate-200 dark:border-neutral-800 rounded-2xl p-4 sm:p-5 flex flex-col gap-4 shadow-sm transition-colors">
+    <div className="bg-white dark:bg-neutral-950/70 border border-slate-200 dark:border-neutral-800 rounded-xl sm:rounded-2xl p-3 sm:p-5 flex flex-col gap-3 sm:gap-4 shadow-sm transition-colors">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-neutral-800 pb-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+      <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 border-b border-slate-200 dark:border-neutral-800 pb-2.5 sm:pb-3">
+        <div className="flex items-center gap-2 sm:gap-2.5">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
             <CardIcon className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">{t.creditCardsTitle}</h3>
-            <p className="text-[11px] text-slate-500 dark:text-neutral-400">{t.creditCardsSubtitle}</p>
+            <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white tracking-tight">{t.creditCardsTitle}</h3>
+            <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-neutral-400">{t.creditCardsSubtitle}</p>
           </div>
         </div>
 
         {/* Totales Quincenales */}
-        <div className="flex items-center gap-3 text-xs font-medium">
+        <div className="flex items-center gap-2 sm:gap-3 text-[11px] sm:text-xs font-medium">
           <span className="text-slate-600 dark:text-neutral-400">
-            {t.totalFortnight1}: <strong className="text-slate-900 dark:text-white tabular-nums font-bold">{formatCurrency(totalFortnight1)}</strong>
+            {language === 'es' ? 'Total 1a Q' : 'Total 1st Bw'}: <strong className="text-slate-900 dark:text-white tabular-nums font-bold">{formatCurrency(totalFortnight1)}</strong>
           </span>
           <span className="text-slate-300 dark:text-neutral-700">|</span>
           <span className="text-slate-600 dark:text-neutral-400">
-            {t.totalFortnight2}: <strong className="text-slate-900 dark:text-white tabular-nums font-bold">{formatCurrency(totalFortnight2)}</strong>
+            {language === 'es' ? 'Total 2a Q' : 'Total 2nd Bw'}: <strong className="text-slate-900 dark:text-white tabular-nums font-bold">{formatCurrency(totalFortnight2)}</strong>
           </span>
         </div>
       </div>
 
-      {/* Dos Subpaneles Quincenales en paralelo */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Dos Subpaneles Quincenales en 1 Columna en móvil y 2 Columnas en lg */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
         
-        {/* 1ra Quincena (Días 1 - 15) */}
-        <div className="bg-slate-50/70 dark:bg-neutral-900/60 border border-slate-200 dark:border-neutral-800/80 rounded-xl p-3 flex flex-col gap-2.5 shadow-xs">
+        {/* 1a Quincena (Días 1 - 15) */}
+        <div className="bg-slate-50/70 dark:bg-neutral-900/60 border border-slate-200 dark:border-neutral-800/80 rounded-xl p-2.5 sm:p-3 flex flex-col gap-2 shadow-xs">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-neutral-200">
               <span>📅</span>
-              <span>{t.fortnight1}</span>
+              <span>{titleQ1}</span>
             </div>
             <button
               onClick={() => openAddModal(5)}
-              className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 hover:bg-emerald-100/60 dark:hover:bg-emerald-500/10 px-2 py-0.5 rounded transition-colors cursor-pointer"
+              className="flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 hover:bg-emerald-100/60 dark:hover:bg-emerald-500/10 px-2 py-0.5 rounded transition-colors cursor-pointer"
             >
               <Plus className="w-3 h-3" />
               <span>{t.addCard}</span>
             </button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+          <div className="overflow-x-auto scrollbar-thin">
+            <table className="w-full text-left text-xs min-w-[320px] sm:min-w-0">
               <thead>
-                <tr className="text-[10px] text-slate-500 dark:text-neutral-400 border-b border-slate-200 dark:border-neutral-800 uppercase font-semibold">
+                <tr className="text-[9px] sm:text-[10px] text-slate-500 dark:text-neutral-400 border-b border-slate-200 dark:border-neutral-800 uppercase font-semibold">
                   <th className="py-1.5 px-2">{t.cardColName}</th>
                   <th className="py-1.5 px-2">{t.cardColPayDate}</th>
                   <th className="py-1.5 px-2">{t.cardColCutDate}</th>
@@ -207,8 +206,8 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
               <tbody className="divide-y divide-slate-200 dark:divide-neutral-800/40">
                 {fortnight1.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-4 text-center text-slate-400 dark:text-neutral-500 text-[11px]">
-                      {language === 'es' ? 'Sin tarjetas en 1ra quincena' : 'No cards in 1st fortnight'}
+                    <td colSpan={6} className="py-3 sm:py-4 text-center text-slate-400 dark:text-neutral-500 text-[10px] sm:text-[11px]">
+                      {language === 'es' ? 'Sin tarjetas en 1a quincena' : 'No cards in 1st fortnight'}
                     </td>
                   </tr>
                 ) : (
@@ -217,43 +216,43 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
 
                     return (
                       <tr key={card.id} className="hover:bg-slate-100/80 dark:hover:bg-neutral-800/30 transition-colors">
-                        <td className="py-2 px-2 font-bold text-slate-900 dark:text-white whitespace-nowrap">{card.name}</td>
-                        <td className="py-2 px-2 text-slate-700 dark:text-neutral-300 whitespace-nowrap tabular-nums">
+                        <td className="py-1.5 sm:py-2 px-2 font-bold text-slate-900 dark:text-white whitespace-nowrap text-xs">{card.name}</td>
+                        <td className="py-1.5 sm:py-2 px-2 text-slate-700 dark:text-neutral-300 whitespace-nowrap tabular-nums text-xs">
                           <div className="flex items-center gap-1">
                             <span>{payDateStr}</span>
                             {payOffset === 1 && (
-                              <span className="text-[9px] px-1 py-0.2 rounded bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 font-semibold" title={language === 'es' ? 'Pago en mes siguiente' : 'Paid in next month'}>
-                                {language === 'es' ? 'mes sig.' : 'next mo.'}
+                              <span className="text-[8px] sm:text-[9px] px-1 py-0.2 rounded bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 font-semibold">
+                                {language === 'es' ? 'mes sig.' : 'next'}
                               </span>
                             )}
                           </div>
                         </td>
-                        <td className="py-2 px-2 text-slate-500 dark:text-neutral-400 whitespace-nowrap tabular-nums">
+                        <td className="py-1.5 sm:py-2 px-2 text-slate-500 dark:text-neutral-400 whitespace-nowrap tabular-nums text-xs">
                           <div className="flex items-center gap-1">
                             <span>{cutDateStr}</span>
                             {cutOffset === -1 && (
-                              <span className="text-[9px] px-1 py-0.2 rounded bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 font-semibold" title={language === 'es' ? 'Corte en mes anterior' : 'Cutoff in previous month'}>
-                                {language === 'es' ? 'mes ant.' : 'prev. mo.'}
+                              <span className="text-[8px] sm:text-[9px] px-1 py-0.2 rounded bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 font-semibold">
+                                {language === 'es' ? 'mes ant.' : 'prev'}
                               </span>
                             )}
                           </div>
                         </td>
-                        <td className="py-2 px-2 text-right font-semibold text-slate-900 dark:text-white whitespace-nowrap tabular-nums">
+                        <td className="py-1.5 sm:py-2 px-2 text-right font-semibold text-slate-900 dark:text-white whitespace-nowrap tabular-nums text-xs">
                           {card.amount > 0 ? formatCurrency(card.amount) : '-'}
                         </td>
-                        <td className="py-2 px-2 text-center">
+                        <td className="py-1.5 sm:py-2 px-2 text-center">
                           <button
                             onClick={() => toggleCardPaid(card)}
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all border cursor-pointer ${
+                            className={`px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-bold transition-all border cursor-pointer ${
                               card.isPaid
                                 ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40'
-                                : 'bg-white dark:bg-neutral-800 text-slate-700 dark:text-neutral-400 border-slate-300 dark:border-neutral-700 hover:border-slate-400 dark:hover:border-neutral-500'
+                                : 'bg-white dark:bg-neutral-800 text-slate-700 dark:text-neutral-400 border-slate-300 dark:border-neutral-700 hover:border-slate-400'
                             }`}
                           >
                             {card.isPaid ? t.paidPayment : t.pendingPayment}
                           </button>
                         </td>
-                        <td className="py-2 px-1 text-right">
+                        <td className="py-1.5 sm:py-2 px-1 text-right">
                           <div className="flex items-center justify-end gap-1">
                             <button
                               onClick={() => openEditModal(card)}
@@ -280,26 +279,26 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
           </div>
         </div>
 
-        {/* 2da Quincena (Días 16 - 31) */}
-        <div className="bg-slate-50/70 dark:bg-neutral-900/60 border border-slate-200 dark:border-neutral-800/80 rounded-xl p-3 flex flex-col gap-2.5 shadow-xs">
+        {/* 2a Quincena (Días 16 - 31) */}
+        <div className="bg-slate-50/70 dark:bg-neutral-900/60 border border-slate-200 dark:border-neutral-800/80 rounded-xl p-2.5 sm:p-3 flex flex-col gap-2 shadow-xs">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-neutral-200">
               <span>📅</span>
-              <span>{t.fortnight2}</span>
+              <span>{titleQ2}</span>
             </div>
             <button
               onClick={() => openAddModal(18)}
-              className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 hover:bg-emerald-100/60 dark:hover:bg-emerald-500/10 px-2 py-0.5 rounded transition-colors cursor-pointer"
+              className="flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 hover:bg-emerald-100/60 dark:hover:bg-emerald-500/10 px-2 py-0.5 rounded transition-colors cursor-pointer"
             >
               <Plus className="w-3 h-3" />
               <span>{t.addCard}</span>
             </button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+          <div className="overflow-x-auto scrollbar-thin">
+            <table className="w-full text-left text-xs min-w-[320px] sm:min-w-0">
               <thead>
-                <tr className="text-[10px] text-slate-500 dark:text-neutral-400 border-b border-slate-200 dark:border-neutral-800 uppercase font-semibold">
+                <tr className="text-[9px] sm:text-[10px] text-slate-500 dark:text-neutral-400 border-b border-slate-200 dark:border-neutral-800 uppercase font-semibold">
                   <th className="py-1.5 px-2">{t.cardColName}</th>
                   <th className="py-1.5 px-2">{t.cardColPayDate}</th>
                   <th className="py-1.5 px-2">{t.cardColCutDate}</th>
@@ -311,8 +310,8 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
               <tbody className="divide-y divide-slate-200 dark:divide-neutral-800/40">
                 {fortnight2.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-4 text-center text-slate-400 dark:text-neutral-500 text-[11px]">
-                      {language === 'es' ? 'Sin tarjetas en 2da quincena' : 'No cards in 2nd fortnight'}
+                    <td colSpan={6} className="py-3 sm:py-4 text-center text-slate-400 dark:text-neutral-500 text-[10px] sm:text-[11px]">
+                      {language === 'es' ? 'Sin tarjetas en 2a quincena' : 'No cards in 2nd fortnight'}
                     </td>
                   </tr>
                 ) : (
@@ -321,43 +320,43 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
 
                     return (
                       <tr key={card.id} className="hover:bg-slate-100/80 dark:hover:bg-neutral-800/30 transition-colors">
-                        <td className="py-2 px-2 font-bold text-slate-900 dark:text-white whitespace-nowrap">{card.name}</td>
-                        <td className="py-2 px-2 text-slate-700 dark:text-neutral-300 whitespace-nowrap tabular-nums">
+                        <td className="py-1.5 sm:py-2 px-2 font-bold text-slate-900 dark:text-white whitespace-nowrap text-xs">{card.name}</td>
+                        <td className="py-1.5 sm:py-2 px-2 text-slate-700 dark:text-neutral-300 whitespace-nowrap tabular-nums text-xs">
                           <div className="flex items-center gap-1">
                             <span>{payDateStr}</span>
                             {payOffset === 1 && (
-                              <span className="text-[9px] px-1 py-0.2 rounded bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 font-semibold" title={language === 'es' ? 'Pago en mes siguiente' : 'Paid in next month'}>
-                                {language === 'es' ? 'mes sig.' : 'next mo.'}
+                              <span className="text-[8px] sm:text-[9px] px-1 py-0.2 rounded bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 font-semibold">
+                                {language === 'es' ? 'mes sig.' : 'next'}
                               </span>
                             )}
                           </div>
                         </td>
-                        <td className="py-2 px-2 text-slate-500 dark:text-neutral-400 whitespace-nowrap tabular-nums">
+                        <td className="py-1.5 sm:py-2 px-2 text-slate-500 dark:text-neutral-400 whitespace-nowrap tabular-nums text-xs">
                           <div className="flex items-center gap-1">
                             <span>{cutDateStr}</span>
                             {cutOffset === -1 && (
-                              <span className="text-[9px] px-1 py-0.2 rounded bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 font-semibold" title={language === 'es' ? 'Corte en mes anterior' : 'Cutoff in previous month'}>
-                                {language === 'es' ? 'mes ant.' : 'prev. mo.'}
+                              <span className="text-[8px] sm:text-[9px] px-1 py-0.2 rounded bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 font-semibold">
+                                {language === 'es' ? 'mes ant.' : 'prev'}
                               </span>
                             )}
                           </div>
                         </td>
-                        <td className="py-2 px-2 text-right font-semibold text-slate-900 dark:text-white whitespace-nowrap tabular-nums">
+                        <td className="py-1.5 sm:py-2 px-2 text-right font-semibold text-slate-900 dark:text-white whitespace-nowrap tabular-nums text-xs">
                           {card.amount > 0 ? formatCurrency(card.amount) : '-'}
                         </td>
-                        <td className="py-2 px-2 text-center">
+                        <td className="py-1.5 sm:py-2 px-2 text-center">
                           <button
                             onClick={() => toggleCardPaid(card)}
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all border cursor-pointer ${
+                            className={`px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-bold transition-all border cursor-pointer ${
                               card.isPaid
                                 ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40'
-                                : 'bg-white dark:bg-neutral-800 text-slate-700 dark:text-neutral-400 border-slate-300 dark:border-neutral-700 hover:border-slate-400 dark:hover:border-neutral-500'
+                                : 'bg-white dark:bg-neutral-800 text-slate-700 dark:text-neutral-400 border-slate-300 dark:border-neutral-700 hover:border-slate-400'
                             }`}
                           >
                             {card.isPaid ? t.paidPayment : t.pendingPayment}
                           </button>
                         </td>
-                        <td className="py-2 px-1 text-right">
+                        <td className="py-1.5 sm:py-2 px-1 text-right">
                           <div className="flex items-center justify-end gap-1">
                             <button
                               onClick={() => openEditModal(card)}
@@ -386,15 +385,15 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
 
       </div>
 
-      {/* Modal para Agregar / Editar Tarjeta con Selección de Mes de Corte y Mes de Pago */}
+      {/* Modal para Agregar / Editar Tarjeta */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 dark:bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-2xl p-5 max-w-lg w-full shadow-2xl my-auto text-xs text-slate-900 dark:text-neutral-100">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 dark:bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-2xl p-4 sm:p-5 max-w-lg w-full shadow-2xl my-auto text-xs text-slate-900 dark:text-neutral-100">
             
             {/* Header del Modal */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-neutral-800 mb-4">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                   <CardIcon className="w-4 h-4" />
                 </div>
                 <div>
@@ -419,7 +418,7 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
               </button>
             </div>
             
-            <form onSubmit={handleSaveCard} className="flex flex-col gap-4">
+            <form onSubmit={handleSaveCard} className="flex flex-col gap-3.5 sm:gap-4">
               
               {/* 1. Nombre de la Tarjeta */}
               <div>
@@ -451,21 +450,21 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
                 />
               </div>
 
-              {/* 3. Sección Fecha de Corte (Día + Selector de Mes Anterior vs Mes Actual) */}
-              <div className="bg-slate-50/80 dark:bg-neutral-950/70 border border-slate-200 dark:border-neutral-800 rounded-xl p-3.5 flex flex-col gap-2.5">
+              {/* 3. Sección Fecha de Corte */}
+              <div className="bg-slate-50/80 dark:bg-neutral-950/70 border border-slate-200 dark:border-neutral-800 rounded-xl p-3 sm:p-3.5 flex flex-col gap-2.5">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-xs text-slate-800 dark:text-neutral-200 flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                     {language === 'es' ? 'Fecha de Corte' : 'Cutoff Date'}
                   </span>
                   <span className="text-[10px] text-amber-700 dark:text-amber-400 font-medium">
-                    {language === 'es' ? 'Cierre de tu estado de cuenta' : 'Statement closing date'}
+                    {language === 'es' ? 'Cierre de estado de cuenta' : 'Statement closing'}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 sm:gap-3 items-center">
                   <div className="sm:col-span-4">
-                    <label className="text-[11px] text-slate-600 dark:text-neutral-400 block mb-1">
+                    <label className="text-[10px] sm:text-[11px] text-slate-600 dark:text-neutral-400 block mb-1">
                       {language === 'es' ? 'Día de Corte (1-31)' : 'Cutoff Day (1-31)'}
                     </label>
                     <input
@@ -480,33 +479,33 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
                   </div>
 
                   <div className="sm:col-span-8">
-                    <label className="text-[11px] text-slate-600 dark:text-neutral-400 block mb-1">
+                    <label className="text-[10px] sm:text-[11px] text-slate-600 dark:text-neutral-400 block mb-1">
                       {language === 'es' ? '¿En qué mes ocurre el corte?' : 'Which month does cutoff happen?'}
                     </label>
                     <div className="grid grid-cols-2 gap-1.5 p-0.5 bg-slate-200/80 dark:bg-neutral-900 rounded-lg border border-slate-300 dark:border-neutral-800">
                       <button
                         type="button"
                         onClick={() => setFormCutMonthOffset(-1)}
-                        className={`px-2.5 py-1.5 rounded-md text-[11px] font-semibold transition-all cursor-pointer flex flex-col items-center justify-center ${
+                        className={`px-2 py-1.5 rounded-md text-[10px] sm:text-[11px] font-semibold transition-all cursor-pointer flex flex-col items-center justify-center ${
                           formCutMonthOffset === -1
                             ? 'bg-amber-500 text-white shadow-xs font-bold'
-                            : 'text-slate-700 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white'
+                            : 'text-slate-700 dark:text-neutral-400 hover:text-slate-900'
                         }`}
                       >
-                        <span>{language === 'es' ? 'Mes Anterior' : 'Previous Month'}</span>
+                        <span>{language === 'es' ? 'Mes Anterior' : 'Prev Month'}</span>
                         <span className="text-[9px] opacity-90">({prevMonthShort})</span>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => setFormCutMonthOffset(0)}
-                        className={`px-2.5 py-1.5 rounded-md text-[11px] font-semibold transition-all cursor-pointer flex flex-col items-center justify-center ${
+                        className={`px-2 py-1.5 rounded-md text-[10px] sm:text-[11px] font-semibold transition-all cursor-pointer flex flex-col items-center justify-center ${
                           formCutMonthOffset === 0
                             ? 'bg-amber-500 text-white shadow-xs font-bold'
-                            : 'text-slate-700 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white'
+                            : 'text-slate-700 dark:text-neutral-400 hover:text-slate-900'
                         }`}
                       >
-                        <span>{language === 'es' ? 'Mes Actual' : 'Current Month'}</span>
+                        <span>{language === 'es' ? 'Mes Actual' : 'Current'}</span>
                         <span className="text-[9px] opacity-90">({currMonthShort})</span>
                       </button>
                     </div>
@@ -514,21 +513,21 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
                 </div>
               </div>
 
-              {/* 4. Sección Fecha de Pago (Día + Selector de Mes Actual vs Mes Siguiente) */}
-              <div className="bg-slate-50/80 dark:bg-neutral-950/70 border border-slate-200 dark:border-neutral-800 rounded-xl p-3.5 flex flex-col gap-2.5">
+              {/* 4. Sección Fecha de Pago */}
+              <div className="bg-slate-50/80 dark:bg-neutral-950/70 border border-slate-200 dark:border-neutral-800 rounded-xl p-3 sm:p-3.5 flex flex-col gap-2.5">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-xs text-slate-800 dark:text-neutral-200 flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                    {language === 'es' ? 'Fecha de Pago (Límite)' : 'Due Date (Payment Deadline)'}
+                    {language === 'es' ? 'Fecha de Pago (Límite)' : 'Due Date'}
                   </span>
                   <span className="text-[10px] text-blue-700 dark:text-blue-400 font-medium">
-                    {language === 'es' ? 'Fecha límite para pagar' : 'Payment deadline date'}
+                    {language === 'es' ? 'Fecha límite de pago' : 'Payment deadline'}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 sm:gap-3 items-center">
                   <div className="sm:col-span-4">
-                    <label className="text-[11px] text-slate-600 dark:text-neutral-400 block mb-1">
+                    <label className="text-[10px] sm:text-[11px] text-slate-600 dark:text-neutral-400 block mb-1">
                       {language === 'es' ? 'Día de Pago (1-31)' : 'Due Day (1-31)'}
                     </label>
                     <input
@@ -543,30 +542,30 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
                   </div>
 
                   <div className="sm:col-span-8">
-                    <label className="text-[11px] text-slate-600 dark:text-neutral-400 block mb-1">
+                    <label className="text-[10px] sm:text-[11px] text-slate-600 dark:text-neutral-400 block mb-1">
                       {language === 'es' ? '¿En qué mes se realiza el pago?' : 'Which month is payment made?'}
                     </label>
                     <div className="grid grid-cols-2 gap-1.5 p-0.5 bg-slate-200/80 dark:bg-neutral-900 rounded-lg border border-slate-300 dark:border-neutral-800">
                       <button
                         type="button"
                         onClick={() => setFormPayMonthOffset(0)}
-                        className={`px-2.5 py-1.5 rounded-md text-[11px] font-semibold transition-all cursor-pointer flex flex-col items-center justify-center ${
+                        className={`px-2 py-1.5 rounded-md text-[10px] sm:text-[11px] font-semibold transition-all cursor-pointer flex flex-col items-center justify-center ${
                           formPayMonthOffset === 0
                             ? 'bg-blue-600 text-white shadow-xs font-bold'
-                            : 'text-slate-700 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white'
+                            : 'text-slate-700 dark:text-neutral-400 hover:text-slate-900'
                         }`}
                       >
-                        <span>{language === 'es' ? 'Mes Actual' : 'Current Month'}</span>
+                        <span>{language === 'es' ? 'Mes Actual' : 'Current'}</span>
                         <span className="text-[9px] opacity-90">({currMonthShort})</span>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => setFormPayMonthOffset(1)}
-                        className={`px-2.5 py-1.5 rounded-md text-[11px] font-semibold transition-all cursor-pointer flex flex-col items-center justify-center ${
+                        className={`px-2 py-1.5 rounded-md text-[10px] sm:text-[11px] font-semibold transition-all cursor-pointer flex flex-col items-center justify-center ${
                           formPayMonthOffset === 1
                             ? 'bg-blue-600 text-white shadow-xs font-bold'
-                            : 'text-slate-700 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white'
+                            : 'text-slate-700 dark:text-neutral-400 hover:text-slate-900'
                         }`}
                       >
                         <span>{language === 'es' ? 'Mes Siguiente' : 'Next Month'}</span>
@@ -577,8 +576,8 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
                 </div>
               </div>
 
-              {/* 5. Vista Previa Dinámica del Ciclo para el mes activo */}
-              <div className="bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-300 dark:border-emerald-500/30 rounded-xl p-3 flex flex-col gap-2">
+              {/* 5. Vista Previa Dinámica */}
+              <div className="bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-300 dark:border-emerald-500/30 rounded-xl p-2.5 sm:p-3 flex flex-col gap-2">
                 <div className="flex items-center justify-between text-xs font-bold text-emerald-900 dark:text-emerald-200">
                   <span className="flex items-center gap-1.5">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -587,16 +586,16 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
                       : `Cycle Preview for ${activeMonthName} ${year}`}
                   </span>
                   <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-500/25 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/40 font-bold">
-                    {formPayDay <= 15 ? t.fortnight1 : t.fortnight2}
+                    {formPayDay <= 15 ? titleQ1 : titleQ2}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                <div className="grid grid-cols-2 gap-2 text-[10px] sm:text-[11px] pt-1">
                   <div className="bg-white/80 dark:bg-neutral-900/80 p-2 rounded-lg border border-slate-200 dark:border-neutral-800 flex flex-col">
-                    <span className="text-[10px] text-slate-500 dark:text-neutral-400">
+                    <span className="text-[9px] sm:text-[10px] text-slate-500 dark:text-neutral-400">
                       {language === 'es' ? 'Fecha de Corte:' : 'Cutoff Date:'}
                     </span>
-                    <strong className="text-xs text-amber-700 dark:text-amber-300 font-bold tabular-nums mt-0.5">
+                    <strong className="text-[11px] sm:text-xs text-amber-700 dark:text-amber-300 font-bold tabular-nums mt-0.5">
                       {previewCutDateStr}
                     </strong>
                     <span className="text-[9px] text-slate-400 dark:text-neutral-500">
@@ -605,10 +604,10 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
                   </div>
 
                   <div className="bg-white/80 dark:bg-neutral-900/80 p-2 rounded-lg border border-slate-200 dark:border-neutral-800 flex flex-col">
-                    <span className="text-[10px] text-slate-500 dark:text-neutral-400">
+                    <span className="text-[9px] sm:text-[10px] text-slate-500 dark:text-neutral-400">
                       {language === 'es' ? 'Fecha de Pago:' : 'Due Date:'}
                     </span>
-                    <strong className="text-xs text-blue-700 dark:text-blue-300 font-bold tabular-nums mt-0.5">
+                    <strong className="text-[11px] sm:text-xs text-blue-700 dark:text-blue-300 font-bold tabular-nums mt-0.5">
                       {previewPayDateStr}
                     </strong>
                     <span className="text-[9px] text-slate-400 dark:text-neutral-500">
@@ -623,13 +622,13 @@ export const CreditCardsSection: React.FC<CreditCardsSectionProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-lg border border-slate-300 dark:border-neutral-800 text-slate-700 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800 hover:text-slate-900 dark:hover:text-white text-xs font-semibold transition-colors cursor-pointer"
+                  className="px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-lg border border-slate-300 dark:border-neutral-800 text-slate-700 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800 text-xs font-semibold transition-colors cursor-pointer"
                 >
                   {t.btnCancel}
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                  className="px-4 sm:px-5 py-1.5 sm:py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
                 >
                   {editingCard ? (language === 'es' ? 'Actualizar Tarjeta' : 'Update Card') : (language === 'es' ? 'Guardar Tarjeta' : 'Save Card')}
                 </button>

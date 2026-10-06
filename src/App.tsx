@@ -1839,7 +1839,7 @@ export default function App() {
           onOpenDangerZone={() => setIsDangerZoneOpen(true)}
         />
         {activeView === 'monthly' && (
-          <div className="max-w-[1600px] mx-auto px-4 sm:px-6 pb-2.5 pt-0.5">
+          <div className="max-w-[1600px] mx-auto px-3 sm:px-6 pb-2 sm:pb-2.5 pt-0 sm:pt-0.5">
             <MonthBar
               year={selectedYear}
               selectedMonth={selectedMonth}

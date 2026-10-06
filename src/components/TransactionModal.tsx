@@ -675,11 +675,6 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 <span className="font-bold text-slate-900 dark:text-white text-xs">
                   {t.fieldLinkLoan}
                 </span>
-                {hasLoan && (
-                  <span className="hidden sm:inline text-[10px] text-amber-700/80 dark:text-amber-400/80 font-normal">
-                    · {language === 'es' ? 'Desplazamiento interno' : 'Internal scroll'}
-                  </span>
-                )}
               </div>
               <span className={`text-[11px] px-2.5 py-0.5 rounded font-bold ${
                 hasLoan 
@@ -691,7 +686,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             </button>
 
             {hasLoan && (
-              <div className="p-4 sm:p-5 pb-14 sm:pb-20 flex flex-col gap-4 bg-white dark:bg-neutral-950/80 border-t border-slate-200 dark:border-neutral-800 max-h-[60vh] sm:max-h-[560px] overflow-y-auto pr-2.5 sm:pr-3 scroll-smooth">
+              <div className="p-4 sm:p-5 pb-[26px] h-[700px] max-h-[700px] flex flex-col gap-4 bg-white dark:bg-neutral-950/80 border-t border-slate-200 dark:border-neutral-800 overflow-y-auto pr-2.5 sm:pr-3 scroll-smooth">
                 
                 {/* 1. Selector de Modalidad de Préstamo (Deuda por pagar vs Préstamo inverso que me deben) */}
                 <div className="p-3 sm:p-3.5 rounded-xl bg-slate-50 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 flex flex-col gap-2.5 shadow-2xs">
@@ -722,13 +717,13 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                           setLabel('Préstamo');
                         }
                       }}
-                      className={`p-2.5 rounded-xl border text-left flex items-start gap-2.5 transition-all ${
+                      className={`px-3 py-2 rounded-xl border text-left flex items-center gap-2.5 transition-all ${
                         loanType === 'payable'
                           ? 'bg-white dark:bg-neutral-800 border-amber-500 ring-2 ring-amber-500/20 shadow-xs'
                           : 'bg-white/60 dark:bg-neutral-950/40 border-slate-200 dark:border-neutral-800/80 hover:border-slate-300 dark:hover:border-neutral-700 text-slate-600 dark:text-neutral-400'
                       }`}
                     >
-                      <div className={`p-1.5 rounded-lg shrink-0 mt-0.5 ${
+                      <div className={`p-1.5 rounded-lg shrink-0 ${
                         loanType === 'payable'
                           ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400'
                           : 'bg-slate-100 dark:bg-neutral-800 text-slate-500 dark:text-neutral-400'
@@ -739,13 +734,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                         <div className={`font-bold text-xs ${loanType === 'payable' ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-neutral-300'}`}>
                           {t.loanTypePayable}
                         </div>
-                        <p className="text-[10px] text-slate-500 dark:text-neutral-400 mt-0.5 leading-snug">
-                          {t.loanTypePayableDesc}
-                        </p>
                       </div>
                     </button>
 
-                    {/* Botón: Préstamo inverso (Me deben a mí) */}
+                    {/* Botón: Deuda por cobrar */}
                     <button
                       type="button"
                       onClick={() => {
@@ -755,13 +747,13 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                           setLabel('Préstamo');
                         }
                       }}
-                      className={`p-2.5 rounded-xl border text-left flex items-start gap-2.5 transition-all ${
+                      className={`px-3 py-2 rounded-xl border text-left flex items-center gap-2.5 transition-all ${
                         loanType === 'receivable'
                           ? 'bg-white dark:bg-neutral-800 border-teal-500 ring-2 ring-teal-500/20 shadow-xs'
                           : 'bg-white/60 dark:bg-neutral-950/40 border-slate-200 dark:border-neutral-800/80 hover:border-slate-300 dark:hover:border-neutral-700 text-slate-600 dark:text-neutral-400'
                       }`}
                     >
-                      <div className={`p-1.5 rounded-lg shrink-0 mt-0.5 ${
+                      <div className={`p-1.5 rounded-lg shrink-0 ${
                         loanType === 'receivable'
                           ? 'bg-teal-100 dark:bg-teal-500/20 text-teal-700 dark:text-teal-400'
                           : 'bg-slate-100 dark:bg-neutral-800 text-slate-500 dark:text-neutral-400'
@@ -772,9 +764,6 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                         <div className={`font-bold text-xs ${loanType === 'receivable' ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-neutral-300'}`}>
                           {t.loanTypeReceivable}
                         </div>
-                        <p className="text-[10px] text-slate-500 dark:text-neutral-400 mt-0.5 leading-snug">
-                          {t.loanTypeReceivableDesc}
-                        </p>
                       </div>
                     </button>
                   </div>
@@ -894,11 +883,6 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                         <Calculator className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                         {t.calculatorModeTitle}
                       </span>
-                      <p className="text-[10px] text-slate-500 dark:text-neutral-400 mt-0.5">
-                        {language === 'es'
-                          ? 'Calcula la tasa de interés anual (APR), interés total y mensualidad sin cortes'
-                          : 'Compute APR, total interest charges, and monthly payments'}
-                      </p>
                     </div>
 
                     {/* Selector de modo */}
@@ -1041,11 +1025,11 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                     </div>
                   )}
 
-                  {/* Resultados Calculados en tiempo real */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-2 text-slate-700 dark:text-neutral-300">
+                  {/* Resultados Calculados en tiempo real (4 por fila, 2 filas) */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 text-slate-700 dark:text-neutral-300">
                     {/* 1. Mensualidad */}
-                    <div className="bg-white dark:bg-neutral-950 p-3 rounded-xl border border-slate-200 dark:border-neutral-800 flex flex-col justify-between shadow-xs">
-                      <span className="text-[10px] text-slate-500 dark:text-neutral-400 block font-medium">
+                    <div className="bg-white dark:bg-neutral-950 p-2.5 rounded-xl border border-slate-200 dark:border-neutral-800 flex flex-col justify-between shadow-xs">
+                      <span className="text-[10px] text-slate-500 dark:text-neutral-400 block font-medium leading-tight">
                         {loanType === 'receivable'
                           ? (language === 'es' ? 'Mensualidad a cobrar' : 'Monthly to collect')
                           : t.calcResultMonthly}
@@ -1057,7 +1041,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                         <button
                           type="button"
                           onClick={handleApplyCalculatedMonthly}
-                          className="mt-1.5 inline-flex items-center gap-1 text-[10px] text-amber-700 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-300 font-semibold bg-amber-100/80 dark:bg-amber-500/10 px-2 py-0.5 rounded border border-amber-300 dark:border-amber-500/30 transition-colors"
+                          className="mt-1 inline-flex items-center gap-1 text-[9px] text-amber-700 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-300 font-semibold bg-amber-100/80 dark:bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-300 dark:border-amber-500/30 transition-colors"
                           title="Usar esta mensualidad en el Monto de la transacción"
                         >
                           Usar en Monto
@@ -1066,8 +1050,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                     </div>
 
                     {/* 2. Interés Mensual ($) y Tasa Mensual (%) */}
-                    <div className="bg-white dark:bg-neutral-950 p-3 rounded-xl border border-slate-200 dark:border-neutral-800 flex flex-col justify-between shadow-xs">
-                      <span className="text-[10px] text-slate-500 dark:text-neutral-400 block font-medium">
+                    <div className="bg-white dark:bg-neutral-950 p-2.5 rounded-xl border border-slate-200 dark:border-neutral-800 flex flex-col justify-between shadow-xs">
+                      <span className="text-[10px] text-slate-500 dark:text-neutral-400 block font-medium leading-tight">
                         {loanType === 'receivable'
                           ? (language === 'es' ? 'Interés ganado / mes' : 'Earned interest / mo')
                           : t.calcResultMonthlyInterest}
@@ -1078,15 +1062,15 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                         }`}>
                           {formatCurrency(calcMonthlyInterest)} / mes
                         </span>
-                        <span className="text-[9px] text-slate-500 dark:text-neutral-400 block mt-0.5 tabular-nums">
+                        <span className="text-[9px] text-slate-500 dark:text-neutral-400 block mt-0.5 tabular-nums leading-tight">
                           Tasa: {calcMonthlyInterestRate.toFixed(2)}% mensual
                         </span>
                       </div>
                     </div>
 
                     {/* 3. Interés Total del Crédito */}
-                    <div className="bg-white dark:bg-neutral-950 p-3 rounded-xl border border-slate-200 dark:border-neutral-800 flex flex-col justify-between shadow-xs">
-                      <span className="text-[10px] text-slate-500 dark:text-neutral-400 block font-medium">
+                    <div className="bg-white dark:bg-neutral-950 p-2.5 rounded-xl border border-slate-200 dark:border-neutral-800 flex flex-col justify-between shadow-xs">
+                      <span className="text-[10px] text-slate-500 dark:text-neutral-400 block font-medium leading-tight">
                         {loanType === 'receivable'
                           ? (language === 'es' ? 'Interés total a ganar' : 'Total interest to earn')
                           : t.calcResultTotalInterest}
@@ -1097,7 +1081,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                         }`}>
                           {formatCurrency(calcTotalInterest)}
                         </span>
-                        <span className="text-[9px] text-slate-400 dark:text-neutral-500 block mt-0.5">
+                        <span className="text-[9px] text-slate-400 dark:text-neutral-500 block mt-0.5 leading-tight">
                           {loanType === 'receivable' 
                             ? (language === 'es' ? 'Total cobro - Capital' : 'Total - Capital')
                             : 'Total pagar - Préstamo'}
@@ -1106,13 +1090,13 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                     </div>
 
                     {/* 4. Tasa Anual (APR) */}
-                    <div className="bg-white dark:bg-neutral-950 p-3 rounded-xl border border-slate-200 dark:border-neutral-800 flex flex-col justify-between shadow-xs">
-                      <span className="text-[10px] text-slate-500 dark:text-neutral-400 block font-medium">{t.calcResultAPR}</span>
+                    <div className="bg-white dark:bg-neutral-950 p-2.5 rounded-xl border border-slate-200 dark:border-neutral-800 flex flex-col justify-between shadow-xs">
+                      <span className="text-[10px] text-slate-500 dark:text-neutral-400 block font-medium leading-tight">{t.calcResultAPR}</span>
                       <div className="mt-1">
                         <span className="font-bold text-amber-700 dark:text-amber-400 text-xs sm:text-sm tabular-nums block">
                           {calcAPR.toFixed(1)}% anual
                         </span>
-                        <span className="text-[9px] text-slate-400 dark:text-neutral-500 block mt-0.5">
+                        <span className="text-[9px] text-slate-400 dark:text-neutral-500 block mt-0.5 leading-tight">
                           {loanType === 'receivable'
                             ? (language === 'es' ? 'Rendimiento anual' : 'Annual return')
                             : 'Tasa Anual Efectiva'}
@@ -1121,8 +1105,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                     </div>
 
                     {/* 5. Deuda / Saldo por Cobrar Inicial del Mes Activo */}
-                    <div className="bg-white dark:bg-neutral-950 p-3 rounded-xl border border-slate-200 dark:border-neutral-800 flex flex-col justify-between shadow-xs">
-                      <span className="text-[10px] text-slate-500 dark:text-neutral-400 block font-medium">
+                    <div className="bg-white dark:bg-neutral-950 p-2.5 rounded-xl border border-slate-200 dark:border-neutral-800 flex flex-col justify-between shadow-xs">
+                      <span className="text-[10px] text-slate-500 dark:text-neutral-400 block font-medium leading-tight">
                         {loanType === 'receivable'
                           ? (language === 'es' ? 'Saldo por cobrar inicial' : 'Initial to collect')
                           : (language === 'es' ? 'Deuda Inicial de este Mes' : 'Initial Debt Balance')}
@@ -1131,7 +1115,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                         <span className="font-bold text-amber-700 dark:text-amber-300 text-xs sm:text-sm tabular-nums block">
                           {formatCurrency(initialDebt > 0 ? initialDebt : calcTheoreticalDebt)}
                         </span>
-                        <span className="text-[9px] text-slate-400 dark:text-neutral-500 block mt-0.5">
+                        <span className="text-[9px] text-slate-400 dark:text-neutral-500 block mt-0.5 leading-tight">
                           {loanType === 'receivable'
                             ? (language === 'es' ? `Al inicio del cobro ${currentTerm} de ${totalTerm}` : `Start of collection ${currentTerm} of ${totalTerm}`)
                             : `Al inicio de cuota ${currentTerm} de ${totalTerm}`}
@@ -1140,8 +1124,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                     </div>
 
                     {/* 6. Restante Tras Cobro/Pago (Cálculo Exacto) */}
-                    <div className="bg-white dark:bg-neutral-950 p-3 rounded-xl border border-slate-200 dark:border-neutral-800 flex flex-col justify-between shadow-xs">
-                      <span className="text-[10px] text-emerald-700 dark:text-emerald-400 block font-medium">
+                    <div className="bg-white dark:bg-neutral-950 p-2.5 rounded-xl border border-slate-200 dark:border-neutral-800 flex flex-col justify-between shadow-xs">
+                      <span className="text-[10px] text-emerald-700 dark:text-emerald-400 block font-medium leading-tight">
                         {loanType === 'receivable'
                           ? (language === 'es' ? 'Restante por cobrar' : 'Remaining to collect')
                           : t.calcResultFinalDebt}
@@ -1150,7 +1134,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                         <span className="font-bold text-emerald-700 dark:text-emerald-400 text-xs sm:text-sm tabular-nums block">
                           {formatCurrency(calcFinalDebt)}
                         </span>
-                        <span className="text-[9px] text-slate-500 dark:text-neutral-400 block mt-0.5">
+                        <span className="text-[9px] text-slate-500 dark:text-neutral-400 block mt-0.5 leading-tight">
                           {loanType === 'receivable'
                             ? (language === 'es' ? 'Saldo Inicial - Cobro de este mes' : 'Initial - This month collection')
                             : (language === 'es' ? 'Deuda Inicial - Pago de este mes' : 'Initial - This month payment')}
@@ -1159,8 +1143,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                     </div>
 
                     {/* 7. Monto para Liquidar este Mes */}
-                    <div className="bg-white dark:bg-neutral-950 p-3 rounded-xl border border-amber-300 dark:border-amber-500/30 flex flex-col justify-between shadow-xs">
-                      <span className="text-[10px] text-amber-800 dark:text-amber-300 block font-medium">
+                    <div className="bg-white dark:bg-neutral-950 p-2.5 rounded-xl border border-amber-300 dark:border-amber-500/30 flex flex-col justify-between shadow-xs">
+                      <span className="text-[10px] text-amber-800 dark:text-amber-300 block font-medium leading-tight">
                         {loanType === 'receivable'
                           ? (language === 'es' ? `Liquidación de contado hoy` : `Full payoff today`)
                           : (language === 'es' ? `Liquidación antes de Cuota ${currentTerm}` : `Payoff before Cuota ${currentTerm}`)}
@@ -1169,7 +1153,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                         <span className="font-bold text-amber-800 dark:text-amber-300 text-xs sm:text-sm tabular-nums block">
                           {formatCurrency(calcPayoff)}
                         </span>
-                        <span className="text-[9px] text-slate-500 dark:text-neutral-400 block mt-0.5">
+                        <span className="text-[9px] text-slate-500 dark:text-neutral-400 block mt-0.5 leading-tight">
                           {loanType === 'receivable'
                             ? (language === 'es' ? 'Capital insoluto si te liquidan hoy' : 'Remaining principal if settled today')
                             : (language === 'es' ? 'Capital insoluto para finiquitar' : 'Remaining principal to settle')}
@@ -1178,8 +1162,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                     </div>
 
                     {/* 8. Ahorro / Descuento si se Liquida este Mes */}
-                    <div className="bg-white dark:bg-neutral-950 p-3 rounded-xl border border-emerald-300 dark:border-emerald-500/30 flex flex-col justify-between shadow-xs">
-                      <span className="text-[10px] text-emerald-700 dark:text-emerald-400 block font-medium">
+                    <div className="bg-white dark:bg-neutral-950 p-2.5 rounded-xl border border-emerald-300 dark:border-emerald-500/30 flex flex-col justify-between shadow-xs">
+                      <span className="text-[10px] text-emerald-700 dark:text-emerald-400 block font-medium leading-tight">
                         {loanType === 'receivable'
                           ? (language === 'es' ? 'Descuento por pronto pago' : 'Early payoff discount')
                           : (language === 'es' ? 'Ahorro al Liquidar' : 'Interest Saved on Payoff')}
@@ -1188,7 +1172,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                         <span className="font-bold text-emerald-700 dark:text-emerald-400 text-xs sm:text-sm tabular-nums block">
                           {formatCurrency(calcInterestSaved)}
                         </span>
-                        <span className="text-[9px] text-slate-500 dark:text-neutral-400 block mt-0.5">
+                        <span className="text-[9px] text-slate-500 dark:text-neutral-400 block mt-0.5 leading-tight">
                           {language === 'es' 
                             ? `Saldo inicial (${formatCurrency(initialDebt || calcTheoreticalDebt)}) - Liquidación`
                             : `Initial balance (${formatCurrency(initialDebt || calcTheoreticalDebt)}) - Payoff`}
