@@ -12,15 +12,15 @@ import { Num } from "@/components/totalero/Num";
 
 export function TxDialog({ open, onOpenChange, tx, defaultDate }: { open: boolean; onOpenChange: (o: boolean) => void; tx: Tx | null; defaultDate: string }) {
   const t = useT();
-  const { tags } = useApp();
-  const [f, setF] = useState({ date: defaultDate, concept: "", tagId: "", type: "expense" as TxType, projected: "", real: "", debt: "", done: false, recurring: false, months: "12" });
+  const { tags, lines } = useApp();
+  const [f, setF] = useState({ date: defaultDate, concept: "", tagId: "", type: "expense" as TxType, projected: "", real: "", debt: "", done: false, recurring: false, months: "12", lineId: "", capital: "" });
 
   useEffect(() => {
     if (!open) return;
     setF(
       tx
-        ? { date: tx.date, concept: tx.concept, tagId: tx.tagId ?? "", type: tx.type, projected: formatNum(tx.projected, "en").replace(/,/g, ""), real: tx.real === null ? "" : formatNum(tx.real, "en").replace(/,/g, ""), debt: tx.debt ? formatNum(tx.debt, "en").replace(/,/g, "") : "", done: tx.done, recurring: false, months: "12" }
-        : { date: defaultDate, concept: "", tagId: "", type: "expense", projected: "", real: "", debt: "", done: false, recurring: false, months: "12" },
+        ? { date: tx.date, concept: tx.concept, tagId: tx.tagId ?? "", type: tx.type, projected: formatNum(tx.projected, "en").replace(/,/g, ""), real: tx.real === null ? "" : formatNum(tx.real, "en").replace(/,/g, ""), debt: tx.debt ? formatNum(tx.debt, "en").replace(/,/g, "") : "", done: tx.done, recurring: false, months: "12", lineId: tx.lineId ?? "", capital: tx.lineId && tx.capital != null ? formatNum(tx.capital, "en").replace(/,/g, "") : "" }
+        : { date: defaultDate, concept: "", tagId: "", type: "expense", projected: "", real: "", debt: "", done: false, recurring: false, months: "12", lineId: "", capital: "" },
     );
   }, [open, tx, defaultDate]);
 
@@ -35,6 +35,10 @@ export function TxDialog({ open, onOpenChange, tx, defaultDate }: { open: boolea
       real: f.real === "" ? null : Math.abs(toCents(f.real)),
       debt: Math.abs(toCents(f.debt)),
       done: f.done,
+      ...(tx?.loanId ? {} : {
+        lineId: f.lineId || null,
+        capital: f.lineId && f.type === "expense" && f.capital.trim() !== "" ? Math.abs(toCents(f.capital)) : null,
+      }),
     };
     if (tx) updateTx(tx.id, data);
     else if (!addTx({ ...data, enabled: true, recurring: f.recurring, months: Math.max(1, Math.min(120, Number(f.months) || 12)) })) {
@@ -70,6 +74,16 @@ export function TxDialog({ open, onOpenChange, tx, defaultDate }: { open: boolea
               {tags.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
             </select>
           </div>
+          {!tx?.loanId && lines.length > 0 && (
+            <div className="col-span-2">
+              <Label>{t.creditLine}</Label>
+              <select className={sel} value={f.lineId} onChange={set("lineId")}>
+                <option value="">{t.noLine}</option>
+                {lines.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+              </select>
+              {f.lineId && <p className="mt-1 text-xs text-muted-foreground">{f.type === "income" ? t.lineHintIn : t.lineHintOut}</p>}
+            </div>
+          )}
           {([["projected", t.projected], ["real", t.real]] as const).map(([k, label]) => (
             <div key={k}>
               <Label>{label}</Label>
@@ -79,6 +93,7 @@ export function TxDialog({ open, onOpenChange, tx, defaultDate }: { open: boolea
               </div>
             </div>
           ))}
+          {f.lineId && f.type === "expense" && <div className="col-span-2"><Label>{t.capitalPart}</Label><Input inputMode="decimal" value={f.capital} onChange={set("capital")} placeholder={f.projected} className="font-num" /></div>}
           <div><Label>{t.debt}</Label><Input inputMode="decimal" value={f.debt} onChange={set("debt")} className="font-num" /></div>
           <label className="flex items-end gap-2 pb-2 text-sm"><Switch checked={f.done} onCheckedChange={(v) => setF({ ...f, done: v, real: v && f.real.trim() === "" ? f.projected : f.real })} />{t.done}</label>
           {!tx && (

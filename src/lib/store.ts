@@ -191,7 +191,7 @@ export function addLoan(loan: Omit<Loan, "id">, deposit: boolean) {
   setState((s) => ({
     loans: [...s.loans, l],
     txs: deposit
-      ? [...s.txs, { id: uid(), date: addMonths(l.startDate, -periodsPerMonth(l.frequency) + (l.frequency === "biweekly" ? 1 : 0)), concept: `${l.institution} · depósito del préstamo`, tagId: l.tagId, type: "income", projected: l.principal, real: null, debt: 0, done: false, enabled: true, kind: "loan", seriesId: id, loanId: id, lineId: null, capital: 0, installment: null }]
+      ? [...s.txs, { id: uid(), date: addMonths(l.startDate, -1), concept: `${l.institution} · depósito del préstamo`, tagId: l.tagId, type: "income", projected: l.principal, real: null, debt: 0, done: false, enabled: true, kind: "loan", seriesId: id, loanId: id, lineId: null, capital: 0, installment: null }]
       : s.txs,
   }));
   rebuildLoan(id, "0000-00-00");
