@@ -14,14 +14,14 @@ import { emptyLoanForm, LoanFields, readLoanForm } from "@/components/totalero/L
 export function TxDialog({ open, onOpenChange, tx, defaultDate }: { open: boolean; onOpenChange: (o: boolean) => void; tx: Tx | null; defaultDate: string }) {
   const t = useT();
   const { tags, lines } = useApp();
-  const [f, setF] = useState({ date: defaultDate, concept: "", tagId: "", type: "expense" as TxType, projected: "", real: "", debt: "", done: false, recurring: false, months: "12", lineId: "", capital: "" });
+  const [f, setF] = useState({ date: defaultDate, concept: "", tagId: "", type: "expense" as TxType, projected: "", real: "", debt: "", done: false, recurring: false, months: "12", every: "monthly" as "monthly" | "yearly", lineId: "", capital: "" });
 
   useEffect(() => {
     if (!open) return;
     setF(
       tx
-        ? { date: tx.date, concept: tx.concept, tagId: tx.tagId ?? "", type: tx.type, projected: formatNum(tx.projected, "en").replace(/,/g, ""), real: tx.real === null ? "" : formatNum(tx.real, "en").replace(/,/g, ""), debt: tx.debt ? formatNum(tx.debt, "en").replace(/,/g, "") : "", done: tx.done, recurring: false, months: "12", lineId: tx.lineId ?? "", capital: tx.lineId && tx.capital != null ? formatNum(tx.capital, "en").replace(/,/g, "") : "" }
-        : { date: defaultDate, concept: "", tagId: "", type: "expense", projected: "", real: "", debt: "", done: false, recurring: false, months: "12", lineId: "", capital: "" },
+        ? { date: tx.date, concept: tx.concept, tagId: tx.tagId ?? "", type: tx.type, projected: formatNum(tx.projected, "en").replace(/,/g, ""), real: tx.real === null ? "" : formatNum(tx.real, "en").replace(/,/g, ""), debt: tx.debt ? formatNum(tx.debt, "en").replace(/,/g, "") : "", done: tx.done, recurring: false, months: "12", every: "monthly" as "monthly" | "yearly", lineId: tx.lineId ?? "", capital: tx.lineId && tx.capital != null ? formatNum(tx.capital, "en").replace(/,/g, "") : "" }
+        : { date: defaultDate, concept: "", tagId: "", type: "expense", projected: "", real: "", debt: "", done: false, recurring: false, months: "12", every: "monthly" as "monthly" | "yearly", lineId: "", capital: "" },
     );
   }, [open, tx, defaultDate]);
 
@@ -53,7 +53,7 @@ export function TxDialog({ open, onOpenChange, tx, defaultDate }: { open: boolea
       }),
     };
     if (tx) updateTx(tx.id, data);
-    else if (!addTx({ ...data, enabled: true, recurring: f.recurring, months: Math.max(1, Math.min(120, Number(f.months) || 12)) })) {
+    else if (!addTx({ ...data, enabled: true, recurring: f.recurring, every: f.every, months: Math.max(1, Math.min(120, Number(f.months) || 12)) })) {
       toast.error(t.duplicateWarn);
       return;
     }
@@ -125,8 +125,9 @@ export function TxDialog({ open, onOpenChange, tx, defaultDate }: { open: boolea
           <label className="flex items-end gap-2 pb-2 text-sm"><Switch checked={f.done} onCheckedChange={(v) => setF({ ...f, done: v, real: v && f.real.trim() === "" ? f.projected : f.real })} />{t.done}</label>
           {!tx && (
             <>
-              <label className="flex items-center gap-2 text-sm"><Switch checked={f.recurring} onCheckedChange={(v) => setF({ ...f, recurring: v })} />{t.recurringMonthly}</label>
-              {f.recurring && <div><Label><Num>{t.monthsCount}</Num></Label><Input type="number" value={f.months} onChange={set("months")} className="font-num tabular-nums" /></div>}
+              <label className="flex items-center gap-2 text-sm"><Switch checked={f.recurring} onCheckedChange={(v) => setF({ ...f, recurring: v })} />{t.recurring}</label>
+              {f.recurring && <div><Label>{t.type}</Label><select className={sel} value={f.every} onChange={(e) => setF({ ...f, every: e.target.value as "monthly" | "yearly", months: e.target.value === "yearly" ? "5" : "12" })}><option value="monthly">{t.everyMonth}</option><option value="yearly">{t.everyYear}</option></select></div>}
+              {f.recurring && <div><Label><Num>{f.every === "yearly" ? t.yearsCount : t.monthsCount}</Num></Label><Input type="number" value={f.months} onChange={set("months")} className="font-num tabular-nums" /></div>}
             </>
           )}
           </>)}
