@@ -28,3 +28,7 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Project rules
+- All money math lives in `src/lib/engine.ts` as integer cents and is recomputed from scratch (`computeAll`); UI never mutates balances directly, so cascades stay consistent.
+- App state lives in `src/lib/store.ts` (localStorage, guest mode); cloud sync will plug in later without changing the engine.
