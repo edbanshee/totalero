@@ -306,3 +306,4 @@ export function updateLoan(id: string, patch: Omit<Loan, "id">) {
   rebuildLoan(id, "0000-00-00");
   log(`Préstamo editado: ${l.institution}`);
 }
+export const getState = () => state;
