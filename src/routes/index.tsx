@@ -5,6 +5,7 @@ import { GoogleG, Logo, TopIcons } from "@/components/totalero/common";
 import { Num } from "@/components/totalero/Num";
 import { useT } from "@/lib/i18n";
 import { setState } from "@/lib/store";
+import { firebaseConfigured, signInWithGoogle } from "@/lib/firebase";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -46,7 +47,10 @@ function Landing() {
             ))}
           </div>
           <button
-            onClick={() => toast(t.googleSoon)}
+            onClick={async () => {
+              if (!firebaseConfigured) return toast(t.googleSoon);
+              try { await signInWithGoogle(); toast.success(t.signedIn); nav({ to: "/app" }); } catch { toast.error(t.cloudErr); }
+            }}
             className="mt-10 flex h-10 w-full items-center justify-center gap-2.5 rounded-md bg-navy px-3 text-sm font-medium text-navy-foreground [font-family:'Google_Sans',Inter,sans-serif]"
           >
             <GoogleG />

@@ -1,11 +1,12 @@
 import { useRef } from "react";
-import { Download, Eraser, RotateCcw, Upload } from "lucide-react";
+import { Cloud, CloudDownload, Download, Eraser, RotateCcw, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Num } from "@/components/totalero/Num";
 import { clearMonth, exportBackup, importBackup, resetAll, useApp } from "@/lib/store";
 import { useT } from "@/lib/i18n";
+import { cloudLoad, cloudSave, firebaseConfigured } from "@/lib/firebase";
 
 export function BackupDialog({ open, onOpenChange, monthKey, monthLabel }: { open: boolean; onOpenChange: (o: boolean) => void; monthKey: string; monthLabel: string }) {
   const t = useT();
@@ -29,6 +30,12 @@ export function BackupDialog({ open, onOpenChange, monthKey, monthLabel }: { ope
     if (file.current) file.current.value = "";
   };
 
+  const cloud = async (fn: () => Promise<string | null | void>, ok: string) => {
+    if (!firebaseConfigured) return toast(t.googleSoon);
+    if (fn === cloudLoad && !confirm(t.importWarn)) return;
+    try { const err = await fn(); if (err) toast.error(err === "empty" ? t.cloudEmpty : t.backupErr[err] ?? err); else toast.success(ok); }
+    catch { toast.error(t.cloudErr); }
+  };
   const row = "w-full justify-start gap-2";
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -39,6 +46,8 @@ export function BackupDialog({ open, onOpenChange, monthKey, monthLabel }: { ope
           <Button variant="outline" className={row} onClick={() => file.current?.click()}><Upload className="h-4 w-4" />{t.importJson}</Button>
           <input ref={file} type="file" accept="application/json,.json" className="hidden" onChange={(e) => doImport(e.target.files?.[0])} />
           <p className="text-xs text-muted-foreground">{t.importWarn}</p>
+          <Button variant="outline" className={row} onClick={() => cloud(cloudSave, t.cloudSaved)}><Cloud className="h-4 w-4" />{t.cloudSave}</Button>
+          <Button variant="outline" className={row} onClick={() => cloud(cloudLoad, t.cloudLoaded)}><CloudDownload className="h-4 w-4" />{t.cloudLoad}</Button>
           <div className="border-t pt-2" />
           <Button variant="outline" className={row} onClick={() => confirm(t.clearMonthConfirm) && clearMonth(monthKey)}><Eraser className="h-4 w-4" /><Num>{`${t.clearMonth} · ${monthLabel}`}</Num></Button>
           <Button variant="outline" className={`${row} text-destructive`} onClick={() => { if (confirm(t.resetConfirm)) { resetAll(); onOpenChange(false); } }}><RotateCcw className="h-4 w-4" />{t.resetAll}</Button>
