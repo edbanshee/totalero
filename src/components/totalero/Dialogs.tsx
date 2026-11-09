@@ -5,13 +5,40 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatMoney, toCents, formatNum, txValue, type Tag, type Tx } from "@/lib/engine";
-import { deleteTx, saveTags, setState, uid, useApp } from "@/lib/store";
+import { deleteTx, loanAction, saveTags, setState, uid, useApp } from "@/lib/store";
 import { useT } from "@/lib/i18n";
 import { Num } from "@/components/totalero/Num";
 
 export function DeleteDialog({ tx, onClose }: { tx: Tx | null; onClose: () => void }) {
   const t = useT();
+  const [grace, setGrace] = useState("1");
   if (!tx) return null;
+  if (tx.loanId && tx.type === "expense") {
+    const act = (a: Parameters<typeof loanAction>[1]) => {
+      if (a === "cleanHistory" && !window.confirm(t.cleanConfirm)) return;
+      loanAction(tx.id, a, Number(grace) || 1);
+      onClose();
+    };
+    return (
+      <Dialog open onOpenChange={(o) => !o && onClose()}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>{t.delTitle}</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground"><span className="font-medium text-foreground"><Num>{tx.concept}</Num></span> · {t.delLoan}</p>
+          <div className="flex flex-col gap-2">
+            <Button variant="outline" onClick={() => act("one")}>{t.delInst}</Button>
+            <Button variant="outline" onClick={() => act("endForward")}>{t.endForward}</Button>
+            <Button variant="outline" onClick={() => act("liquidate")}>{t.liquidate}</Button>
+            <div className="flex items-end gap-2">
+              <div className="w-28"><Label>{t.grace}</Label><Input type="number" min={1} max={24} value={grace} onChange={(e) => setGrace(e.target.value)} className="font-num tabular-nums" /></div>
+              <Button variant="outline" className="flex-1" onClick={() => act("grace")}>{t.applyGrace}</Button>
+            </div>
+            <Button variant="destructive" onClick={() => act("cleanHistory")}>{t.cleanHistory}</Button>
+            <Button variant="ghost" onClick={onClose}>{t.cancel}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
   const effect = tx.enabled ? -txValue(tx) : 0;
   const run = (m: "one" | "forward" | "series") => { deleteTx(tx.id, m); onClose(); };
   return (

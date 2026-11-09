@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { BarChart3, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, CloudUpload, CornerDownRight, Eye, EyeOff, HandCoins, LayoutGrid, MoreHorizontal, Pencil, Plus, Search, SlidersHorizontal, Trash2, Wallet, BadgeDollarSign, CircleDollarSign, Check } from "lucide-react";
 import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -7,7 +7,7 @@ import { Logo, TopIcons } from "@/components/totalero/common";
 import { Num } from "@/components/totalero/Num";
 import { TxDialog } from "@/components/totalero/TxDialog";
 import { DeleteDialog, TagsDialog } from "@/components/totalero/Dialogs";
-import { computeAll, daysInMonth, FIRST_YEAR, formatMoney, formatNum, LAST_YEAR, makeDate, monthKey, parseDate, quincenaOf, type Half, type Tx } from "@/lib/engine";
+import { computeAll, computeCredit, type CreditMonth, daysInMonth, FIRST_YEAR, formatMoney, formatNum, LAST_YEAR, makeDate, monthKey, parseDate, quincenaOf, type Half, type Tx } from "@/lib/engine";
 import { duplicateTx, moveNextMonth, moveOtherHalf, setState, updateTx, useApp, useLoaded } from "@/lib/store";
 import { useT } from "@/lib/i18n";
 
@@ -42,7 +42,10 @@ function AppPage() {
   const [tagsOpen, setTagsOpen] = useState(false);
 
   const all = useMemo(() => computeAll(s.txs, s.initialBalance), [s.txs, s.initialBalance]);
+  const todayKey = monthKey(now.getFullYear(), now.getMonth());
+  const credit = useMemo(() => computeCredit(s.txs, s.loans, s.lines, todayKey), [s.txs, s.loans, s.lines, todayKey]);
   const key = monthKey(year, month);
+  const cm = credit.get(key)!;
   const mr = all.get(key)!;
   const prevName = (t.months[(month + 11) % 12] ?? "").toLowerCase();
   const tagMap = new Map(s.tags.map((g) => [g.id, g]));
@@ -57,7 +60,7 @@ function AppPage() {
     if (filter === "income" && tx.type !== "income") return false;
     if (filter === "expense" && tx.type !== "expense") return false;
     if (filter === "recurring" && tx.kind !== "recurring") return false;
-    if (filter === "loan" && tx.kind !== "loan") return false;
+    if (filter === "loan" && tx.kind !== "loan" && !tx.lineId) return false;
     if (q && !(tx.concept.toLowerCase().includes(q.toLowerCase()) || formatNum(tx.projected, "en").includes(q))) return false;
     return true;
   });
@@ -67,12 +70,12 @@ function AppPage() {
     income: mr.rows.filter((r) => r.tx.type === "income").length,
     expense: mr.rows.filter((r) => r.tx.type === "expense").length,
     recurring: mr.rows.filter((r) => r.tx.kind === "recurring").length,
-    loan: mr.rows.filter((r) => r.tx.kind === "loan").length,
+    loan: mr.rows.filter((r) => r.tx.kind === "loan" || !!r.tx.lineId).length,
   };
   const done = mr.rows.length - counts.pending;
   const lastDay = daysInMonth(year, month);
   const ms = t.monthsShort[month];
-  const lineAvail = 0; // credit lines arrive in phase 2
+  const lineAvail = cm.lineAvailable;
   const fm = (c: number) => formatMoney(c, t.lang);
   const fn = (c: number) => formatNum(c, t.lang);
 
@@ -92,6 +95,7 @@ function AppPage() {
           <span className="truncate text-2xl font-semibold">Totalero</span>
         </div>
         <div className="flex items-center gap-2">
+          <Link to="/creditos" className="hidden h-9 items-center gap-2 rounded-md border px-3 text-sm font-medium hover:bg-accent sm:flex"><HandCoins className="h-4 w-4 text-primary" />{t.credits}</Link>
           <TopIcons />
           <button aria-label="Cloud" className="grid h-8 w-8 place-items-center rounded-md text-primary hover:bg-accent" onClick={() => toast(t.googleSoon)}>
             <CloudUpload className="h-5 w-5" strokeWidth={2.5} />
@@ -107,6 +111,7 @@ function AppPage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setTagsOpen(true)}>{t.tags}</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => nav({ to: "/creditos" })}>{t.credits}</DropdownMenuItem>
               <DropdownMenuItem onClick={() => { setState(() => ({ session: null })); nav({ to: "/" }); }}>{t.logout}</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -147,7 +152,7 @@ function AppPage() {
 
       <main className="space-y-4 px-4 py-5 sm:px-7">
         {view === "annual" ? (
-          <Annual all={all} year={year} onPick={(m) => { setMonth(m); setView("monthly"); }} />
+          <Annual all={all} credit={credit} year={year} onPick={(m) => { setMonth(m); setView("monthly"); }} />
         ) : (
           <>
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -169,7 +174,7 @@ function AppPage() {
               <Kpi icon={<CalendarDays className="h-5 w-5 text-primary" />} label={t.kEnd} value={fm(mr.closing)} sub={t.kEndSub} tone={mr.closing < 0 ? "neg" : "pos"} />
               <Kpi icon={<CircleDollarSign className="h-5 w-5 text-positive" />} label={t.kPlus} value={fm(mr.closingReal + lineAvail)} sub={t.kPlusSub} />
               <Kpi icon={<HandCoins className="h-5 w-5 text-positive" />} label={t.kLine} value={fm(lineAvail)} sub={t.kLineSub} />
-              <Kpi icon={<BadgeDollarSign className="h-5 w-5 text-destructive" />} label={t.kDebt} value={fm(mr.debt)} tone="neg" />
+              <Kpi icon={<BadgeDollarSign className="h-5 w-5 text-destructive" />} label={t.kDebt} value={fm(mr.debt + cm.loanDebt + cm.lineUsed)} tone="neg" />
             </div>
 
             {/* Halves */}
@@ -247,7 +252,7 @@ function AppPage() {
                             {tag && <span className="rounded px-2 py-0.5 font-sans text-xs" style={{ color: tag.color, backgroundColor: `color-mix(in oklab, ${tag.color} 14%, transparent)` }}>{tag.name}</span>}
                           </td>
                           <td className="px-2 font-sans">
-                            <div className={`font-medium ${tx.enabled ? "" : "line-through"}`}>{tx.concept}</div>
+                            <div className={`font-medium ${tx.enabled ? "" : "line-through"}`}><Num>{tx.concept}</Num></div>
                           </td>
                           <td className={`px-2 text-right ${sign > 0 ? "text-positive" : ""}`}>{fn(sign * tx.projected)}</td>
                           <td className={`px-2 text-right ${sign > 0 ? "text-positive" : ""}`}>{tx.done && tx.real !== null ? fn(sign * tx.real) : tx.done ? fn(sign * tx.projected) : "—"}</td>
@@ -323,7 +328,7 @@ function HalfCard({ title, h, fn }: { title: string; h: Half; fn: (c: number) =>
   );
 }
 
-function Annual({ all, year, onPick }: { all: ReturnType<typeof computeAll>; year: number; onPick: (m: number) => void }) {
+function Annual({ all, credit, year, onPick }: { all: ReturnType<typeof computeAll>; credit: Map<string, CreditMonth>; year: number; onPick: (m: number) => void }) {
   const t = useT();
   const fn = (c: number) => formatNum(c, t.lang);
   const months = t.months.map((_, i) => all.get(monthKey(year, i))!);
@@ -357,7 +362,7 @@ function Annual({ all, year, onPick }: { all: ReturnType<typeof computeAll>; yea
                 <td className="px-4 text-right">{fn(m.expense)}</td>
                 <td className={`px-4 text-right ${m.income - m.expense < 0 ? "text-destructive" : "text-positive"}`}>{fn(m.income - m.expense)}</td>
                 <td className={`px-4 text-right font-medium ${m.closing < 0 ? "text-destructive" : ""}`}>{fn(m.closing)}</td>
-                <td className="px-4 text-right text-destructive">{fn(m.debt)}</td>
+                <td className="px-4 text-right text-destructive">{fn(m.debt + (credit.get(m.key)?.loanDebt ?? 0) + (credit.get(m.key)?.lineUsed ?? 0))}</td>
               </tr>
             ))}
           </tbody>

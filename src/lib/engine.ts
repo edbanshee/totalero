@@ -22,6 +22,10 @@ export interface Tx {
   enabled: boolean;
   kind: TxKind;
   seriesId: string | null;
+  loanId?: string | null; // installment / extra payment / deposit of a loan
+  lineId?: string | null; // income = draw on the line, expense = payment to it
+  capital?: number | null; // cents of the amount that reduces debt (rest is interest)
+  installment?: number | null; // loan installment number; null for extras/deposits
 }
 
 export const FIRST_YEAR = 2024;
@@ -174,4 +178,173 @@ export function formatMoney(cents: number, lang: "es" | "en" = "es") {
 }
 export function formatNum(cents: number, lang: "es" | "en" = "es") {
   return new Intl.NumberFormat(lang === "es" ? "es-MX" : "en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(cents / 100);
+}
+
+/* ---------- Phase 2: loans & credit lines ---------- */
+export type Frequency = "monthly" | "biweekly";
+
+export interface Loan {
+  id: string;
+  institution: string;
+  principal: number; // cents
+  rate: number; // annual %, e.g. 18.5
+  term: number; // number of payments
+  startDate: string; // first payment date
+  frequency: Frequency;
+  payment: number; // cents, 0 = automatic (French annuity)
+  tagId: string | null;
+}
+
+export interface CreditLine {
+  id: string;
+  name: string;
+  limits: { from: string; limit: number }[]; // from = YYYY-MM; condition changes over time
+}
+
+export interface AmortRow {
+  n: number;
+  date: string;
+  payment: number;
+  interest: number;
+  capital: number;
+  extra: number;
+  balance: number;
+}
+
+export const periodRate = (rate: number, f: Frequency) => rate / 100 / (f === "monthly" ? 12 : 24);
+export const periodsPerMonth = (f: Frequency) => (f === "monthly" ? 1 : 2);
+
+/** Fixed payment (French amortization) for P cents at rate r per period over n periods. */
+export function annuity(P: number, r: number, n: number) {
+  if (n <= 0) return P;
+  if (r === 0) return Math.ceil(P / n);
+  return Math.round((P * r) / (1 - Math.pow(1 + r, -n)));
+}
+
+export function nextDay(s: string) {
+  const { y, m, d } = parseDate(s);
+  return d < daysInMonth(y, m) ? makeDate(y, m, d + 1) : addMonths(makeDate(y, m, 1), 1, 1);
+}
+
+/** Date of the i-th payment (0-based) from a first date. Bi-weekly pays on day d and d+15. */
+export function periodDate(first: string, f: Frequency, i: number) {
+  const { d } = parseDate(first);
+  if (f === "monthly") return addMonths(first, i, d);
+  const base = addMonths(first, Math.floor(i / 2), d);
+  if (i % 2 === 0) return base;
+  const { y, m } = parseDate(base);
+  return makeDate(y, m, Math.min(d + 15, daysInMonth(y, m)));
+}
+
+export function schedule(o: {
+  balance: number; rate: number; frequency: Frequency; periods: number; first: string;
+  payment?: number; startN?: number; extras?: Record<number, number> | undefined;
+}): AmortRow[] {
+  const r = periodRate(o.rate, o.frequency);
+  const custom = !!o.payment && o.payment > 0;
+  const pay = custom ? o.payment! : annuity(o.balance, r, o.periods);
+  const startN = o.startN ?? 0;
+  const rows: AmortRow[] = [];
+  let bal = o.balance;
+  for (let i = 0; bal > 0 && i < o.periods * 4 + 24; i++) {
+    const interest = Math.round(bal * r);
+    let capital = pay - interest;
+    if (capital <= 0) break; // payment does not cover interest
+    if (capital >= bal || (!custom && i === o.periods - 1)) capital = bal;
+    const extra = Math.min(o.extras?.[startN + i] ?? 0, bal - capital);
+    bal -= capital + extra;
+    rows.push({ n: startN + i + 1, date: periodDate(o.first, o.frequency, i), payment: capital + interest, interest, capital, extra, balance: bal });
+  }
+  return rows;
+}
+
+export const amortize = (l: Loan, extras?: Record<number, number>) =>
+  schedule({ balance: l.principal, rate: l.rate, frequency: l.frequency, periods: l.term, first: l.startDate, payment: l.payment, extras });
+
+/** Original plan vs plan with extra payments (extras keyed by 0-based installment index). */
+export function simulateExtra(l: Loan, extras: Record<number, number>) {
+  const base = amortize(l);
+  const sim = amortize(l, extras);
+  const sum = (rs: AmortRow[]) => rs.reduce((a, r) => a + r.interest, 0);
+  const idx = Math.min(...Object.keys(extras).map(Number), sim.length - 1);
+  return {
+    base, sim,
+    monthsSaved: (base.length - sim.length) / periodsPerMonth(l.frequency),
+    interestSaved: sum(base) - sum(sim),
+    payoff: sim.at(-1)?.date ?? l.startDate,
+    newBalance: sim[idx]?.balance ?? 0,
+  };
+}
+
+export const lineLimit = (line: CreditLine, key: string) => {
+  let lim: number | null = null;
+  for (const c of [...line.limits].sort((a, b) => (a.from < b.from ? -1 : 1))) if (c.from <= key) lim = c.limit;
+  return lim;
+};
+
+export interface LineMonth { id: string; name: string; limit: number; used: number; available: number; drawn: number; paid: number }
+export interface CreditMonth { lines: LineMonth[]; lineAvailable: number; lineUsed: number; loanDebt: number }
+
+const absAmount = (t: Tx) => (t.done && t.real !== null ? t.real : t.projected);
+
+/**
+ * Per-month credit state 2024-01..2050-12. Each line keeps its own monthly balance:
+ * draws (income) raise usage, payments (expense, capital part) lower it, and the effect
+ * cascades forward. Loan debt = principal minus capital paid (done, or projected for
+ * months after `todayKey`). Disabled movements never count. Credit is never added to cash.
+ */
+export function computeCredit(txs: Tx[], loans: Loan[], lines: CreditLine[], todayKey: string): Map<string, CreditMonth> {
+  const lineMove = new Map<string, { drawn: number; paid: number }>(); // `${lineId}|${month}`
+  const loanCap = new Map<string, number>(); // `${loanId}|${month}` done capital
+  const loanCapAll = new Map<string, number>(); // including pending
+  for (const t of txs) {
+    if (!t.enabled) continue;
+    const k = t.date.slice(0, 7);
+    if (t.lineId) {
+      const mk = `${t.lineId}|${k}`;
+      const cur = lineMove.get(mk) ?? { drawn: 0, paid: 0 };
+      if (t.type === "income") cur.drawn += absAmount(t);
+      else cur.paid += t.capital ?? absAmount(t);
+      lineMove.set(mk, cur);
+    }
+    if (t.loanId && t.type === "expense") {
+      const mk = `${t.loanId}|${k}`;
+      const c = t.capital ?? 0;
+      loanCapAll.set(mk, (loanCapAll.get(mk) ?? 0) + c);
+      if (t.done) loanCap.set(mk, (loanCap.get(mk) ?? 0) + c);
+    }
+  }
+  const loanFrom = new Map<string, string>(loans.map((l) => [l.id, l.startDate.slice(0, 7)]));
+  for (const t of txs) if (t.loanId && t.date.slice(0, 7) < (loanFrom.get(t.loanId) ?? "")) loanFrom.set(t.loanId, t.date.slice(0, 7));
+  const out = new Map<string, CreditMonth>();
+  const used = new Map<string, number>(lines.map((l) => [l.id, 0]));
+  const paidLoan = new Map<string, number>(loans.map((l) => [l.id, 0]));
+  for (let y = FIRST_YEAR; y <= LAST_YEAR; y++) {
+    for (let m = 0; m < 12; m++) {
+      const key = monthKey(y, m);
+      const future = key > todayKey;
+      const lm: LineMonth[] = [];
+      for (const l of lines) {
+        const mv = lineMove.get(`${l.id}|${key}`) ?? { drawn: 0, paid: 0 };
+        const u = Math.max(0, (used.get(l.id) ?? 0) + mv.drawn - mv.paid);
+        used.set(l.id, u);
+        const lim = lineLimit(l, key);
+        if (lim === null) continue;
+        lm.push({ id: l.id, name: l.name, limit: lim, used: u, available: Math.max(0, lim - u), drawn: mv.drawn, paid: mv.paid });
+      }
+      let loanDebt = 0;
+      for (const l of loans) {
+        const p = (paidLoan.get(l.id) ?? 0) + ((future ? loanCapAll : loanCap).get(`${l.id}|${key}`) ?? 0);
+        paidLoan.set(l.id, p);
+        if (key >= (loanFrom.get(l.id) ?? l.startDate.slice(0, 7))) loanDebt += Math.max(0, l.principal - p);
+      }
+      out.set(key, {
+        lines: lm,
+        lineAvailable: lm.reduce((a, x) => a + x.available, 0),
+        lineUsed: lm.reduce((a, x) => a + x.used, 0),
+        loanDebt,
+      });
+    }
+  }
+  return out;
 }
