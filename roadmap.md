@@ -8,3 +8,6 @@
 - [ ] Conectar tu Firebase — requiere tus claves
 - [x] Guía de GitHub Pages (DEPLOY.md)
 - [x] Préstamos quincenales (ya existe en Frecuencia de pago)
+- [ ] Configurar salida estática, ruta del repositorio y publicación automática en GitHub Pages
+- [ ] Preparar destino Railway y documentar la separación con Firebase
+- [ ] Verificar navegación y pruebas de publicación

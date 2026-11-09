@@ -8,11 +8,24 @@
 // hosting already compresses at the edge.
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+import { normalizeBasePath } from "./scripts/deployment.mjs";
 
-export default defineConfig({
-  tanstackStart: {
-    // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
-    // nitro/vite builds from this
-    server: { entry: "server" },
-  },
+export default defineConfig(({ mode }) => {
+  const pages = mode === "pages";
+  const railway = mode === "railway";
+  // Build-time only; ordinary Lovable builds keep the existing Worker target.
+  const base = pages ? normalizeBasePath(process.env['VITE_BASE_PATH']) : "/";
+  return {
+    vite: { base },
+    ...(pages || railway ? { nitro: { preset: "node-server" } } : {}),
+    tanstackStart: {
+      server: { entry: "server" },
+      router: { basepath: base },
+      ...(pages ? {
+        // Render only a data-free shell. Financial state loads in the browser.
+        spa: { enabled: true, prerender: { outputPath: "/_shell" } },
+        prerender: { autoStaticPathsDiscovery: false, crawlLinks: false, failOnError: true },
+      } : {}),
+    },
+  };
 });
