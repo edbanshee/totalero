@@ -77,10 +77,10 @@ export function useLoaded() {
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
 /* ---------- Actions ---------- */
-export type TxInput = Omit<Tx, "id" | "seriesId" | "kind"> & { recurring?: boolean; months?: number };
+export type TxInput = Omit<Tx, "id" | "seriesId" | "kind"> & { recurring?: boolean; months?: number; every?: "monthly" | "yearly" };
 
 export function addTx(input: TxInput) {
-  const { recurring, months = 12, ...base } = input;
+  const { recurring, months = 12, every = "monthly", ...base } = input;
   const dup = state.txs.find(
     (t) => t.date === base.date && t.concept === base.concept && t.projected === base.projected && t.type === base.type,
   );
@@ -91,12 +91,12 @@ export function addTx(input: TxInput) {
     const list: Tx[] = Array.from({ length: months }, (_, i) => ({
       ...base,
       id: uid(),
-      date: addMonths(base.date, i, day),
+      date: addMonths(base.date, every === "yearly" ? i * 12 : i, day),
       done: i === 0 ? base.done : false,
       real: i === 0 ? base.real : null,
       kind: "recurring",
       seriesId,
-    }));
+    })).filter((t) => t.date <= "2050-12-31");
     setState((s) => ({ txs: [...s.txs, ...list] }));
   } else {
     setState((s) => ({ txs: [...s.txs, { ...base, id: uid(), kind: "simple", seriesId: null }] }));
