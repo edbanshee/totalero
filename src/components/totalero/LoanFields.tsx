@@ -19,6 +19,8 @@ export interface LoanForm {
   tagId: string;
   current: string;
   deposit: boolean;
+  /** Whether "total" is the full contract or what is left from the current installment. */
+  totalMode?: "contract" | "remaining";
 }
 
 export const emptyLoanForm = (startDate: string): LoanForm => ({
@@ -34,12 +36,14 @@ export function readLoanForm(f: LoanForm) {
   const current = Math.max(1, Math.min(term, Number(f.current) || 1));
   let principal = f.principal.trim() ? Math.abs(toCents(f.principal)) : 0;
   let rateIn = Number(f.rate.replace(",", ".")) || null;
-  let total = opt(f.total);
+  const rem = term - current + 1;
+  // "Remaining" mode: the typed total covers installments current..term; convert to the contract total.
+  const remaining = (f.totalMode ?? "remaining") === "remaining" && current > 1;
+  const typed = opt(f.total);
+  let total = typed && remaining ? Math.round((typed / rem) * term) : typed;
   let inferred = false;
   if (!principal) {
-    // Unknown principal: "total" is what is still left to pay from the current installment.
-    const rem = term - current + 1;
-    const pay = opt(f.payment) ?? (total ? Math.round(total / rem) : 0);
+    const pay = opt(f.payment) ?? (total ? Math.round(total / term) : 0);
     const inf = inferPrincipal({ payment: pay, term, current, payoff: opt(f.payoff) ?? 0, frequency: f.frequency });
     if (inf) { principal = inf.principal; rateIn = rateIn ?? inf.rate; inferred = true; total = pay * term; }
   }
@@ -76,7 +80,18 @@ export function LoanFields({ f, setF, tags, showDate = true }: { f: LoanForm; se
       </div>
       <div className="col-span-2"><Label>{t.institution}</Label><Input value={f.institution} onChange={set("institution")} /></div>
       <div><Label>{t.principal}</Label><Input inputMode="decimal" value={f.principal} onChange={set("principal")} placeholder={inferred ? formatNumPlain(principal) : ""} className="font-num" /></div>
-      <div><Label>{t.totalToPay}</Label><Input inputMode="decimal" value={f.total} onChange={set("total")} placeholder={principal ? formatNumPlain(terms.total) : ""} className="font-num" /></div>
+      <div>
+        {current > 1 ? (
+          <div className="mb-1 grid grid-cols-2 gap-1 rounded-md bg-muted p-0.5 text-[11px]">
+            {(["contract", "remaining"] as const).map((m) => (
+              <button type="button" key={m} onClick={() => setF({ ...f, totalMode: m })} className={`rounded px-1.5 py-1 font-medium ${(f.totalMode ?? "remaining") === m ? "bg-card shadow-sm" : "text-muted-foreground"}`}>
+                {m === "contract" ? t.totalContract : t.totalRemaining}
+              </button>
+            ))}
+          </div>
+        ) : <Label>{t.totalToPay}</Label>}
+        <Input inputMode="decimal" value={f.total} onChange={set("total")} placeholder={principal ? formatNumPlain(current > 1 && (f.totalMode ?? "remaining") === "remaining" ? Math.round(terms.total / (Number(f.term) || 1) * ((Number(f.term) || 1) - current + 1)) : terms.total) : ""} className="font-num" />
+      </div>
       <div><Label>{t.term}</Label><Input type="number" value={f.term} onChange={set("term")} className="font-num tabular-nums" /></div>
       <div><Label>{t.currentInst}</Label><Input type="number" min={1} value={f.current} onChange={set("current")} className="font-num tabular-nums" /></div>
       <div><Label>{t.frequency}</Label>
