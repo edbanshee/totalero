@@ -238,7 +238,7 @@ export function periodDate(first: string, f: Frequency, i: number) {
 
 export function schedule(o: {
   balance: number; rate: number; frequency: Frequency; periods: number; first: string;
-  payment?: number; startN?: number; extras?: Record<number, number>;
+  payment?: number; startN?: number; extras?: Record<number, number> | undefined;
 }): AmortRow[] {
   const r = periodRate(o.rate, o.frequency);
   const custom = !!o.payment && o.payment > 0;
