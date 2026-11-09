@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Landmark, Pencil, Plus, Trash2, WalletCards } from "lucide-react";
+import { Eye, EyeOff, Landmark, Pencil, Plus, Trash2, WalletCards } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Num } from "@/components/totalero/Num";
 import { emptyLoanForm, LoanFields, readLoanForm } from "@/components/totalero/LoanFields";
 import { formatMoney, formatNum, installmentType, monthKey, periodRate, simulateExtra, toCents, type CreditMonth, type Loan } from "@/lib/engine";
-import { addLine, addLoan, applyExtra, updateLoan, deleteLine, deleteLoan, setLineLimit, useApp } from "@/lib/store";
+import { addLine, addLoan, applyExtra, updateLoan, setLoanHidden, deleteLine, deleteLoan, setLineLimit, useApp } from "@/lib/store";
 import { useT } from "@/lib/i18n";
 
 /* ---------------- Loans ---------------- */
@@ -17,7 +17,10 @@ export function LoansSection({ defaultDate }: { defaultDate: string }) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const [sel, setSel] = useState<string | null>(null);
-  const loan = s.loans.find((l) => l.id === sel) ?? s.loans[0] ?? null;
+  const [showHidden, setShowHidden] = useState(false);
+  const hiddenN = s.loans.filter((l) => l.hidden).length;
+  const visible = s.loans.filter((l) => showHidden || !l.hidden);
+  const loan = visible.find((l) => l.id === sel) ?? visible[0] ?? null;
   const fm = (c: number) => formatMoney(c, t.lang);
   const paidOf = (l: Loan) => s.txs.filter((x) => x.loanId === l.id && x.type === installmentType(l) && x.done && x.enabled).reduce((a, x) => a + (x.capital ?? 0), 0);
 
@@ -28,19 +31,23 @@ export function LoansSection({ defaultDate }: { defaultDate: string }) {
           <div className="grid h-9 w-9 place-items-center rounded-md bg-primary/10 text-primary"><Landmark className="h-5 w-5" /></div>
           <h3 className="text-base font-semibold">{t.loansTab}</h3>
         </div>
-        <Button size="sm" onClick={() => setOpen(true)}><Plus className="h-4 w-4" />{t.newLoan}</Button>
+        <div className="flex gap-2">
+          {hiddenN > 0 && <Button size="sm" variant="ghost" onClick={() => setShowHidden(!showHidden)}><Num>{showHidden ? t.hideHidden : t.showHidden(hiddenN)}</Num></Button>}
+          <Button size="sm" onClick={() => setOpen(true)}><Plus className="h-4 w-4" />{t.newLoan}</Button>
+        </div>
       </div>
-      {s.loans.length === 0 ? (
+      {visible.length === 0 ? (
         <p className="mt-4 rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">{t.noLoans}</p>
       ) : (
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {s.loans.map((l) => {
+          {visible.map((l) => {
             const rec = l.direction === "receivable";
             const pending = s.txs.filter((x) => x.loanId === l.id && x.installment != null && !x.done).length;
             return (
-              <button key={l.id} onClick={() => setSel(l.id)} className={`rounded-lg border p-4 text-left ${loan?.id === l.id ? "ring-2 ring-primary" : ""}`}>
+              <button key={l.id} onClick={() => setSel(l.id)} className={`rounded-lg border p-4 text-left ${loan?.id === l.id ? "ring-2 ring-primary" : ""} ${l.hidden ? "opacity-60" : ""}`}>
                 <div className="flex items-center justify-between gap-2">
                   <span className="truncate font-medium">{l.institution}</span>
+                  {l.revolving && <span className="shrink-0 rounded bg-primary/10 px-2 py-0.5 text-[11px] text-primary">{t.revolvingLine}</span>}
                   <span className={`shrink-0 rounded px-2 py-0.5 text-[11px] ${rec ? "bg-positive/10 text-positive" : "bg-destructive/10 text-destructive"}`}>{rec ? t.receivableShort : t.payableShort}</span>
                 </div>
                 <div className="mt-3 text-[11px] text-muted-foreground">{t.pendingBal}</div>
@@ -91,6 +98,7 @@ function LoanDetail({ loan }: { loan: Loan }) {
         <div className="flex items-center justify-between px-4 pt-3">
           <h4 className="font-semibold">{t.amort} · {loan.institution}</h4>
           <div className="flex gap-1">
+          <Button variant="ghost" size="sm" onClick={() => setLoanHidden(loan.id, !loan.hidden)}>{loan.hidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}{loan.hidden ? t.showLoan : t.hideLoan}</Button>
           <Button variant="ghost" size="sm" onClick={() => setEditing(true)}><Pencil className="h-4 w-4" />{t.editLoan}</Button>
           <Button variant="ghost" size="sm" className="text-destructive" onClick={() => window.confirm(t.deleteLoanConfirm) && deleteLoan(loan.id)}><Trash2 className="h-4 w-4" />{t.deleteLoan}</Button>
           </div>
@@ -156,7 +164,7 @@ function LoanDetail({ loan }: { loan: Loan }) {
 const loanToForm = (l: Loan) => ({
   ...emptyLoanForm(l.startDate), direction: l.direction ?? "payable", institution: l.institution, principal: (l.principal / 100).toFixed(2),
   payment: l.payment ? (l.payment / 100).toFixed(2) : "", rate: String(l.rate), payoff: l.payoff ? (l.payoff / 100).toFixed(2) : "",
-  term: String(l.term), frequency: l.frequency, tagId: l.tagId ?? "", deposit: false,
+  term: String(l.term), frequency: l.frequency, tagId: l.tagId ?? "", deposit: false, revolving: !!l.revolving,
 });
 
 function LoanDialog({ open, onOpenChange, onCreated, defaultDate, edit }: { open: boolean; onOpenChange: (o: boolean) => void; onCreated: (id: string) => void; defaultDate: string; edit?: Loan }) {
@@ -209,7 +217,7 @@ export function LinesSection({ cm, monthLabel }: { cm: CreditMonth; monthLabel: 
         <span className="text-sm font-medium">{t.totalAvail}</span>
         <span className="font-num text-xl font-semibold tabular-nums text-positive">{fm(cm.lineAvailable)}</span>
       </div>
-      {s.lines.length === 0 ? (
+      {s.lines.length === 0 && !cm.lines.length ? (
         <p className="mt-3 rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">{t.noLines}</p>
       ) : (
         <table className="mt-3 w-full text-sm">
@@ -233,6 +241,17 @@ export function LinesSection({ cm, monthLabel }: { cm: CreditMonth; monthLabel: 
                 </tr>
               );
             })}
+            {cm.lines.filter((x) => s.loans.some((l) => l.id === x.id)).map((lm) => (
+              <tr key={lm.id} className="border-b">
+                <td className="py-2.5 pr-2">
+                  <div className="font-medium">{lm.name} <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">{t.revolvingLine}</span></div>
+                  <div className="font-num text-[11px] text-muted-foreground tabular-nums">{t.limit}: {fn(lm.limit)}</div>
+                </td>
+                <td className="text-right font-num tabular-nums text-destructive">{fn(lm.used)}</td>
+                <td className="text-right font-num font-medium tabular-nums text-positive">{fn(lm.available)}</td>
+                <td />
+              </tr>
+            ))}
           </tbody>
         </table>
       )}

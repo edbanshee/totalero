@@ -198,6 +198,8 @@ export interface Loan {
   tagId: string | null;
   direction?: LoanDirection; // payable (default) = I owe; receivable = owed to me
   payoff?: number | null; // cents needed to settle before the next installment
+  revolving?: boolean; // repaid capital becomes available again, like a credit line
+  hidden?: boolean; // hidden from the loans panel; its movements stay
 }
 
 export type LoanDirection = "payable" | "receivable";
@@ -378,7 +380,7 @@ export function computeCredit(txs: Tx[], loans: Loan[], lines: CreditLine[], tod
   const loanFrom = new Map<string, string>(loans.map((l) => [l.id, l.startDate.slice(0, 7)]));
   for (const t of txs) if (t.loanId && t.date.slice(0, 7) < (loanFrom.get(t.loanId) ?? "")) loanFrom.set(t.loanId, t.date.slice(0, 7));
   const out = new Map<string, CreditMonth>();
-  const used = new Map<string, number>(lines.map((l) => [l.id, 0]));
+  const used = new Map<string, number>([...lines, ...loans].map((l) => [l.id, 0]));
   const paidLoan = new Map<string, number>(loans.map((l) => [l.id, 0]));
   for (let y = FIRST_YEAR; y <= LAST_YEAR; y++) {
     for (let m = 0; m < 12; m++) {
@@ -400,8 +402,16 @@ export function computeCredit(txs: Tx[], loans: Loan[], lines: CreditLine[], tod
         paidLoan.set(l.id, p);
         if (key < (loanFrom.get(l.id) ?? l.startDate.slice(0, 7))) continue;
         const left = Math.max(0, l.principal - p);
-        if (l.direction === "receivable") loanReceivable += left;
-        else loanDebt += left;
+        if (l.direction === "receivable") { loanReceivable += left; continue; }
+        loanDebt += left;
+        if (l.revolving) {
+          // Revolving loan: repaid capital is available again; draws on it (lineId = loan id) use it up.
+          const mv = lineMove.get(`${l.id}|${key}`) ?? { drawn: 0, paid: 0 };
+          const ru = Math.max(0, (used.get(l.id) ?? 0) + mv.drawn - mv.paid);
+          used.set(l.id, ru);
+          loanDebt += ru;
+          lm.push({ id: l.id, name: l.institution, limit: l.principal, used: left + ru, available: Math.max(0, l.principal - left - ru), drawn: mv.drawn, paid: mv.paid });
+        }
       }
       out.set(key, {
         lines: lm,

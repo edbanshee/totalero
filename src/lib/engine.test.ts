@@ -108,3 +108,14 @@ describe("automatic loan terms", () => {
     expect(c.get("2026-03")!.loanReceivable).toBe(1000000);
   });
 });
+
+describe("revolving loans", () => {
+  const rl: Loan = { id: "B", institution: "BanCoppel", principal: 2500000, rate: 0, term: 10, startDate: "2026-12-10", frequency: "monthly", payment: 0, tagId: null, revolving: true };
+  it("capital repaid in December (2,300) becomes available that month and can be drawn again", () => {
+    const pay = tx({ loanId: "B", date: "2026-12-10", projected: 250000, capital: 230000, done: true, installment: 1, kind: "loan" });
+    const draw = tx({ lineId: "B", type: "income", projected: 100000, date: "2027-01-05" });
+    const c = computeCredit([pay, draw], [rl], [], "2026-12");
+    expect(c.get("2026-12")!.lineAvailable).toBe(230000);
+    expect(c.get("2027-01")!.lineAvailable).toBe(130000);
+  });
+});
