@@ -5,3 +5,4 @@
 - [x] Fase 2: préstamos, amortización, simulador, líneas de crédito por mes
 - [x] Fase 3: tarjetas, resumen anual completo, respaldos JSON, historial
 - [ ] Fase 4: Firebase + Railway (guía paso a paso) — requiere tus cuentas
+- [x] Préstamos quincenales (ya existe en Frecuencia de pago)

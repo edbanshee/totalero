@@ -291,3 +291,19 @@ export function resetAll() {
   setState((s) => ({ txs: [], loans: [], lines: [], cards: [], tags: defaults.tags, initialBalance: 0, history: [], session: s.session }));
   log("Datos reiniciados");
 }
+
+/** Edits a loan's terms: completed installments stay, pending ones are regenerated. */
+export function updateLoan(id: string, patch: Omit<Loan, "id">) {
+  const old = state.loans.find((l) => l.id === id);
+  if (!old) return;
+  const l: Loan = { ...patch, id };
+  setState((s) => ({
+    loans: s.loans.map((x) => (x.id === id ? l : x)),
+    txs: s.txs.map((t) => (t.loanId === id && (t.installment === null || t.installment === undefined) && t.capital === 0 && !t.done
+      ? { ...t, projected: l.principal, date: addMonths(l.startDate, -1), tagId: l.tagId, type: installmentType(l) === "income" ? "expense" : "income" }
+      : t.loanId === id && t.installment != null && t.done ? { ...t, type: installmentType(l) } : t)),
+  }));
+  rebuildLoan(id, "0000-00-00");
+  log(`Préstamo editado: ${l.institution}`);
+}
+export const getState = () => state;

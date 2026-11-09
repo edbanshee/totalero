@@ -60,7 +60,7 @@ export function readLoanForm(f: LoanForm) {
   return { loan, terms, covers, valid, principal, current, inferred };
 }
 
-export function LoanFields({ f, setF, tags, showDate = true }: { f: LoanForm; setF: (f: LoanForm) => void; tags: { id: string; name: string }[]; showDate?: boolean }) {
+export function LoanFields({ f, setF, tags, showDate = true, showDeposit = true }: { f: LoanForm; setF: (f: LoanForm) => void; tags: { id: string; name: string }[]; showDate?: boolean; showDeposit?: boolean }) {
   const t = useT();
   const fm = (c: number) => formatMoney(c, t.lang);
   const set = (k: keyof LoanForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value });
@@ -102,7 +102,6 @@ export function LoanFields({ f, setF, tags, showDate = true }: { f: LoanForm; se
       <div className="col-span-2"><Label>{t.payoffAmt}</Label><Input inputMode="decimal" value={f.payoff} onChange={set("payoff")} placeholder={principal ? formatNumPlain(terms.payoff) : ""} className="font-num" /><p className="mt-1 text-xs text-muted-foreground">{t.payoffHint}</p></div>
       <div><Label>{t.rate}</Label><Input inputMode="decimal" value={f.rate} onChange={set("rate")} placeholder={terms.rateSource === "none" ? "" : String(terms.rate)} className="font-num" /></div>
       <div><Label>{t.paymentAmt}</Label><Input inputMode="decimal" value={f.payment} onChange={set("payment")} placeholder={principal ? formatNumPlain(terms.payment) : ""} className="font-num" /></div>
-      {current > 1 && <p className="col-span-2 rounded-md bg-muted/40 p-2 text-xs text-muted-foreground"><span className="font-num">{t.fromInstallment(current, Number(f.term) || current)}</span></p>}
       {showDate && <div><Label>{current > 1 ? t.currentInstDate : t.startDate}</Label><Input type="date" value={f.startDate} onChange={set("startDate")} min="2024-01-01" max="2050-12-31" className="font-num tabular-nums" /></div>}
       <div className={showDate ? "" : "col-span-2"}><Label>{t.tag}</Label>
         <select className={sel} value={f.tagId} onChange={set("tagId")}>
@@ -121,7 +120,7 @@ export function LoanFields({ f, setF, tags, showDate = true }: { f: LoanForm; se
           <Stat label={t.payoffSaving} value={fm(terms.saving)} tone="pos" />
         </div>
       )}
-      <label className="col-span-2 flex items-center gap-2 text-sm"><Switch checked={f.deposit} onCheckedChange={(v) => setF({ ...f, deposit: v })} />{f.direction === "receivable" ? t.depositR : t.deposit}</label>
+      {showDeposit && <label className="col-span-2 flex items-center gap-2 text-sm"><Switch checked={f.deposit} onCheckedChange={(v) => setF({ ...f, deposit: v })} />{f.direction === "receivable" ? t.depositR : t.deposit}</label>}
       {!covers && principal > 0 && <p className="col-span-2 text-sm text-destructive">{t.notCovering}</p>}
     </div>
   );
