@@ -8,7 +8,7 @@ import { Num } from "@/components/totalero/Num";
 import { TxDialog } from "@/components/totalero/TxDialog";
 import { LinesSection, LoansSection } from "@/components/totalero/Credits";
 import { DeleteDialog, TagsDialog } from "@/components/totalero/Dialogs";
-import { computeAll, computeCredit, type CreditMonth, daysInMonth, FIRST_YEAR, formatMoney, formatNum, LAST_YEAR, makeDate, monthKey, parseDate, quincenaOf, type Half, type Tx } from "@/lib/engine";
+import { computeAll, computeCredit, loanRowBalances, type CreditMonth, daysInMonth, FIRST_YEAR, formatMoney, formatNum, LAST_YEAR, makeDate, monthKey, parseDate, quincenaOf, type Half, type Tx } from "@/lib/engine";
 import { duplicateTx, moveNextMonth, moveOtherHalf, setState, updateTx, useApp, useLoaded } from "@/lib/store";
 import { useT } from "@/lib/i18n";
 
@@ -44,6 +44,7 @@ function AppPage() {
 
   const all = useMemo(() => computeAll(s.txs, s.initialBalance), [s.txs, s.initialBalance]);
   const todayKey = monthKey(now.getFullYear(), now.getMonth());
+  const loanBal = useMemo(() => loanRowBalances(s.txs, s.loans), [s.txs, s.loans]);
   const credit = useMemo(() => computeCredit(s.txs, s.loans, s.lines, todayKey), [s.txs, s.loans, s.lines, todayKey]);
   const key = monthKey(year, month);
   const cm = credit.get(key)!;
@@ -239,6 +240,7 @@ function AppPage() {
                     {rows.map(({ tx, balance, remaining }) => {
                       const tag = tx.tagId ? tagMap.get(tx.tagId) : null;
                       const sign = tx.type === "income" ? 1 : -1;
+                      const lb = loanBal.get(tx.id);
                       return (
                         <tr key={tx.id} className={`border-b transition ${tx.enabled ? "" : "opacity-40"}`}>
                           <td className="px-4 py-2.5">
@@ -255,8 +257,8 @@ function AppPage() {
                           </td>
                           <td className={`px-2 text-right ${sign > 0 ? "text-positive" : ""}`}>{fn(sign * tx.projected)}</td>
                           <td className={`px-2 text-right ${sign > 0 ? "text-positive" : ""}`}>{tx.done && tx.real !== null ? fn(sign * tx.real) : tx.done ? fn(sign * tx.projected) : "—"}</td>
-                          <td className="px-2 text-right text-destructive">{tx.debt ? fn(tx.debt) : "—"}</td>
-                          <td className={`px-2 text-right ${tx.real !== null && remaining !== 0 ? (remaining > 0 ? "text-positive" : "text-destructive") : "text-muted-foreground"}`}>{tx.real !== null ? fn(remaining) : "—"}</td>
+                          <td className="px-2 text-right text-destructive">{lb ? fn(lb.debt) : tx.debt ? fn(tx.debt) : "—"}</td>
+                          <td className={`px-2 text-right ${lb ? "text-destructive" : tx.real !== null && remaining !== 0 ? (remaining > 0 ? "text-positive" : "text-destructive") : "text-muted-foreground"}`}>{lb ? fn(lb.left) : tx.real !== null ? fn(remaining) : "—"}</td>
                           <td className={`px-2 text-right font-medium ${balance < 0 ? "text-destructive" : ""}`}>{fn(balance)}</td>
                           <td className="px-4">
                             <div className="flex items-center justify-end gap-1 text-muted-foreground">
