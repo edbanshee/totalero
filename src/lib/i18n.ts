@@ -58,6 +58,13 @@ const dict = {
     deleteLoan: "Eliminar préstamo", deleteLoanConfirm: "Se eliminará el préstamo con todas sus cuotas. ¿Continuar?", deleteLine: "Eliminar línea",
     back: "Flujo mensual", payoff: "Liquidación", year: "Año", installmentN: "Cuota", lineMonthly: "Saldo mensual de la línea",
     create: "Crear", paymentsLeft: "cuotas pendientes", notCovering: "La cuota no cubre los intereses.",
+    payable: "Deuda por pagar", receivable: "Deuda por cobrar", payableShort: "Por pagar", receivableShort: "Por cobrar",
+    totalToPay: "Total a pagar", payoffAmt: "Monto para liquidar", payoffHint: "Lo que pagarías hoy para cerrar la deuda antes de la siguiente cuota",
+    rateHint: "Déjala vacía si no la conoces: se calcula sola", calcPayment: "Cuota calculada", totalInterest: "Interés total",
+    estRate: "Tasa anual estimada", rateFromTotal: "Calculada con el total a pagar", rateFromPayoff: "Calculada con el monto para liquidar", rateGiven: "Tasa que indicaste",
+    payoffSaving: "Ahorro al liquidar", payoffNow: "Liquidar antes de la siguiente cuota", linkLoan: "¿Vincular a un préstamo?",
+    linkLoanHint: "Se crea el préstamo y sus cuotas se agregan solas a tu flujo de caja.", toCollect: "Por cobrar", depositR: "Registrar el dinero prestado como gasto (un mes antes del primer cobro)",
+    totalAvail: "Total disponible", loansDebt: "Debes", loansOwed: "Te deben",
   },
   en: {
     welcome: "Welcome to Totalero",
@@ -116,6 +123,13 @@ const dict = {
     deleteLoan: "Delete loan", deleteLoanConfirm: "The loan and all its installments will be deleted. Continue?", deleteLine: "Delete line",
     back: "Monthly flow", payoff: "Payoff", year: "Year", installmentN: "Installment", lineMonthly: "Monthly line balance",
     create: "Create", paymentsLeft: "installments left", notCovering: "The installment does not cover interest.",
+    payable: "Debt I owe", receivable: "Debt owed to me", payableShort: "To pay", receivableShort: "To collect",
+    totalToPay: "Total to pay", payoffAmt: "Payoff amount", payoffHint: "What you would pay today to close the debt before the next installment",
+    rateHint: "Leave empty if unknown: it is calculated for you", calcPayment: "Calculated installment", totalInterest: "Total interest",
+    estRate: "Estimated annual rate", rateFromTotal: "From the total to pay", rateFromPayoff: "From the payoff amount", rateGiven: "Rate you entered",
+    payoffSaving: "Savings if paid off", payoffNow: "Pay off before next installment", linkLoan: "Link to a loan?",
+    linkLoanHint: "The loan is created and its installments are added to your cash flow.", toCollect: "To collect", depositR: "Record the lent money as an expense (one month before the first collection)",
+    totalAvail: "Total available", loansDebt: "You owe", loansOwed: "Owed to you",
   },
 } as const;
 

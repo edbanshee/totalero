@@ -193,6 +193,46 @@ export interface Loan {
   frequency: Frequency;
   payment: number; // cents, 0 = automatic (French annuity)
   tagId: string | null;
+  direction?: LoanDirection; // payable (default) = I owe; receivable = owed to me
+  payoff?: number | null; // cents needed to settle before the next installment
+}
+
+export type LoanDirection = "payable" | "receivable";
+/** Cash-flow type of a loan's installments: I pay (expense) or I collect (income). */
+export const installmentType = (l: Pick<Loan, "direction">): TxType => (l.direction === "receivable" ? "income" : "expense");
+
+/** Periodic rate r such that annuity(P, r, n) = pay (bisection). 0 when pay*n <= P. */
+export function solveRate(P: number, pay: number, n: number) {
+  if (P <= 0 || n <= 0 || pay * n <= P) return 0;
+  let lo = 0, hi = 1;
+  for (let i = 0; i < 100; i++) {
+    const mid = (lo + hi) / 2;
+    const v = (P * mid) / (1 - Math.pow(1 + mid, -n));
+    if (v > pay) hi = mid; else lo = mid;
+  }
+  return (lo + hi) / 2;
+}
+
+export interface LoanTermsInput { principal: number; term: number; frequency: Frequency; rate?: number | null; payment?: number | null; total?: number | null; payoff?: number | null }
+export interface LoanTerms { rate: number; rateSource: "given" | "total" | "payoff" | "none"; payment: number; total: number; interest: number; payoff: number; saving: number; firstInterest: number }
+
+/**
+ * All automatic loan math. Rate priority: given rate > solved from installment/total >
+ * implied by the payoff amount (payoff before installment 1 = principal + one period of interest).
+ */
+export function loanTerms(i: LoanTermsInput): LoanTerms {
+  const P = i.principal, n = Math.max(1, i.term), ppy = i.frequency === "monthly" ? 12 : 24;
+  const pay0 = i.payment && i.payment > 0 ? i.payment : i.total && i.total > 0 ? Math.round(i.total / n) : 0;
+  let r: number, src: LoanTerms["rateSource"];
+  if (i.rate && i.rate > 0) { r = i.rate / 100 / ppy; src = "given"; }
+  else if (pay0) { r = solveRate(P, pay0, n); src = "total"; }
+  else if (i.payoff && i.payoff > P && P > 0) { r = i.payoff / P - 1; src = "payoff"; }
+  else { r = 0; src = "none"; }
+  const payment = pay0 || annuity(P, r, n);
+  const total = i.total && i.total > 0 && !(i.payment && i.payment > 0) ? i.total : payment * n;
+  const firstInterest = Math.round(P * r);
+  const payoff = i.payoff && i.payoff > 0 ? i.payoff : P + firstInterest;
+  return { rate: Math.round(r * ppy * 100 * 100) / 100, rateSource: src, payment, total, interest: total - P, payoff, saving: Math.max(0, total - payoff), firstInterest };
 }
 
 export interface CreditLine {
@@ -283,7 +323,7 @@ export const lineLimit = (line: CreditLine, key: string) => {
 };
 
 export interface LineMonth { id: string; name: string; limit: number; used: number; available: number; drawn: number; paid: number }
-export interface CreditMonth { lines: LineMonth[]; lineAvailable: number; lineUsed: number; loanDebt: number }
+export interface CreditMonth { lines: LineMonth[]; lineAvailable: number; lineUsed: number; loanDebt: number; loanReceivable: number }
 
 const absAmount = (t: Tx) => (t.done && t.real !== null ? t.real : t.projected);
 
@@ -297,6 +337,7 @@ export function computeCredit(txs: Tx[], loans: Loan[], lines: CreditLine[], tod
   const lineMove = new Map<string, { drawn: number; paid: number }>(); // `${lineId}|${month}`
   const loanCap = new Map<string, number>(); // `${loanId}|${month}` done capital
   const loanCapAll = new Map<string, number>(); // including pending
+  const instType = new Map<string, TxType>(loans.map((l) => [l.id, installmentType(l)]));
   for (const t of txs) {
     if (!t.enabled) continue;
     const k = t.date.slice(0, 7);
@@ -307,7 +348,7 @@ export function computeCredit(txs: Tx[], loans: Loan[], lines: CreditLine[], tod
       else cur.paid += t.capital ?? absAmount(t);
       lineMove.set(mk, cur);
     }
-    if (t.loanId && t.type === "expense") {
+    if (t.loanId && t.type === (instType.get(t.loanId) ?? "expense")) {
       const mk = `${t.loanId}|${k}`;
       const c = t.capital ?? 0;
       loanCapAll.set(mk, (loanCapAll.get(mk) ?? 0) + c);
@@ -333,16 +374,21 @@ export function computeCredit(txs: Tx[], loans: Loan[], lines: CreditLine[], tod
         lm.push({ id: l.id, name: l.name, limit: lim, used: u, available: Math.max(0, lim - u), drawn: mv.drawn, paid: mv.paid });
       }
       let loanDebt = 0;
+      let loanReceivable = 0;
       for (const l of loans) {
         const p = (paidLoan.get(l.id) ?? 0) + ((future ? loanCapAll : loanCap).get(`${l.id}|${key}`) ?? 0);
         paidLoan.set(l.id, p);
-        if (key >= (loanFrom.get(l.id) ?? l.startDate.slice(0, 7))) loanDebt += Math.max(0, l.principal - p);
+        if (key < (loanFrom.get(l.id) ?? l.startDate.slice(0, 7))) continue;
+        const left = Math.max(0, l.principal - p);
+        if (l.direction === "receivable") loanReceivable += left;
+        else loanDebt += left;
       }
       out.set(key, {
         lines: lm,
         lineAvailable: lm.reduce((a, x) => a + x.available, 0),
         lineUsed: lm.reduce((a, x) => a + x.used, 0),
         loanDebt,
+        loanReceivable,
       });
     }
   }

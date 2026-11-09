@@ -86,3 +86,25 @@ describe("credit lines", () => {
     expect(c.get("2026-01")!.lineAvailable).toBe(1000000);
   });
 });
+
+import { loanTerms } from "./engine";
+describe("automatic loan terms", () => {
+  it("15,000 paid as 18,000 in 12 months: 1,500 installment and rate solved from the total", () => {
+    const r = loanTerms({ principal: 1500000, term: 12, frequency: "monthly", total: 1800000, payoff: 1550000 });
+    expect(r.payment).toBe(150000);
+    expect(r.rateSource).toBe("total");
+    expect(r.rate).toBeCloseTo(35.07, 1);
+    expect(r.saving).toBe(250000);
+  });
+  it("without total or rate, the payoff amount implies the rate (15,500 on 15,000 = 40% annual)", () => {
+    const r = loanTerms({ principal: 1500000, term: 12, frequency: "monthly", payoff: 1550000 });
+    expect(r.rateSource).toBe("payoff");
+    expect(r.rate).toBeCloseTo(40, 1);
+  });
+  it("receivable loans count as owed to me, not as my debt", () => {
+    const rec = { ...loan, id: "R", direction: "receivable" as const };
+    const c = computeCredit([], [rec], [], "2026-12");
+    expect(c.get("2026-03")!.loanDebt).toBe(0);
+    expect(c.get("2026-03")!.loanReceivable).toBe(1000000);
+  });
+});

@@ -6,9 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { formatNum, toCents, type Tx, type TxType } from "@/lib/engine";
-import { addTx, updateTx, useApp } from "@/lib/store";
+import { addLoan, addTx, updateTx, useApp } from "@/lib/store";
 import { useT } from "@/lib/i18n";
 import { Num } from "@/components/totalero/Num";
+import { emptyLoanForm, LoanFields, readLoanForm } from "@/components/totalero/LoanFields";
 
 export function TxDialog({ open, onOpenChange, tx, defaultDate }: { open: boolean; onOpenChange: (o: boolean) => void; tx: Tx | null; defaultDate: string }) {
   const t = useT();
@@ -24,7 +25,18 @@ export function TxDialog({ open, onOpenChange, tx, defaultDate }: { open: boolea
     );
   }, [open, tx, defaultDate]);
 
+  const [linkLoan, setLinkLoan] = useState(false);
+  const [lf, setLf] = useState(emptyLoanForm(defaultDate));
+  useEffect(() => { if (open) { setLinkLoan(false); setLf(emptyLoanForm(defaultDate)); } }, [open, defaultDate]);
+
   const save = () => {
+    if (linkLoan && !tx) {
+      const r = readLoanForm({ ...lf, institution: lf.institution || f.concept, startDate: f.date, tagId: lf.tagId || f.tagId });
+      if (!r.valid) return;
+      addLoan(r.loan, lf.deposit);
+      onOpenChange(false);
+      return;
+    }
     if (!f.concept.trim() || !f.date) return;
     const data = {
       date: f.date,
@@ -53,7 +65,7 @@ export function TxDialog({ open, onOpenChange, tx, defaultDate }: { open: boolea
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{tx ? t.editTx : t.newTx}</DialogTitle>
         </DialogHeader>
@@ -74,7 +86,21 @@ export function TxDialog({ open, onOpenChange, tx, defaultDate }: { open: boolea
               {tags.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
             </select>
           </div>
-          {!tx?.loanId && lines.length > 0 && (
+          {!tx && (
+            <div className="col-span-2 rounded-lg border bg-muted/30 p-3">
+              <label className="flex items-center justify-between gap-2 text-sm font-medium">
+                <span>{t.linkLoan}</span>
+                <Switch checked={linkLoan} onCheckedChange={setLinkLoan} />
+              </label>
+              {linkLoan && (
+                <div className="mt-3 space-y-3">
+                  <p className="text-xs text-muted-foreground">{t.linkLoanHint}</p>
+                  <LoanFields f={{ ...lf, institution: lf.institution || f.concept, startDate: f.date }} setF={setLf} tags={tags} showDate={false} />
+                </div>
+              )}
+            </div>
+          )}
+          {!linkLoan && !tx?.loanId && lines.length > 0 && (
             <div className="col-span-2">
               <Label>{t.creditLine}</Label>
               <select className={sel} value={f.lineId} onChange={set("lineId")}>
@@ -84,6 +110,7 @@ export function TxDialog({ open, onOpenChange, tx, defaultDate }: { open: boolea
               {f.lineId && <p className="mt-1 text-xs text-muted-foreground">{f.type === "income" ? t.lineHintIn : t.lineHintOut}</p>}
             </div>
           )}
+          {!linkLoan && (<>
           {([["projected", t.projected], ["real", t.real]] as const).map(([k, label]) => (
             <div key={k}>
               <Label>{label}</Label>
@@ -102,6 +129,7 @@ export function TxDialog({ open, onOpenChange, tx, defaultDate }: { open: boolea
               {f.recurring && <div><Label><Num>{t.monthsCount}</Num></Label><Input type="number" value={f.months} onChange={set("months")} className="font-num tabular-nums" /></div>}
             </>
           )}
+          </>)}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>{t.cancel}</Button>
