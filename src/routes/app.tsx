@@ -248,7 +248,6 @@ function AppPage() {
                           </td>
                           <td className="px-2 font-sans">
                             <div className={`font-medium ${tx.enabled ? "" : "line-through"}`}>{tx.concept}</div>
-                            {tx.category && <div className="text-[11px] text-muted-foreground">{tx.category}</div>}
                           </td>
                           <td className={`px-2 text-right ${sign > 0 ? "text-positive" : ""}`}>{fn(sign * tx.projected)}</td>
                           <td className={`px-2 text-right ${sign > 0 ? "text-positive" : ""}`}>{tx.done && tx.real !== null ? fn(sign * tx.real) : tx.done ? fn(sign * tx.projected) : "—"}</td>

@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { computeAll, toCents, addMonths, quincenaOf, type Tx } from "./engine";
 
 const tx = (p: Partial<Tx>): Tx => ({
-  id: Math.random().toString(36), date: "2026-10-01", concept: "x", category: "", tagId: null,
+  id: Math.random().toString(36), date: "2026-10-01", concept: "x", tagId: null,
   type: "expense", projected: 0, real: null, debt: 0, done: false, enabled: true, kind: "simple", seriesId: null, ...p,
 });
 
