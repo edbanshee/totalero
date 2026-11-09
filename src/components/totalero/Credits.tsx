@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Landmark, Plus, Trash2, WalletCards } from "lucide-react";
+import { Landmark, Pencil, Plus, Trash2, WalletCards } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Num } from "@/components/totalero/Num";
 import { emptyLoanForm, LoanFields, readLoanForm } from "@/components/totalero/LoanFields";
 import { formatMoney, formatNum, installmentType, monthKey, periodRate, simulateExtra, toCents, type CreditMonth, type Loan } from "@/lib/engine";
-import { addLine, addLoan, applyExtra, deleteLine, deleteLoan, setLineLimit, useApp } from "@/lib/store";
+import { addLine, addLoan, applyExtra, updateLoan, deleteLine, deleteLoan, setLineLimit, useApp } from "@/lib/store";
 import { useT } from "@/lib/i18n";
 
 /* ---------------- Loans ---------------- */
@@ -64,6 +64,7 @@ function LoanDetail({ loan }: { loan: Loan }) {
   const fm = (c: number) => formatMoney(c, t.lang);
   const [extra, setExtra] = useState("");
   const [at, setAt] = useState("1");
+  const [editing, setEditing] = useState(false);
   const ty = installmentType(loan);
 
   const inst = s.txs.filter((x) => x.loanId === loan.id && x.type === ty).sort((a, b) => (a.date < b.date ? -1 : 1));
@@ -89,8 +90,12 @@ function LoanDetail({ loan }: { loan: Loan }) {
       <div className="rounded-lg border">
         <div className="flex items-center justify-between px-4 pt-3">
           <h4 className="font-semibold">{t.amort} · {loan.institution}</h4>
+          <div className="flex gap-1">
+          <Button variant="ghost" size="sm" onClick={() => setEditing(true)}><Pencil className="h-4 w-4" />{t.editLoan}</Button>
           <Button variant="ghost" size="sm" className="text-destructive" onClick={() => window.confirm(t.deleteLoanConfirm) && deleteLoan(loan.id)}><Trash2 className="h-4 w-4" />{t.deleteLoan}</Button>
+          </div>
         </div>
+        <LoanDialog open={editing} onOpenChange={setEditing} onCreated={() => {}} defaultDate={loan.startDate} edit={loan} />
         <div className="mt-2 max-h-[420px] overflow-auto">
           <table className="w-full min-w-[600px] text-sm">
             <thead className="sticky top-0 border-y bg-muted text-[11px] uppercase text-muted-foreground">
@@ -148,25 +153,32 @@ function LoanDetail({ loan }: { loan: Loan }) {
   );
 }
 
-function LoanDialog({ open, onOpenChange, onCreated, defaultDate }: { open: boolean; onOpenChange: (o: boolean) => void; onCreated: (id: string) => void; defaultDate: string }) {
+const loanToForm = (l: Loan) => ({
+  ...emptyLoanForm(l.startDate), direction: l.direction ?? "payable", institution: l.institution, principal: (l.principal / 100).toFixed(2),
+  payment: l.payment ? (l.payment / 100).toFixed(2) : "", rate: String(l.rate), payoff: l.payoff ? (l.payoff / 100).toFixed(2) : "",
+  term: String(l.term), frequency: l.frequency, tagId: l.tagId ?? "", deposit: false,
+});
+
+function LoanDialog({ open, onOpenChange, onCreated, defaultDate, edit }: { open: boolean; onOpenChange: (o: boolean) => void; onCreated: (id: string) => void; defaultDate: string; edit?: Loan }) {
   const t = useT();
   const { tags } = useApp();
   const [f, setF] = useState(emptyLoanForm(defaultDate));
-  useEffect(() => { if (open) setF(emptyLoanForm(defaultDate)); }, [open, defaultDate]);
+  useEffect(() => { if (open) setF(edit ? loanToForm(edit) : emptyLoanForm(defaultDate)); }, [open, defaultDate, edit]);
   const { loan, valid } = readLoanForm(f);
   const save = () => {
     if (!valid) return;
-    onCreated(addLoan(loan, f.deposit));
+    if (edit) updateLoan(edit.id, loan);
+    else onCreated(addLoan(loan, f.deposit));
     onOpenChange(false);
   };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
-        <DialogHeader><DialogTitle>{t.newLoan}</DialogTitle></DialogHeader>
-        <LoanFields f={f} setF={setF} tags={tags} />
+        <DialogHeader><DialogTitle>{edit ? t.editLoan : t.newLoan}</DialogTitle></DialogHeader>
+        <LoanFields f={f} setF={setF} tags={tags} showDeposit={!edit} />
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>{t.cancel}</Button>
-          <Button disabled={!valid} onClick={save}>{t.create}</Button>
+          <Button disabled={!valid} onClick={save}>{edit ? t.save : t.create}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
