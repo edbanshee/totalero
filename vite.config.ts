@@ -9,13 +9,15 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { normalizeBasePath } from "./scripts/deployment.mjs";
+import type { ConfigEnv } from "vite";
 
-export default defineConfig(({ mode }) => {
+export default (env: ConfigEnv) => {
+  const { mode } = env;
   const pages = mode === "pages";
   const railway = mode === "railway";
   // Build-time only; ordinary Lovable builds keep the existing Worker target.
   const base = pages ? normalizeBasePath(process.env['VITE_BASE_PATH']) : "/";
-  return {
+  return defineConfig({
     vite: { base },
     ...(pages || railway ? { nitro: { preset: "node-server" } } : {}),
     tanstackStart: {
@@ -27,5 +29,5 @@ export default defineConfig(({ mode }) => {
         prerender: { autoStaticPathsDiscovery: false, crawlLinks: false, failOnError: true },
       } : {}),
     },
-  };
-});
+  })(env);
+};
