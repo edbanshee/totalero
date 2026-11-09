@@ -94,7 +94,7 @@ export function addTx(input: TxInput) {
       date: addMonths(base.date, every === "yearly" ? i * 12 : i, day),
       done: i === 0 ? base.done : false,
       real: i === 0 ? base.real : null,
-      kind: "recurring",
+      kind: "recurring" as const,
       seriesId,
     })).filter((t) => t.date <= "2050-12-31");
     setState((s) => ({ txs: [...s.txs, ...list] }));
