@@ -20,3 +20,14 @@ describe("carried balance counts in real totals", () => {
     expect(m.closingReal).toBe(100000);
   });
 });
+
+describe("total to pay: contract vs remaining", () => {
+  it("contract total 75144 and remaining 56358 from cuota 4 of 12 give the same loan", () => {
+    const base = { ...emptyLoanForm("2026-11-01"), institution: "Coppel", principal: "", payment: "", term: "12", current: "4", payoff: "46611" };
+    const a = readLoanForm({ ...base, total: "75144", totalMode: "contract" });
+    const b = readLoanForm({ ...base, total: "56358", totalMode: "remaining" });
+    expect(a.loan.payment).toBe(626200);
+    expect(b.loan.payment).toBe(626200);
+    expect(a.principal).toBe(b.principal);
+  });
+});

@@ -38,7 +38,7 @@ export function readLoanForm(f: LoanForm) {
   let rateIn = Number(f.rate.replace(",", ".")) || null;
   const rem = term - current + 1;
   // "Remaining" mode: the typed total covers installments current..term; convert to the contract total.
-  const remaining = f.totalMode === "remaining" && current > 1;
+  const remaining = (f.totalMode ?? "remaining") === "remaining" && current > 1;
   const typed = opt(f.total);
   let total = typed && remaining ? Math.round((typed / rem) * term) : typed;
   let inferred = false;
@@ -90,7 +90,7 @@ export function LoanFields({ f, setF, tags, showDate = true }: { f: LoanForm; se
             ))}
           </div>
         ) : <Label>{t.totalToPay}</Label>}
-        <Input inputMode="decimal" value={f.total} onChange={set("total")} placeholder={principal ? formatNumPlain(current > 1 && (f.totalMode ?? "remaining") === "remaining" ? Math.round(terms.total / term * (term - current + 1)) : terms.total) : ""} className="font-num" />
+        <Input inputMode="decimal" value={f.total} onChange={set("total")} placeholder={principal ? formatNumPlain(current > 1 && (f.totalMode ?? "remaining") === "remaining" ? Math.round(terms.total / (Number(f.term) || 1) * ((Number(f.term) || 1) - current + 1)) : terms.total) : ""} className="font-num" />
       </div>
       <div><Label>{t.term}</Label><Input type="number" value={f.term} onChange={set("term")} className="font-num tabular-nums" /></div>
       <div><Label>{t.currentInst}</Label><Input type="number" min={1} value={f.current} onChange={set("current")} className="font-num tabular-nums" /></div>
