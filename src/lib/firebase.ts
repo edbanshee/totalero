@@ -2,7 +2,15 @@
 // config; the app keeps working in guest mode when it is missing. Loaded lazily in the browser.
 import { exportBackup, importBackup, setState } from "@/lib/store";
 
-const env = import.meta.env;
+// Public web config (protected by Firestore rules); VITE_FIREBASE_* overrides it per deployment.
+const defaults: Record<string, string> = {
+  VITE_FIREBASE_API_KEY: "AIzaSyAWYxT6HK3H_mC_bsKS6FUvbd1B0ipORjk",
+  VITE_FIREBASE_AUTH_DOMAIN: "totalero-finance.firebaseapp.com",
+  VITE_FIREBASE_PROJECT_ID: "totalero-finance",
+  VITE_FIREBASE_APP_ID: "1:1065099817414:web:48511437075f3a7eb682c7",
+};
+const env: Record<string, string> = { ...defaults };
+for (const n of Object.keys(defaults)) { const v = import.meta.env[n]; if (v) env[n] = v; }
 export const firebaseConfigured = !!(env["VITE_FIREBASE_API_KEY"] && env["VITE_FIREBASE_PROJECT_ID"]);
 
 async function sdk() {
@@ -12,10 +20,10 @@ async function sdk() {
     import("firebase/firestore"),
   ]);
   const app = getApps()[0] ?? initializeApp({
-    apiKey: env["VITE_FIREBASE_API_KEY"],
-    authDomain: env["VITE_FIREBASE_AUTH_DOMAIN"],
-    projectId: env["VITE_FIREBASE_PROJECT_ID"],
-    appId: env["VITE_FIREBASE_APP_ID"],
+    apiKey: env["VITE_FIREBASE_API_KEY"] ?? "",
+    authDomain: env["VITE_FIREBASE_AUTH_DOMAIN"] ?? "",
+    projectId: env["VITE_FIREBASE_PROJECT_ID"] ?? "",
+    appId: env["VITE_FIREBASE_APP_ID"] ?? "",
   });
   return { auth, fs, a: auth.getAuth(app), db: fs.getFirestore(app) };
 }
