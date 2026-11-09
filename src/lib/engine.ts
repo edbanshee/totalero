@@ -34,7 +34,7 @@ export const pad = (n: number) => String(n).padStart(2, "0");
 export const makeDate = (y: number, m: number, d: number) =>
   `${y}-${pad(m + 1)}-${pad(Math.min(d, daysInMonth(y, m)))}`;
 export const parseDate = (s: string) => {
-  const [y, m, d] = s.split("-").map(Number);
+  const [y = 2024, m = 1, d = 1] = s.split("-").map(Number);
   return { y, m: m - 1, d };
 };
 export const quincenaOf = (date: string) => (parseDate(date).d <= 15 ? 1 : 2);
