@@ -41,3 +41,48 @@ describe("engine", () => {
     expect(m.closing).toBe(75000);
   });
 });
+
+import { amortize, annuity, computeCredit, simulateExtra, type Loan, type CreditLine } from "./engine";
+
+const loan: Loan = { id: "L", institution: "Banco", principal: 1000000, rate: 12, term: 12, startDate: "2026-01-15", frequency: "monthly", payment: 0, tagId: null };
+
+describe("loans", () => {
+  it("French payment: $10,000 at 12% over 12 months is $888.49", () => {
+    expect(annuity(1000000, 0.01, 12)).toBe(88849);
+  });
+  it("amortization repays exactly the principal", () => {
+    const rows = amortize(loan);
+    expect(rows).toHaveLength(12);
+    expect(rows.reduce((a, r) => a + r.capital, 0)).toBe(1000000);
+    expect(rows.at(-1)!.balance).toBe(0);
+  });
+  it("extra payment saves months and interest", () => {
+    const r = simulateExtra(loan, { 0: 500000 });
+    expect(r.monthsSaved).toBeGreaterThan(0);
+    expect(r.interestSaved).toBeGreaterThan(0);
+  });
+  it("loan debt drops only by capital of completed installments", () => {
+    const inst = tx({ loanId: "L", date: "2026-01-15", projected: 88849, capital: 78849, done: true, installment: 1, kind: "loan" });
+    const c = computeCredit([inst], [loan], [], "2026-12");
+    expect(c.get("2026-01")!.loanDebt).toBe(1000000 - 78849);
+  });
+});
+
+describe("credit lines", () => {
+  const line: CreditLine = { id: "C", name: "Personal", limits: [{ from: "2026-01", limit: 1000000 }] };
+  it("each month keeps its own available balance (10k line, 8k drawn, 2k paid per month)", () => {
+    const txs = [
+      tx({ lineId: "C", type: "income", projected: 800000, date: "2026-01-05" }),
+      tx({ lineId: "C", type: "expense", projected: 200000, date: "2026-02-05" }),
+      tx({ lineId: "C", type: "expense", projected: 200000, date: "2026-03-05" }),
+    ];
+    const c = computeCredit(txs, [], [line], "2026-12");
+    expect(c.get("2026-01")!.lineAvailable).toBe(200000);
+    expect(c.get("2026-02")!.lineAvailable).toBe(400000);
+    expect(c.get("2026-03")!.lineAvailable).toBe(600000);
+  });
+  it("disabled draws do not use credit", () => {
+    const c = computeCredit([tx({ lineId: "C", type: "income", projected: 800000, date: "2026-01-05", enabled: false })], [], [line], "2026-12");
+    expect(c.get("2026-01")!.lineAvailable).toBe(1000000);
+  });
+});
