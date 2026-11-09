@@ -45,7 +45,7 @@ export function TxDialog({ open, onOpenChange, tx, defaultDate }: { open: boolea
       type: f.type,
       projected: Math.abs(toCents(f.projected)),
       real: f.real === "" ? null : Math.abs(toCents(f.real)),
-      debt: Math.abs(toCents(f.debt)),
+      debt: tx?.debt ?? 0,
       done: f.done,
       cardId: f.type === "expense" && f.cardId ? f.cardId : null,
       ...(tx?.loanId ? {} : {
@@ -132,8 +132,7 @@ export function TxDialog({ open, onOpenChange, tx, defaultDate }: { open: boolea
             </div>
           ))}
           {f.lineId && f.type === "expense" && <div className="col-span-2"><Label>{t.capitalPart}</Label><Input inputMode="decimal" value={f.capital} onChange={set("capital")} placeholder={f.projected} className="font-num" /></div>}
-          <div><Label>{t.debt}</Label><Input inputMode="decimal" value={f.debt} onChange={set("debt")} className="font-num" /></div>
-          <label className="flex items-end gap-2 pb-2 text-sm"><Switch checked={f.done} onCheckedChange={(v) => setF({ ...f, done: v, real: v && f.real.trim() === "" ? f.projected : f.real })} />{t.done}</label>
+          <label className="col-span-2 flex items-center gap-2 text-sm"><Switch checked={f.done} onCheckedChange={(v) => setF({ ...f, done: v, real: v && f.real.trim() === "" ? f.projected : f.real })} />{t.done}</label>
           {!tx && (
             <>
               <label className="flex items-center gap-2 text-sm"><Switch checked={f.recurring} onCheckedChange={(v) => setF({ ...f, recurring: v })} />{t.recurring}</label>

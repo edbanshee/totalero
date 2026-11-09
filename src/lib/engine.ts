@@ -127,6 +127,8 @@ export function computeAll(txs: Tx[], initialBalance: number): Map<string, Month
       const key = monthKey(y, m);
       const list = (byMonth.get(key) ?? []).slice().sort(sortTx);
       const opening = bal;
+      // The carried balance always counts as settled money in this month's real totals.
+      realBal = bal;
       const openingReal = realBal;
       const q1: Half = { income: 0, expense: 0, margin: 0, closing: 0 };
       const q2: Half = { income: 0, expense: 0, margin: 0, closing: 0 };
@@ -234,6 +236,23 @@ export function loanTerms(i: LoanTermsInput): LoanTerms {
   const firstInterest = Math.round(P * r);
   const payoff = i.payoff && i.payoff > 0 ? i.payoff : P + firstInterest;
   return { rate: Math.round(r * ppy * 100 * 100) / 100, rateSource: src, payment, total, interest: total - P, payoff, saving: Math.max(0, total - payoff), firstInterest };
+}
+
+/**
+ * Infers the original principal when it is unknown: `payoff` is what closes the debt right
+ * before installment `current` (balance after current-1 payments plus one period of interest).
+ * Returns the principal in cents and the yearly rate (%), or null if it cannot be inferred.
+ */
+export function inferPrincipal(o: { payment: number; term: number; current: number; payoff: number; frequency: Frequency }) {
+  const n = Math.max(1, o.term), rem = Math.max(1, n - Math.max(1, o.current) + 1);
+  if (o.payment <= 0 || o.payoff <= 0 || o.payoff > o.payment * rem) return null;
+  const af = (r: number, k: number) => (r === 0 ? k : (1 - Math.pow(1 + r, -k)) / r);
+  const f = (r: number) => o.payment * (1 + r) * af(r, rem) - o.payoff; // decreasing in r
+  let lo = 0, hi = 1;
+  if (f(hi) > 0) return null;
+  for (let i = 0; i < 100; i++) { const mid = (lo + hi) / 2; if (f(mid) > 0) lo = mid; else hi = mid; }
+  const r = (lo + hi) / 2, ppy = o.frequency === "monthly" ? 12 : 24;
+  return { principal: Math.round(o.payment * af(r, n)), rate: r * ppy * 100 };
 }
 
 export interface CreditLine {
