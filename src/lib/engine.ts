@@ -455,7 +455,7 @@ export function tagTotals(txs: Tx[], year: number): TagTotal[] {
 /** Checks a backup file before importing; returns an error key or null. */
 export function validateBackup(o: unknown): string | null {
   if (!o || typeof o !== "object") return "notObject";
-  const b = o as Record<string, unknown>;
+  const b = o as { app?: unknown; txs?: unknown; tags?: unknown };
   if (b.app !== "totalero") return "notTotalero";
   if (!Array.isArray(b.txs) || !Array.isArray(b.tags)) return "missing";
   for (const t of b.txs as Tx[]) {

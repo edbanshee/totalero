@@ -314,7 +314,7 @@ function AppPage() {
 
 function Kpi({ icon, label, value, sub, tone }: { icon: React.ReactNode; label: string; value: string; sub?: string; tone?: "pos" | "neg" }) {
   return (
-    <div className="rounded-lg border bg-card px-5 py-5">
+    <div className="min-w-0 rounded-lg border bg-card px-5 py-5">
       <div className="flex items-center gap-2 text-sm">{icon}{label}</div>
       <div className={`mt-3 truncate font-num text-2xl font-medium tabular-nums ${tone === "pos" ? "text-positive" : tone === "neg" ? "text-destructive" : ""}`}>{value}</div>
       {sub && <div className="mt-2 text-[11px] text-subtle">{sub}</div>}
@@ -363,7 +363,7 @@ function Annual({ all, credit, year, txs, tags, onPick }: { all: ReturnType<type
         <Kpi icon={<CircleDollarSign className="h-4 w-4 text-positive" />} label={t.yearIncome} value={fm(inc)} tone="pos" />
         <Kpi icon={<Wallet className="h-4 w-4 text-destructive" />} label={t.yearExpense} value={fm(exp)} />
         <Kpi icon={<BadgeDollarSign className="h-4 w-4 text-primary" />} label={t.yearSavings} value={fm(inc - exp)} tone={inc - exp < 0 ? "neg" : "pos"} />
-        <Kpi icon={<CalendarDays className="h-4 w-4 text-primary" />} label={t.yearEnd} value={fm(end)} tone={end < 0 ? "neg" : undefined} />
+        <Kpi icon={<CalendarDays className="h-4 w-4 text-primary" />} label={t.yearEnd} value={fm(end)} {...(end < 0 ? { tone: "neg" as const } : {})} />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="rounded-lg border bg-card p-4">
