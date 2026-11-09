@@ -238,7 +238,7 @@ function AppPage() {
                       return (
                         <tr key={tx.id} className={`border-b transition ${tx.enabled ? "" : "opacity-40"}`}>
                           <td className="px-4 py-2.5">
-                            <button aria-label={t.done} onClick={() => updateTx(tx.id, { done: !tx.done })} className={`grid h-4 w-4 place-items-center rounded border ${tx.done ? "border-primary bg-primary text-primary-foreground" : "border-input"}`}>
+                            <button aria-label={t.done} onClick={() => updateTx(tx.id, !tx.done && tx.real === null ? { done: true, real: tx.projected } : { done: !tx.done })} className={`grid h-4 w-4 place-items-center rounded border ${tx.done ? "border-primary bg-primary text-primary-foreground" : "border-input"}`}>
                               {tx.done && <Check className="h-3 w-3" strokeWidth={3} />}
                             </button>
                           </td>
