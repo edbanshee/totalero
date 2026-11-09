@@ -3,7 +3,7 @@
 import { exportBackup, importBackup, setState } from "@/lib/store";
 
 const env = import.meta.env;
-export const firebaseConfigured = !!(env.VITE_FIREBASE_API_KEY && env.VITE_FIREBASE_PROJECT_ID);
+export const firebaseConfigured = !!(env["VITE_FIREBASE_API_KEY"] && env["VITE_FIREBASE_PROJECT_ID"]);
 
 async function sdk() {
   const [{ initializeApp, getApps }, auth, fs] = await Promise.all([
@@ -12,10 +12,10 @@ async function sdk() {
     import("firebase/firestore"),
   ]);
   const app = getApps()[0] ?? initializeApp({
-    apiKey: env.VITE_FIREBASE_API_KEY,
-    authDomain: env.VITE_FIREBASE_AUTH_DOMAIN,
-    projectId: env.VITE_FIREBASE_PROJECT_ID,
-    appId: env.VITE_FIREBASE_APP_ID,
+    apiKey: env["VITE_FIREBASE_API_KEY"],
+    authDomain: env["VITE_FIREBASE_AUTH_DOMAIN"],
+    projectId: env["VITE_FIREBASE_PROJECT_ID"],
+    appId: env["VITE_FIREBASE_APP_ID"],
   });
   return { auth, fs, a: auth.getAuth(app), db: fs.getFirestore(app) };
 }
@@ -52,5 +52,5 @@ export async function cloudLoad(): Promise<string | null> {
   const u = await currentUser();
   const snap = await fs.getDoc(fs.doc(db, "backups", u.uid));
   if (!snap.exists()) return "empty";
-  return importBackup(String(snap.data().data));
+  return importBackup(String(snap.data()["data"]));
 }

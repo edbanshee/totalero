@@ -31,7 +31,7 @@ export function BackupDialog({ open, onOpenChange, monthKey, monthLabel }: { ope
   };
 
   const cloud = async (fn: () => Promise<string | null | void>, ok: string) => {
-    if (!firebaseConfigured) return toast(t.googleSoon);
+    if (!firebaseConfigured) { toast(t.googleSoon); return; }
     if (fn === cloudLoad && !confirm(t.importWarn)) return;
     try { const err = await fn(); if (err) toast.error(err === "empty" ? t.cloudEmpty : t.backupErr[err] ?? err); else toast.success(ok); }
     catch { toast.error(t.cloudErr); }

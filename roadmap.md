@@ -4,5 +4,7 @@
 - [x] Quitar el campo "Categoría" del formulario: la clasificación es la etiqueta
 - [x] Fase 2: préstamos, amortización, simulador, líneas de crédito por mes
 - [x] Fase 3: tarjetas, resumen anual completo, respaldos JSON, historial
-- [ ] Fase 4: Firebase + Railway (guía paso a paso) — requiere tus cuentas
+- [x] Fase 4: código Firebase (Google + respaldo en la nube) y guía en DEPLOY.md
+- [ ] Conectar tu Firebase — requiere tus claves
+- [x] Guía de GitHub Pages (DEPLOY.md)
 - [x] Préstamos quincenales (ya existe en Frecuencia de pago)
