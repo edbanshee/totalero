@@ -20,10 +20,10 @@ async function sdk() {
     import("firebase/firestore"),
   ]);
   const app = getApps()[0] ?? initializeApp({
-    apiKey: env["VITE_FIREBASE_API_KEY"],
-    authDomain: env["VITE_FIREBASE_AUTH_DOMAIN"],
-    projectId: env["VITE_FIREBASE_PROJECT_ID"],
-    appId: env["VITE_FIREBASE_APP_ID"],
+    apiKey: env["VITE_FIREBASE_API_KEY"] ?? "",
+    authDomain: env["VITE_FIREBASE_AUTH_DOMAIN"] ?? "",
+    projectId: env["VITE_FIREBASE_PROJECT_ID"] ?? "",
+    appId: env["VITE_FIREBASE_APP_ID"] ?? "",
   });
   return { auth, fs, a: auth.getAuth(app), db: fs.getFirestore(app) };
 }
