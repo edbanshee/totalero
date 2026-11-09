@@ -64,6 +64,10 @@ const dict = {
     estRate: "Tasa anual estimada", rateFromTotal: "Calculada con el total a pagar", rateFromPayoff: "Calculada con el monto para liquidar", rateGiven: "Tasa que indicaste",
     payoffSaving: "Ahorro al liquidar", payoffNow: "Liquidar antes de la siguiente cuota", linkLoan: "¿Vincular a un préstamo?",
     linkLoanHint: "Se crea el préstamo y sus cuotas se agregan solas a tu flujo de caja.", toCollect: "Por cobrar", depositR: "Registrar el dinero prestado como gasto (un mes antes del primer cobro)",
+    cardsTitle: "Tarjetas de crédito", newCard: "Nueva tarjeta", cardName: "Tarjeta", cutDay: "Día de corte", payDay: "Día de pago", cutDate: "Fecha de corte", payDate: "Fecha de pago", amountToPay: "Monto a pagar", status: "Estado", paid: "Pagada", pendingS: "Pendiente", noPayment: "Sin pago", addPayment: "Agregar pago", noCards: "Aún no tienes tarjetas.", cardPay: "Pago de tarjeta", noCard: "Ninguna", cardHint: "Registra aquí el pago de la tarjeta; se suma al monto del mes.", deleteCard: "Eliminar tarjeta",
+    yearIncome: "Ingresos del año", yearExpense: "Gastos del año", yearSavings: "Ahorro del año", yearEnd: "Saldo al cierre", byTag: "Por etiqueta", noTag: "Sin etiqueta", total: "Total", balanceTrend: "Saldo de cierre por mes",
+    backup: "Respaldos", exportJson: "Exportar respaldo (JSON)", importJson: "Importar respaldo", importWarn: "Importar reemplaza todos tus datos actuales.", imported: "Respaldo importado", clearMonth: "Borrar movimientos del mes", clearMonthConfirm: "Se borrarán todos los movimientos de este mes. ¿Continuar?", resetAll: "Reiniciar todo", resetConfirm: "Se borrarán todos tus datos. Exporta un respaldo antes. ¿Continuar?", history: "Historial", noHistory: "Sin operaciones registradas.", exported: "Respaldo descargado",
+    backupErr: { badJson: "El archivo no es JSON válido.", notObject: "El archivo no tiene datos.", notTotalero: "Este archivo no es un respaldo de Totalero.", missing: "Al respaldo le faltan movimientos o etiquetas.", badTx: "El respaldo tiene movimientos dañados." } as Record<string, string>,
     totalAvail: "Total disponible", loansDebt: "Debes", loansOwed: "Te deben",
   },
   en: {
@@ -129,6 +133,10 @@ const dict = {
     estRate: "Estimated annual rate", rateFromTotal: "From the total to pay", rateFromPayoff: "From the payoff amount", rateGiven: "Rate you entered",
     payoffSaving: "Savings if paid off", payoffNow: "Pay off before next installment", linkLoan: "Link to a loan?",
     linkLoanHint: "The loan is created and its installments are added to your cash flow.", toCollect: "To collect", depositR: "Record the lent money as an expense (one month before the first collection)",
+    cardsTitle: "Credit cards", newCard: "New card", cardName: "Card", cutDay: "Statement day", payDay: "Due day", cutDate: "Statement date", payDate: "Due date", amountToPay: "Amount due", status: "Status", paid: "Paid", pendingS: "Pending", noPayment: "No payment", addPayment: "Add payment", noCards: "You have no cards yet.", cardPay: "Card payment", noCard: "None", cardHint: "Record the card payment here; it adds to the month amount.", deleteCard: "Delete card",
+    yearIncome: "Year income", yearExpense: "Year expenses", yearSavings: "Year savings", yearEnd: "Closing balance", byTag: "By tag", noTag: "No tag", total: "Total", balanceTrend: "Closing balance per month",
+    backup: "Backups", exportJson: "Export backup (JSON)", importJson: "Import backup", importWarn: "Importing replaces all your current data.", imported: "Backup imported", clearMonth: "Delete this month's movements", clearMonthConfirm: "All movements of this month will be deleted. Continue?", resetAll: "Reset everything", resetConfirm: "All your data will be deleted. Export a backup first. Continue?", history: "History", noHistory: "No operations recorded.", exported: "Backup downloaded",
+    backupErr: { badJson: "The file is not valid JSON.", notObject: "The file has no data.", notTotalero: "This file is not a Totalero backup.", missing: "The backup is missing movements or tags.", badTx: "The backup has damaged movements." } as Record<string, string>,
     totalAvail: "Total available", loansDebt: "You owe", loansOwed: "Owed to you",
   },
 } as const;

@@ -8,7 +8,9 @@ import { Num } from "@/components/totalero/Num";
 import { TxDialog } from "@/components/totalero/TxDialog";
 import { LinesSection, LoansSection } from "@/components/totalero/Credits";
 import { DeleteDialog, TagsDialog } from "@/components/totalero/Dialogs";
-import { computeAll, computeCredit, loanRowBalances, type CreditMonth, daysInMonth, FIRST_YEAR, formatMoney, formatNum, LAST_YEAR, makeDate, monthKey, parseDate, quincenaOf, type Half, type Tx } from "@/lib/engine";
+import { CardsSection } from "@/components/totalero/Cards";
+import { BackupDialog, HistoryDialog } from "@/components/totalero/Backup";
+import { computeAll, computeCredit, loanRowBalances, type CreditMonth, daysInMonth, FIRST_YEAR, formatMoney, formatNum, LAST_YEAR, tagTotals, type Tag, makeDate, monthKey, parseDate, quincenaOf, type Half, type Tx } from "@/lib/engine";
 import { duplicateTx, moveNextMonth, moveOtherHalf, setState, updateTx, useApp, useLoaded } from "@/lib/store";
 import { useT } from "@/lib/i18n";
 
@@ -41,6 +43,8 @@ function AppPage() {
   const [edit, setEdit] = useState<{ open: boolean; tx: Tx | null }>({ open: false, tx: null });
   const [del, setDel] = useState<Tx | null>(null);
   const [tagsOpen, setTagsOpen] = useState(false);
+  const [backupOpen, setBackupOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const all = useMemo(() => computeAll(s.txs, s.initialBalance), [s.txs, s.initialBalance]);
   const todayKey = monthKey(now.getFullYear(), now.getMonth());
@@ -112,6 +116,8 @@ function AppPage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setTagsOpen(true)}>{t.tags}</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setBackupOpen(true)}>{t.backup}</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setHistoryOpen(true)}>{t.history}</DropdownMenuItem>
               <DropdownMenuItem onClick={() => { setState(() => ({ session: null })); nav({ to: "/" }); }}>{t.logout}</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -152,7 +158,7 @@ function AppPage() {
 
       <main className="space-y-4 px-4 py-5 sm:px-7">
         {view === "annual" ? (
-          <Annual all={all} credit={credit} year={year} onPick={(m) => { setMonth(m); setView("monthly"); }} />
+          <Annual all={all} credit={credit} year={year} txs={s.txs} tags={s.tags} onPick={(m) => { setMonth(m); setView("monthly"); }} />
         ) : (
           <>
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -288,6 +294,7 @@ function AppPage() {
               </div>
             </section>
 
+            <CardsSection year={year} month={month} />
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
               <LoansSection defaultDate={makeDate(year, month, 15)} />
               <LinesSection cm={cm} monthLabel={`${t.months[month]} ${year}`} />
@@ -299,13 +306,15 @@ function AppPage() {
       <TxDialog open={edit.open} tx={edit.tx} onOpenChange={(o) => setEdit({ open: o, tx: o ? edit.tx : null })} defaultDate={makeDate(year, month, year === now.getFullYear() && month === now.getMonth() ? now.getDate() : 1)} />
       <DeleteDialog tx={del} onClose={() => setDel(null)} />
       <TagsDialog open={tagsOpen} onOpenChange={setTagsOpen} />
+      <BackupDialog open={backupOpen} onOpenChange={setBackupOpen} monthKey={key} monthLabel={`${t.months[month]} ${year}`} />
+      <HistoryDialog open={historyOpen} onOpenChange={setHistoryOpen} />
     </div>
   );
 }
 
 function Kpi({ icon, label, value, sub, tone }: { icon: React.ReactNode; label: string; value: string; sub?: string; tone?: "pos" | "neg" }) {
   return (
-    <div className="rounded-lg border bg-card px-5 py-5">
+    <div className="min-w-0 rounded-lg border bg-card px-5 py-5">
       <div className="flex items-center gap-2 text-sm">{icon}{label}</div>
       <div className={`mt-3 truncate font-num text-2xl font-medium tabular-nums ${tone === "pos" ? "text-positive" : tone === "neg" ? "text-destructive" : ""}`}>{value}</div>
       {sub && <div className="mt-2 text-[11px] text-subtle">{sub}</div>}
@@ -334,13 +343,58 @@ function HalfCard({ title, h, fn }: { title: string; h: Half; fn: (c: number) =>
   );
 }
 
-function Annual({ all, credit, year, onPick }: { all: ReturnType<typeof computeAll>; credit: Map<string, CreditMonth>; year: number; onPick: (m: number) => void }) {
+function Annual({ all, credit, year, txs, tags, onPick }: { all: ReturnType<typeof computeAll>; credit: Map<string, CreditMonth>; year: number; txs: Tx[]; tags: Tag[]; onPick: (m: number) => void }) {
   const t = useT();
   const fn = (c: number) => formatNum(c, t.lang);
+  const fm = (c: number) => formatMoney(c, t.lang);
   const months = t.months.map((_, i) => all.get(monthKey(year, i))!);
   const max = Math.max(1, ...months.map((m) => Math.max(m.income, m.expense)));
+  const inc = months.reduce((a, m) => a + m.income, 0);
+  const exp = months.reduce((a, m) => a + m.expense, 0);
+  const end = months[11]!.closing;
+  const byTag = tagTotals(txs, year);
+  const tagMap = new Map(tags.map((g) => [g.id, g]));
+  const closings = months.map((m) => m.closing);
+  const lo = Math.min(0, ...closings), hi = Math.max(1, ...closings);
+  const pt = (v: number, i: number) => `${(i / 11) * 100},${100 - ((v - lo) / (hi - lo || 1)) * 100}`;
   return (
     <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Kpi icon={<CircleDollarSign className="h-4 w-4 text-positive" />} label={t.yearIncome} value={fm(inc)} tone="pos" />
+        <Kpi icon={<Wallet className="h-4 w-4 text-destructive" />} label={t.yearExpense} value={fm(exp)} />
+        <Kpi icon={<BadgeDollarSign className="h-4 w-4 text-primary" />} label={t.yearSavings} value={fm(inc - exp)} tone={inc - exp < 0 ? "neg" : "pos"} />
+        <Kpi icon={<CalendarDays className="h-4 w-4 text-primary" />} label={t.yearEnd} value={fm(end)} {...(end < 0 ? { tone: "neg" as const } : {})} />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className="rounded-lg border bg-card p-4">
+          <h3 className="mb-3 text-sm font-semibold">{t.balanceTrend}</h3>
+          <svg viewBox="-2 -4 104 108" preserveAspectRatio="none" className="h-40 w-full">
+            {lo < 0 && <line x1="0" x2="100" y1={100 - ((0 - lo) / (hi - lo)) * 100} y2={100 - ((0 - lo) / (hi - lo)) * 100} className="stroke-border" strokeWidth="0.5" strokeDasharray="2 2" />}
+            <polyline points={closings.map(pt).join(" ")} fill="none" className="stroke-primary" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+            {closings.map((v, i) => { const [x, y] = pt(v, i).split(","); return <circle key={i} cx={x} cy={y} r="1.6" className={v < 0 ? "fill-destructive" : "fill-primary"} />; })}
+          </svg>
+          <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">{t.monthsShort.map((m) => <span key={m}>{m}</span>)}</div>
+        </section>
+        <section className="rounded-lg border bg-card p-4">
+          <h3 className="mb-3 text-sm font-semibold">{t.byTag}</h3>
+          {byTag.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">{t.empty}</p> : (
+            <ul className="space-y-2 text-sm">
+              {byTag.map((r) => {
+                const g = r.tagId ? tagMap.get(r.tagId) : null;
+                return (
+                  <li key={r.tagId ?? "none"}>
+                    <div className="flex justify-between gap-2">
+                      <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-muted-foreground" style={g ? { backgroundColor: g.color } : undefined} />{g?.name ?? t.noTag}</span>
+                      <span className="font-num tabular-nums">{r.income > 0 && <span className="mr-3 text-positive">+{fn(r.income)}</span>}{r.expense > 0 && <span>−{fn(r.expense)}</span>}</span>
+                    </div>
+                    <div className="mt-1 h-1.5 overflow-hidden rounded bg-muted"><div className="h-full rounded bg-destructive/70" style={{ width: `${exp ? (r.expense / exp) * 100 : 0}%` }} /></div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      </div>
       <section className="rounded-lg border bg-card p-4">
         <div className="flex h-48 items-end gap-2">
           {months.map((m, i) => (
@@ -371,6 +425,15 @@ function Annual({ all, credit, year, onPick }: { all: ReturnType<typeof computeA
                 <td className="px-4 text-right text-destructive">{fn(m.debt + (credit.get(m.key)?.loanDebt ?? 0) + (credit.get(m.key)?.lineUsed ?? 0))}</td>
               </tr>
             ))}
+            <tr className="bg-muted/40 font-medium">
+              <td className="px-4 py-2.5 font-sans">{t.total}</td>
+              <td className="px-4 text-right">{fn(months[0]!.opening)}</td>
+              <td className="px-4 text-right text-positive">{fn(inc)}</td>
+              <td className="px-4 text-right">{fn(exp)}</td>
+              <td className={`px-4 text-right ${inc - exp < 0 ? "text-destructive" : "text-positive"}`}>{fn(inc - exp)}</td>
+              <td className={`px-4 text-right ${end < 0 ? "text-destructive" : ""}`}>{fn(end)}</td>
+              <td />
+            </tr>
           </tbody>
         </table>
       </section>

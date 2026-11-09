@@ -1,11 +1,13 @@
 import { useSyncExternalStore } from "react";
-import { addMonths, annuity, installmentType, makeDate, nextDay, parseDate, periodDate, periodRate, periodsPerMonth, schedule, type CreditLine, type Loan, type Tag, type Tx } from "./engine";
+import { addMonths, annuity, installmentType, makeDate, nextDay, parseDate, periodDate, periodRate, periodsPerMonth, schedule, type CreditCard, type CreditLine, type Loan, validateBackup, type Tag, type Tx } from "./engine";
 
 export type Lang = "es" | "en";
 export interface AppState {
   txs: Tx[];
   loans: Loan[];
   lines: CreditLine[];
+  cards: CreditCard[];
+  history: { at: string; msg: string }[];
   tags: Tag[];
   initialBalance: number;
   lang: Lang;
@@ -19,6 +21,8 @@ const defaults: AppState = {
   txs: [],
   loans: [],
   lines: [],
+  cards: [],
+  history: [],
   tags: [
     { id: "t-hogar", name: "Hogar", color: "#3FD0D9" },
     { id: "t-servicios", name: "Servicios", color: "#05AD98" },
@@ -74,6 +78,12 @@ export function useLoaded() {
   return useSyncExternalStore(subscribe, () => loaded, () => false);
 }
 
+/** Appends an entry to the operations history (newest first, capped). */
+export function log(msg: string) {
+  state = { ...state, history: [{ at: new Date().toISOString(), msg }, ...state.history].slice(0, 300) };
+  emit();
+}
+
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
 /* ---------- Actions ---------- */
@@ -98,14 +108,19 @@ export function addTx(input: TxInput) {
       seriesId,
     })).filter((t) => t.date <= "2050-12-31");
     setState((s) => ({ txs: [...s.txs, ...list] }));
+    log(`Alta recurrente: ${base.concept} (${list.length})`);
   } else {
     setState((s) => ({ txs: [...s.txs, { ...base, id: uid(), kind: "simple", seriesId: null }] }));
+    log(`Alta: ${base.concept}`);
   }
   return true;
 }
 
-export const updateTx = (id: string, patch: Partial<Tx>) =>
-  setState((s) => ({ txs: s.txs.map((t) => (t.id === id ? { ...t, ...patch } : t)) }));
+export function updateTx(id: string, patch: Partial<Tx>) {
+  const t = state.txs.find((x) => x.id === id);
+  setState((s) => ({ txs: s.txs.map((x) => (x.id === id ? { ...x, ...patch } : x)) }));
+  if (t) log(`Edición: ${t.concept}${"done" in patch ? (patch.done ? " · hecho" : " · pendiente") : "enabled" in patch ? (patch.enabled ? " · habilitado" : " · deshabilitado") : ""}`);
+}
 
 export const duplicateTx = (id: string) =>
   setState((s) => {
@@ -137,6 +152,7 @@ export function deleteTx(id: string, mode: DeleteMode = "one") {
       return false;
     }),
   }));
+  log(`Borrado: ${t.concept}${mode === "one" ? "" : mode === "forward" ? " (en adelante)" : " (serie)"}`);
 }
 
 export const saveTags = (tags: Tag[]) => setState(() => ({ tags }));
@@ -196,10 +212,12 @@ export function addLoan(loan: Omit<Loan, "id">, deposit: boolean) {
       : s.txs,
   }));
   rebuildLoan(id, "0000-00-00");
+  log(`Préstamo creado: ${l.institution}`);
   return id;
 }
 
 export function deleteLoan(id: string) {
+  log(`Préstamo eliminado: ${state.loans.find((l) => l.id === id)?.institution ?? ""}`);
   setState((s) => ({ loans: s.loans.filter((l) => l.id !== id), txs: s.txs.filter((t) => t.loanId !== id) }));
 }
 
@@ -233,3 +251,43 @@ export const setLineLimit = (id: string, from: string, limit: number) =>
   setState((s) => ({ lines: s.lines.map((l) => (l.id === id ? { ...l, limits: [...l.limits.filter((c) => c.from !== from), { from, limit }] } : l)) }));
 export const deleteLine = (id: string) =>
   setState((s) => ({ lines: s.lines.filter((l) => l.id !== id), txs: s.txs.map((t) => (t.lineId === id ? { ...t, lineId: null } : t)) }));
+
+/* ---------- Credit cards ---------- */
+export function addCard(name: string, cutDay: number, payDay: number) {
+  setState((s) => ({ cards: [...s.cards, { id: uid(), name, cutDay, payDay }] }));
+  log(`Tarjeta creada: ${name}`);
+}
+export function deleteCard(id: string) {
+  const c = state.cards.find((x) => x.id === id);
+  setState((s) => ({ cards: s.cards.filter((x) => x.id !== id), txs: s.txs.map((t) => (t.cardId === id ? { ...t, cardId: null } : t)) }));
+  if (c) log(`Tarjeta eliminada: ${c.name}`);
+}
+
+/* ---------- Backups ---------- */
+const DATA_KEYS = ["txs", "loans", "lines", "cards", "tags", "initialBalance"] as const;
+export function exportBackup(): string {
+  const data: Record<string, unknown> = { app: "totalero", version: 1, exportedAt: new Date().toISOString() };
+  for (const k of DATA_KEYS) data[k] = state[k];
+  return JSON.stringify(data, null, 2);
+}
+/** Replaces all data with a validated backup. Returns an error key or null. */
+export function importBackup(text: string): string | null {
+  let o: unknown;
+  try { o = JSON.parse(text); } catch { return "badJson"; }
+  const err = validateBackup(o);
+  if (err) return err;
+  const b = o as Partial<AppState>;
+  setState(() => ({ txs: b.txs ?? [], loans: b.loans ?? [], lines: b.lines ?? [], cards: b.cards ?? [], tags: b.tags ?? defaults.tags, initialBalance: Number(b.initialBalance) || 0 }));
+  log(`Respaldo importado (${(b.txs ?? []).length} movimientos)`);
+  return null;
+}
+/** Deletes every movement of a month (YYYY-MM). */
+export function clearMonth(key: string) {
+  const n = state.txs.filter((t) => t.date.startsWith(key)).length;
+  setState((s) => ({ txs: s.txs.filter((t) => !t.date.startsWith(key)) }));
+  log(`Mes ${key} borrado (${n} movimientos)`);
+}
+export function resetAll() {
+  setState((s) => ({ txs: [], loans: [], lines: [], cards: [], tags: defaults.tags, initialBalance: 0, history: [], session: s.session }));
+  log("Datos reiniciados");
+}
