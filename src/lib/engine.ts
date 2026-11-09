@@ -13,7 +13,6 @@ export interface Tx {
   id: string;
   date: string; // YYYY-MM-DD
   concept: string;
-  category: string;
   tagId: string | null;
   type: TxType;
   projected: number; // cents, positive

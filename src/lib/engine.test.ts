@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { computeAll, toCents, addMonths, quincenaOf, type Tx } from "./engine";
 
 const tx = (p: Partial<Tx>): Tx => ({
-  id: Math.random().toString(36), date: "2026-10-01", concept: "x", category: "", tagId: null,
+  id: Math.random().toString(36), date: "2026-10-01", concept: "x", tagId: null,
   type: "expense", projected: 0, real: null, debt: 0, done: false, enabled: true, kind: "simple", seriesId: null, ...p,
 });
 
@@ -11,6 +11,11 @@ describe("engine", () => {
     expect(toCents("1,234.56")).toBe(123456);
     expect(toCents("1.234,56")).toBe(123456);
     expect(toCents("0.1")).toBe(10);
+  });
+  it("stores no category on a movement; the tag is the classification", () => {
+    const t = tx({ tagId: "t-hogar" });
+    expect(t).not.toHaveProperty("category");
+    expect(t.tagId).toBe("t-hogar");
   });
   it("splits quincenas at day 15/16", () => {
     expect(quincenaOf("2026-10-15")).toBe(1);

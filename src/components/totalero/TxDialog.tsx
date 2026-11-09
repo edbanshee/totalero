@@ -8,18 +8,19 @@ import { Switch } from "@/components/ui/switch";
 import { formatNum, toCents, type Tx, type TxType } from "@/lib/engine";
 import { addTx, updateTx, useApp } from "@/lib/store";
 import { useT } from "@/lib/i18n";
+import { Num } from "@/components/totalero/Num";
 
 export function TxDialog({ open, onOpenChange, tx, defaultDate }: { open: boolean; onOpenChange: (o: boolean) => void; tx: Tx | null; defaultDate: string }) {
   const t = useT();
   const { tags } = useApp();
-  const [f, setF] = useState({ date: defaultDate, concept: "", category: "", tagId: "", type: "expense" as TxType, projected: "", real: "", debt: "", done: false, recurring: false, months: "12" });
+  const [f, setF] = useState({ date: defaultDate, concept: "", tagId: "", type: "expense" as TxType, projected: "", real: "", debt: "", done: false, recurring: false, months: "12" });
 
   useEffect(() => {
     if (!open) return;
     setF(
       tx
-        ? { date: tx.date, concept: tx.concept, category: tx.category, tagId: tx.tagId ?? "", type: tx.type, projected: formatNum(tx.projected, "en").replace(/,/g, ""), real: tx.real === null ? "" : formatNum(tx.real, "en").replace(/,/g, ""), debt: tx.debt ? formatNum(tx.debt, "en").replace(/,/g, "") : "", done: tx.done, recurring: false, months: "12" }
-        : { date: defaultDate, concept: "", category: "", tagId: "", type: "expense", projected: "", real: "", debt: "", done: false, recurring: false, months: "12" },
+        ? { date: tx.date, concept: tx.concept, tagId: tx.tagId ?? "", type: tx.type, projected: formatNum(tx.projected, "en").replace(/,/g, ""), real: tx.real === null ? "" : formatNum(tx.real, "en").replace(/,/g, ""), debt: tx.debt ? formatNum(tx.debt, "en").replace(/,/g, "") : "", done: tx.done, recurring: false, months: "12" }
+        : { date: defaultDate, concept: "", tagId: "", type: "expense", projected: "", real: "", debt: "", done: false, recurring: false, months: "12" },
     );
   }, [open, tx, defaultDate]);
 
@@ -28,7 +29,6 @@ export function TxDialog({ open, onOpenChange, tx, defaultDate }: { open: boolea
     const data = {
       date: f.date,
       concept: f.concept.trim(),
-      category: f.category.trim(),
       tagId: f.tagId || null,
       type: f.type,
       projected: Math.abs(toCents(f.projected)),
@@ -62,8 +62,7 @@ export function TxDialog({ open, onOpenChange, tx, defaultDate }: { open: boolea
             ))}
           </div>
           <div className="col-span-2"><Label>{t.concept}</Label><Input value={f.concept} onChange={set("concept")} /></div>
-          <div><Label>{t.date}</Label><Input type="date" value={f.date} onChange={set("date")} min="2024-01-01" max="2050-12-31" /></div>
-          <div><Label>{t.category}</Label><Input value={f.category} onChange={set("category")} /></div>
+          <div className="col-span-2"><Label>{t.date}</Label><Input type="date" value={f.date} onChange={set("date")} min="2024-01-01" max="2050-12-31" className="font-num tabular-nums" /></div>
           <div className="col-span-2">
             <Label>{t.tag}</Label>
             <select className={sel} value={f.tagId} onChange={set("tagId")}>
@@ -78,7 +77,7 @@ export function TxDialog({ open, onOpenChange, tx, defaultDate }: { open: boolea
           {!tx && (
             <>
               <label className="flex items-center gap-2 text-sm"><Switch checked={f.recurring} onCheckedChange={(v) => setF({ ...f, recurring: v })} />{t.recurringMonthly}</label>
-              {f.recurring && <div><Label>{t.monthsCount}</Label><Input type="number" value={f.months} onChange={set("months")} /></div>}
+              {f.recurring && <div><Label><Num>{t.monthsCount}</Num></Label><Input type="number" value={f.months} onChange={set("months")} className="font-num tabular-nums" /></div>}
             </>
           )}
         </div>

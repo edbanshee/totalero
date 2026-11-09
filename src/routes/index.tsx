@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Briefcase, CreditCard, Droplet, LogIn, ShieldCheck, BadgeDollarSign } from "lucide-react";
 import { toast } from "sonner";
 import { GoogleG, Logo, TopIcons } from "@/components/totalero/common";
+import { Num } from "@/components/totalero/Num";
 import { useT } from "@/lib/i18n";
 import { setState } from "@/lib/store";
 
@@ -72,7 +73,7 @@ function Landing() {
           </div>
         </div>
       </main>
-      <footer className="border-t py-3 text-center text-[10px] text-muted-foreground">{t.footer}</footer>
+      <footer className="border-t py-3 text-center text-[10px] text-muted-foreground"><Num>{t.footer}</Num></footer>
     </div>
   );
 }

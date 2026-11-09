@@ -4,6 +4,7 @@ import { BarChart3, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, CloudU
 import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Logo, TopIcons } from "@/components/totalero/common";
+import { Num } from "@/components/totalero/Num";
 import { TxDialog } from "@/components/totalero/TxDialog";
 import { DeleteDialog, TagsDialog } from "@/components/totalero/Dialogs";
 import { computeAll, daysInMonth, FIRST_YEAR, formatMoney, formatNum, LAST_YEAR, makeDate, monthKey, parseDate, quincenaOf, type Half, type Tx } from "@/lib/engine";
@@ -150,7 +151,7 @@ function AppPage() {
         ) : (
           <>
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-xl font-medium">{t.lang === "es" ? `${t.months[month]} de ${year}` : `${t.months[month]} ${year}`}</h2>
+              <h2 className="text-xl font-medium"><Num>{t.lang === "es" ? `${t.months[month]} de ${year}` : `${t.months[month]} ${year}`}</Num></h2>
               <div className="flex items-center gap-2">
                 <span className="hidden text-sm text-subtle sm:inline">{t.horizon}</span>
                 <select value={horizon} onChange={(e) => setHorizon(Number(e.target.value) as 0 | 1 | 2)} className="h-9 rounded-md border bg-card px-3 text-sm">
@@ -182,8 +183,8 @@ function AppPage() {
               <div className="flex flex-wrap items-center justify-between gap-3 px-4 pt-4">
                 <div className="flex flex-wrap items-center gap-3">
                   <h3 className="text-base font-semibold">{t.cashflow}</h3>
-                  <span className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">{mr.rows.length} {t.movements}</span>
-                  <span className="text-xs text-muted-foreground">{done} {t.reconciled} · {counts.pending} {t.pending}</span>
+                  <span className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground"><Num>{`${mr.rows.length} ${t.movements}`}</Num></span>
+                  <span className="text-xs text-muted-foreground"><Num>{`${done} ${t.reconciled} · ${counts.pending} ${t.pending}`}</Num></span>
                 </div>
                 <div className="flex gap-2">
                   <label className="flex h-9 items-center gap-2 rounded-md border px-3 text-sm">
@@ -195,7 +196,7 @@ function AppPage() {
               </div>
               <div className="flex flex-wrap items-center gap-2 px-4 py-3 text-xs">
                 {([["all", t.all, "bg-accent text-accent-foreground"], ["pending", t.pendingF, "bg-muted text-muted-foreground"], ["income", t.incomeF, "bg-positive/10 text-positive"], ["expense", t.expenseF, "bg-destructive/10 text-destructive"], ["recurring", t.recurringF, "bg-primary/10 text-accent-foreground"], ["loan", t.loansF, "bg-success/10 text-success"]] as const).map(([k, l, c]) => (
-                  <button key={k} onClick={() => setFilter(k)} className={`rounded px-2 py-1 ${c} ${filter === k ? "ring-1 ring-current" : ""}`}>{l} · {counts[k]}</button>
+                  <button key={k} onClick={() => setFilter(k)} className={`rounded px-2 py-1 ${c} ${filter === k ? "ring-1 ring-current" : ""}`}><Num>{`${l} · ${counts[k]}`}</Num></button>
                 ))}
                 <span className="text-muted-foreground">{t.sortedDay} ↑</span>
               </div>
@@ -215,7 +216,7 @@ function AppPage() {
                       <th className="px-4 text-right font-medium">{t.actions}</th>
                     </tr>
                   </thead>
-                  <tbody className="font-mono text-[13px]">
+                  <tbody className="font-num text-[13px] tabular-nums">
                     <tr className="border-b bg-muted/40">
                       <td className="px-4 py-3 text-muted-foreground"><CornerDownRight className="h-4 w-4" /></td>
                       <td className="px-2 text-muted-foreground">—</td>
@@ -247,7 +248,6 @@ function AppPage() {
                           </td>
                           <td className="px-2 font-sans">
                             <div className={`font-medium ${tx.enabled ? "" : "line-through"}`}>{tx.concept}</div>
-                            {tx.category && <div className="text-[11px] text-muted-foreground">{tx.category}</div>}
                           </td>
                           <td className={`px-2 text-right ${sign > 0 ? "text-positive" : ""}`}>{fn(sign * tx.projected)}</td>
                           <td className={`px-2 text-right ${sign > 0 ? "text-positive" : ""}`}>{tx.done && tx.real !== null ? fn(sign * tx.real) : tx.done ? fn(sign * tx.projected) : "—"}</td>
@@ -296,7 +296,7 @@ function Kpi({ icon, label, value, sub, tone }: { icon: React.ReactNode; label: 
   return (
     <div className="rounded-lg border bg-card px-5 py-5">
       <div className="flex items-center gap-2 text-sm">{icon}{label}</div>
-      <div className={`mt-3 truncate font-num text-2xl font-medium ${tone === "pos" ? "text-positive" : tone === "neg" ? "text-destructive" : ""}`}>{value}</div>
+      <div className={`mt-3 truncate font-num text-2xl font-medium tabular-nums ${tone === "pos" ? "text-positive" : tone === "neg" ? "text-destructive" : ""}`}>{value}</div>
       {sub && <div className="mt-2 text-[11px] text-subtle">{sub}</div>}
     </div>
   );
@@ -308,14 +308,14 @@ function HalfCard({ title, h, fn }: { title: string; h: Half; fn: (c: number) =>
   return (
     <div className="rounded-lg border bg-card px-4 py-4">
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-medium">{title}</h4>
+        <h4 className="text-sm font-medium"><Num>{title}</Num></h4>
         <span className={`rounded px-2 py-0.5 text-xs ${ok ? "bg-positive/10 text-positive" : "bg-destructive/10 text-destructive"}`}>{ok ? t.solvent : t.deficit}</span>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[[t.income, h.income, "text-positive"], [t.expense, h.expense, ""], [t.margin, h.margin, h.margin < 0 ? "text-destructive" : "text-positive"], [t.closing, h.closing, h.closing < 0 ? "text-destructive" : ""]].map(([l, v, c]) => (
           <div key={l as string}>
             <div className="text-[11px] text-muted-foreground">{l}</div>
-            <div className={`mt-1 font-mono text-base ${c}`}>{(l === t.margin && (v as number) > 0 ? "+" : "") + fn(v as number)}</div>
+            <div className={`mt-1 font-num text-base tabular-nums ${c}`}>{(l === t.margin && (v as number) > 0 ? "+" : "") + fn(v as number)}</div>
           </div>
         ))}
       </div>
@@ -348,7 +348,7 @@ function Annual({ all, year, onPick }: { all: ReturnType<typeof computeAll>; yea
           <thead className="border-b bg-muted/60 text-[11px] uppercase text-muted-foreground">
             <tr>{[t.month, t.openingCol, t.income, t.expense, t.savings, t.finalProj, t.debt].map((h, i) => <th key={h} className={`px-4 py-2 font-medium ${i ? "text-right" : "text-left"}`}>{h}</th>)}</tr>
           </thead>
-          <tbody className="font-mono text-[13px]">
+          <tbody className="font-num text-[13px] tabular-nums">
             {months.map((m, i) => (
               <tr key={m.key} onClick={() => onPick(i)} className="cursor-pointer border-b hover:bg-muted/40">
                 <td className="px-4 py-2.5 font-sans">{t.months[i]}</td>
