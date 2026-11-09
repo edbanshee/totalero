@@ -14,6 +14,8 @@ export const Route = createFileRoute("/")({
       { name: "description", content: "Controla tu liquidez y proyecta tu flujo de caja quincenal." },
       { property: "og:title", content: "Totalero — Tu espacio financiero proyectado" },
       { property: "og:description", content: "Controla tu liquidez y proyecta tu flujo de caja quincenal." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Landing,

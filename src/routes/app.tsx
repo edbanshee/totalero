@@ -21,6 +21,8 @@ export const Route = createFileRoute("/app")({
       { name: "description", content: "Tu flujo de caja quincenal, saldos y proyecciones." },
       { property: "og:title", content: "Totalero — Flujo mensual" },
       { property: "og:description", content: "Tu flujo de caja quincenal, saldos y proyecciones." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: AppPage,
