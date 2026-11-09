@@ -127,6 +127,8 @@ export function computeAll(txs: Tx[], initialBalance: number): Map<string, Month
       const key = monthKey(y, m);
       const list = (byMonth.get(key) ?? []).slice().sort(sortTx);
       const opening = bal;
+      // The carried balance always counts as settled money in this month's real totals.
+      realBal = bal;
       const openingReal = realBal;
       const q1: Half = { income: 0, expense: 0, margin: 0, closing: 0 };
       const q2: Half = { income: 0, expense: 0, margin: 0, closing: 0 };
