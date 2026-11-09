@@ -19,6 +19,7 @@ export interface LoanForm {
   tagId: string;
   current: string;
   deposit: boolean;
+  revolving?: boolean;
   /** Whether "total" is the full contract or what is left from the current installment. */
   totalMode?: "contract" | "remaining";
 }
@@ -55,7 +56,7 @@ export function readLoanForm(f: LoanForm) {
   const valid = !!f.institution.trim() && principal > 0 && covers && y >= FIRST_YEAR && y <= LAST_YEAR;
   const loan: Omit<Loan, "id"> = {
     institution: f.institution.trim(), principal, rate: terms.rate, term, startDate, frequency: f.frequency,
-    payment: terms.payment, tagId: f.tagId || null, direction: f.direction, payoff: opt(f.payoff),
+    payment: terms.payment, tagId: f.tagId || null, direction: f.direction, payoff: opt(f.payoff), revolving: f.direction === "payable" && !!f.revolving,
   };
   return { loan, terms, covers, valid, principal, current, inferred };
 }
@@ -120,6 +121,7 @@ export function LoanFields({ f, setF, tags, showDate = true, showDeposit = true 
           <Stat label={t.payoffSaving} value={fm(terms.saving)} tone="pos" />
         </div>
       )}
+      {f.direction === "payable" && <label className="col-span-2 flex items-start gap-2 text-sm"><Switch checked={!!f.revolving} onCheckedChange={(v) => setF({ ...f, revolving: v })} /><span>{t.revolving}<span className="block text-xs text-muted-foreground">{t.revolvingHint}</span></span></label>}
       {showDeposit && <label className="col-span-2 flex items-center gap-2 text-sm"><Switch checked={f.deposit} onCheckedChange={(v) => setF({ ...f, deposit: v })} />{f.direction === "receivable" ? t.depositR : t.deposit}</label>}
       {!covers && principal > 0 && <p className="col-span-2 text-sm text-destructive">{t.notCovering}</p>}
     </div>

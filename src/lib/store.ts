@@ -307,3 +307,8 @@ export function updateLoan(id: string, patch: Omit<Loan, "id">) {
   log(`Préstamo editado: ${l.institution}`);
 }
 export const getState = () => state;
+
+/** Hides/shows a loan in the panel; its movements are untouched. */
+export function setLoanHidden(id: string, hidden: boolean) {
+  setState((s) => ({ loans: s.loans.map((l) => (l.id === id ? { ...l, hidden } : l)) }));
+}

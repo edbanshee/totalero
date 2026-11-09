@@ -13,7 +13,8 @@ import { emptyLoanForm, LoanFields, readLoanForm } from "@/components/totalero/L
 
 export function TxDialog({ open, onOpenChange, tx, defaultDate }: { open: boolean; onOpenChange: (o: boolean) => void; tx: Tx | null; defaultDate: string }) {
   const t = useT();
-  const { tags, lines, cards } = useApp();
+  const { tags, lines: plainLines, cards, loans } = useApp();
+  const lines = [...plainLines, ...loans.filter((l) => l.revolving).map((l) => ({ id: l.id, name: l.institution }))];
   const [f, setF] = useState({ date: defaultDate, concept: "", tagId: "", type: "expense" as TxType, projected: "", real: "", debt: "", done: false, recurring: false, months: "12", every: "monthly" as "monthly" | "yearly", lineId: "", cardId: "", capital: "" });
 
   useEffect(() => {
