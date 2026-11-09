@@ -70,10 +70,17 @@ export function TxDialog({ open, onOpenChange, tx, defaultDate }: { open: boolea
               {tags.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
             </select>
           </div>
-          <div><Label>{t.projected}</Label><Input inputMode="decimal" value={f.projected} onChange={set("projected")} className="font-num" /></div>
-          <div><Label>{t.real}</Label><Input inputMode="decimal" value={f.real} onChange={set("real")} className="font-num" /></div>
+          {([["projected", t.projected], ["real", t.real]] as const).map(([k, label]) => (
+            <div key={k}>
+              <Label>{label}</Label>
+              <div className="relative">
+                <span className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-num text-sm font-semibold ${f.type === "income" ? "text-positive" : "text-destructive"}`}>{f.type === "income" ? "+" : "−"}</span>
+                <Input inputMode="decimal" value={f[k]} onChange={set(k)} className="pl-7 font-num" />
+              </div>
+            </div>
+          ))}
           <div><Label>{t.debt}</Label><Input inputMode="decimal" value={f.debt} onChange={set("debt")} className="font-num" /></div>
-          <label className="flex items-end gap-2 pb-2 text-sm"><Switch checked={f.done} onCheckedChange={(v) => setF({ ...f, done: v })} />{t.done}</label>
+          <label className="flex items-end gap-2 pb-2 text-sm"><Switch checked={f.done} onCheckedChange={(v) => setF({ ...f, done: v, real: v && f.real.trim() === "" ? f.projected : f.real })} />{t.done}</label>
           {!tx && (
             <>
               <label className="flex items-center gap-2 text-sm"><Switch checked={f.recurring} onCheckedChange={(v) => setF({ ...f, recurring: v })} />{t.recurringMonthly}</label>
