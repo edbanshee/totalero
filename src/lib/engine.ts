@@ -26,6 +26,7 @@ export interface Tx {
   lineId?: string | null; // income = draw on the line, expense = payment to it
   capital?: number | null; // cents of the amount that reduces debt (rest is interest)
   installment?: number | null; // loan installment number; null for extras/deposits
+  cardId?: string | null; // payment of a credit card
 }
 
 export const FIRST_YEAR = 2024;
@@ -412,4 +413,53 @@ export function loanRowBalances(txs: Tx[], loans: Loan[]): Map<string, { debt: n
     }
   }
   return out;
+}
+
+/* ---------- Credit cards ---------- */
+export interface CreditCard {
+  id: string;
+  name: string;
+  cutDay: number; // day of the month the statement closes
+  payDay: number; // day of the month the payment is due
+}
+export type CardStatus = "paid" | "pending" | "none";
+export interface CardMonth { card: CreditCard; cut: string; pay: string; amount: number; status: CardStatus; txs: Tx[] }
+
+/** A card's statement for a month: due date in that month, cut date before it, amount = its linked payments. */
+export function cardMonth(card: CreditCard, txs: Tx[], y: number, m: number): CardMonth {
+  const pay = makeDate(y, m, card.payDay);
+  const cutSame = makeDate(y, m, card.cutDay);
+  const cut = card.cutDay < card.payDay ? cutSame : makeDate(...(m === 0 ? [y - 1, 11] as const : [y, m - 1] as const), card.cutDay);
+  const key = monthKey(y, m);
+  const mine = txs.filter((t) => t.cardId === card.id && t.enabled && t.date.startsWith(key));
+  const amount = mine.reduce((a, t) => a + (t.done && t.real !== null ? t.real : t.projected) * (t.type === "expense" ? 1 : -1), 0);
+  const status: CardStatus = mine.length === 0 ? "none" : mine.every((t) => t.done) ? "paid" : "pending";
+  return { card, cut, pay, amount, status, txs: mine };
+}
+
+/* ---------- Annual summary ---------- */
+export interface TagTotal { tagId: string | null; income: number; expense: number }
+/** Income/expense per tag for a year (enabled movements, projected amounts). */
+export function tagTotals(txs: Tx[], year: number): TagTotal[] {
+  const map = new Map<string | null, TagTotal>();
+  for (const t of txs) {
+    if (!t.enabled || !t.date.startsWith(`${year}-`)) continue;
+    const r = map.get(t.tagId) ?? { tagId: t.tagId, income: 0, expense: 0 };
+    r[t.type] += t.projected;
+    map.set(t.tagId, r);
+  }
+  return [...map.values()].sort((a, b) => b.expense + b.income - (a.expense + a.income));
+}
+
+/* ---------- Backups ---------- */
+/** Checks a backup file before importing; returns an error key or null. */
+export function validateBackup(o: unknown): string | null {
+  if (!o || typeof o !== "object") return "notObject";
+  const b = o as Record<string, unknown>;
+  if (b.app !== "totalero") return "notTotalero";
+  if (!Array.isArray(b.txs) || !Array.isArray(b.tags)) return "missing";
+  for (const t of b.txs as Tx[]) {
+    if (typeof t?.id !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(String(t.date)) || !Number.isInteger(t.projected) || (t.type !== "income" && t.type !== "expense")) return "badTx";
+  }
+  return null;
 }
