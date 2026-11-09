@@ -103,7 +103,7 @@ function AppPage() {
         </div>
         <div className="flex items-center gap-2">
           <TopIcons />
-          <button aria-label="Cloud" className="grid h-8 w-8 place-items-center rounded-md text-primary hover:bg-accent" onClick={() => toast(t.googleSoon)}>
+          <button aria-label="Cloud" className="grid h-8 w-8 place-items-center rounded-md text-primary hover:bg-accent" onClick={() => setBackupOpen(true)}>
             <CloudUpload className="h-5 w-5" strokeWidth={2.5} />
           </button>
           <DropdownMenu>
@@ -111,7 +111,7 @@ function AppPage() {
               <div className="grid h-9 w-9 place-items-center rounded-full bg-accent text-sm font-semibold text-accent-foreground">{(s.userName ?? t.guestUser)[0]}</div>
               <div className="hidden text-left sm:block">
                 <div className="text-xs font-medium">{s.userName ?? t.guestUser}</div>
-                <div className="text-[10px] text-primary">{t.local}</div>
+                <div className="text-[10px] text-primary">{s.session === "google" ? t.cloudUser : t.local}</div>
               </div>
               <ChevronDown className="h-4 w-4 text-primary" />
             </DropdownMenuTrigger>
