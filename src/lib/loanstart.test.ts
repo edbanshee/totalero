@@ -15,6 +15,6 @@ describe("editing a loan", () => {
     updateLoan(id, { ...l, term: 6 });
     const inst = getState().txs.filter((t) => t.loanId === id && t.installment != null);
     expect(inst).toHaveLength(6);
-    expect(inst[0].projected).toBe(100000);
+    expect(inst[0]?.projected).toBe(100000);
   });
 });
