@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { BarChart3, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, CloudUpload, CornerDownRight, Eye, EyeOff, HandCoins, LayoutGrid, MoreHorizontal, Pencil, Plus, Search, SlidersHorizontal, Trash2, Wallet, BadgeDollarSign, CircleDollarSign, Check } from "lucide-react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { BarChart3, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, CloudUpload, CornerDownRight, Eye, EyeOff, LayoutGrid, MoreHorizontal, Pencil, Plus, Search, SlidersHorizontal, Trash2, Wallet, BadgeDollarSign, CircleDollarSign, Check } from "lucide-react";
 import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Logo, TopIcons } from "@/components/totalero/common";
 import { Num } from "@/components/totalero/Num";
 import { TxDialog } from "@/components/totalero/TxDialog";
+import { LinesSection, LoansSection } from "@/components/totalero/Credits";
 import { DeleteDialog, TagsDialog } from "@/components/totalero/Dialogs";
 import { computeAll, computeCredit, type CreditMonth, daysInMonth, FIRST_YEAR, formatMoney, formatNum, LAST_YEAR, makeDate, monthKey, parseDate, quincenaOf, type Half, type Tx } from "@/lib/engine";
 import { duplicateTx, moveNextMonth, moveOtherHalf, setState, updateTx, useApp, useLoaded } from "@/lib/store";
@@ -95,7 +96,6 @@ function AppPage() {
           <span className="truncate text-2xl font-semibold">Totalero</span>
         </div>
         <div className="flex items-center gap-2">
-          <Link to="/creditos" className="hidden h-9 items-center gap-2 rounded-md border px-3 text-sm font-medium hover:bg-accent sm:flex"><HandCoins className="h-4 w-4 text-primary" />{t.credits}</Link>
           <TopIcons />
           <button aria-label="Cloud" className="grid h-8 w-8 place-items-center rounded-md text-primary hover:bg-accent" onClick={() => toast(t.googleSoon)}>
             <CloudUpload className="h-5 w-5" strokeWidth={2.5} />
@@ -111,7 +111,6 @@ function AppPage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setTagsOpen(true)}>{t.tags}</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => nav({ to: "/creditos" })}>{t.credits}</DropdownMenuItem>
               <DropdownMenuItem onClick={() => { setState(() => ({ session: null })); nav({ to: "/" }); }}>{t.logout}</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -286,6 +285,11 @@ function AppPage() {
                 </table>
               </div>
             </section>
+
+            <div className="grid gap-4 xl:grid-cols-[1fr_400px]">
+              <LoansSection defaultDate={makeDate(year, month, 15)} />
+              <LinesSection cm={cm} monthLabel={`${t.months[month]} ${year}`} />
+            </div>
           </>
         )}
       </main>
