@@ -94,6 +94,7 @@ function AppPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <div className="sticky top-0 z-40 shadow-sm">
       {/* Header */}
       <header className="flex items-center justify-between gap-3 border-b bg-card px-4 py-4 sm:px-7">
         <div className="flex min-w-0 items-center gap-3">
@@ -155,6 +156,7 @@ function AppPage() {
         </div>
         <button aria-label="next" onClick={() => go(1)} className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><ChevronRight className="h-4 w-4" /></button>
       </nav>
+      </div>
 
       <main className="space-y-4 px-4 py-5 sm:px-7">
         {view === "annual" ? (
