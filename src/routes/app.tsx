@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { BarChart3, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, CloudUpload, CornerDownRight, Eye, EyeOff, HandCoins, LayoutGrid, MoreHorizontal, Pencil, Plus, Search, SlidersHorizontal, Trash2, Wallet, BadgeDollarSign, CircleDollarSign, Check } from "lucide-react";
 import { toast } from "sonner";
@@ -46,10 +46,9 @@ function AppPage() {
   const prevName = t.months[(month + 11) % 12].toLowerCase();
   const tagMap = new Map(s.tags.map((g) => [g.id, g]));
 
-  if (loaded && !s.session) {
-    nav({ to: "/" });
-    return null;
-  }
+  useEffect(() => {
+    if (loaded && !s.session) nav({ to: "/" });
+  }, [loaded, s.session, nav]);
 
   const rows = mr.rows.filter(({ tx }) => {
     if (horizon && quincenaOf(tx.date) !== horizon) return false;
