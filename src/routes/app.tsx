@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { BarChart3, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, CloudUpload, CornerDownRight, Eye, EyeOff, LayoutGrid, MoreHorizontal, Pencil, Plus, Search, SlidersHorizontal, Trash2, Wallet, BadgeDollarSign, CircleDollarSign, Check } from "lucide-react";
+import { HandCoins, BarChart3, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, CloudUpload, CornerDownRight, Eye, EyeOff, LayoutGrid, MoreHorizontal, Pencil, Plus, Search, SlidersHorizontal, Trash2, Wallet, BadgeDollarSign, CircleDollarSign, Check } from "lucide-react";
 import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Logo, TopIcons } from "@/components/totalero/common";

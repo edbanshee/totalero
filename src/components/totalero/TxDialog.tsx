@@ -24,7 +24,18 @@ export function TxDialog({ open, onOpenChange, tx, defaultDate }: { open: boolea
     );
   }, [open, tx, defaultDate]);
 
+  const [linkLoan, setLinkLoan] = useState(false);
+  const [lf, setLf] = useState(emptyLoanForm(defaultDate));
+  useEffect(() => { if (open) { setLinkLoan(false); setLf(emptyLoanForm(defaultDate)); } }, [open, defaultDate]);
+
   const save = () => {
+    if (linkLoan && !tx) {
+      const r = readLoanForm({ ...lf, institution: lf.institution || f.concept, startDate: f.date, tagId: f.tagId });
+      if (!r.valid) return;
+      addLoan(r.loan, lf.deposit);
+      onOpenChange(false);
+      return;
+    }
     if (!f.concept.trim() || !f.date) return;
     const data = {
       date: f.date,
@@ -74,7 +85,21 @@ export function TxDialog({ open, onOpenChange, tx, defaultDate }: { open: boolea
               {tags.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
             </select>
           </div>
-          {!tx?.loanId && lines.length > 0 && (
+          {!tx && (
+            <div className="col-span-2 rounded-lg border bg-muted/30 p-3">
+              <label className="flex items-center justify-between gap-2 text-sm font-medium">
+                <span>{t.linkLoan}</span>
+                <Switch checked={linkLoan} onCheckedChange={setLinkLoan} />
+              </label>
+              {linkLoan && (
+                <div className="mt-3 space-y-3">
+                  <p className="text-xs text-muted-foreground">{t.linkLoanHint}</p>
+                  <LoanFields f={{ ...lf, institution: lf.institution || f.concept, startDate: f.date }} setF={setLf} tags={tags} showDate={false} />
+                </div>
+              )}
+            </div>
+          )}
+          {!linkLoan && !tx?.loanId && lines.length > 0 && (
             <div className="col-span-2">
               <Label>{t.creditLine}</Label>
               <select className={sel} value={f.lineId} onChange={set("lineId")}>
