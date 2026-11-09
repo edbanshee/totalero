@@ -394,3 +394,22 @@ export function computeCredit(txs: Tx[], loans: Loan[], lines: CreditLine[], tod
   }
   return out;
 }
+
+/**
+ * Per-movement loan balances, derived from the movements themselves so deleting or editing
+ * installments recalculates automatically. debt = loan balance before the movement,
+ * left = balance after it. Disabled movements leave the balance unchanged.
+ */
+export function loanRowBalances(txs: Tx[], loans: Loan[]): Map<string, { debt: number; left: number }> {
+  const out = new Map<string, { debt: number; left: number }>();
+  for (const l of loans) {
+    const ty = installmentType(l);
+    let bal = l.principal;
+    for (const t of txs.filter((x) => x.loanId === l.id).sort(sortTx)) {
+      const before = bal;
+      if (t.enabled && t.type === ty) bal = Math.max(0, bal - (t.capital ?? 0));
+      out.set(t.id, { debt: before, left: bal });
+    }
+  }
+  return out;
+}
