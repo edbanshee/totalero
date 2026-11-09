@@ -43,7 +43,7 @@ function AppPage() {
   const all = useMemo(() => computeAll(s.txs, s.initialBalance), [s.txs, s.initialBalance]);
   const key = monthKey(year, month);
   const mr = all.get(key)!;
-  const prevName = t.months[(month + 11) % 12].toLowerCase();
+  const prevName = (t.months[(month + 11) % 12] ?? "").toLowerCase();
   const tagMap = new Map(s.tags.map((g) => [g.id, g]));
 
   useEffect(() => {
