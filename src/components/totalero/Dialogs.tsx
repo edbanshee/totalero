@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { formatMoney, toCents, formatNum, txValue, type Tag, type Tx } from "@/lib/engine";
 import { deleteTx, saveTags, setState, uid, useApp } from "@/lib/store";
 import { useT } from "@/lib/i18n";
+import { Num } from "@/components/totalero/Num";
 
 export function DeleteDialog({ tx, onClose }: { tx: Tx | null; onClose: () => void }) {
   const t = useT();
@@ -57,7 +58,7 @@ export function TagsDialog({ open, onOpenChange }: { open: boolean; onOpenChange
             </div>
           ))}
           <Button variant="outline" size="sm" onClick={() => setList([...list, { id: uid(), name: "", color: "#3FD0D9" }])}>{t.addTag}</Button>
-          <div className="pt-3"><Label>{t.initialBal}</Label><Input className="font-num" value={init} onChange={(e) => setInit(e.target.value)} /></div>
+          <div className="pt-3"><Label><Num>{t.initialBal}</Num></Label><Input className="font-num tabular-nums" value={init} onChange={(e) => setInit(e.target.value)} /></div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>{t.cancel}</Button>
