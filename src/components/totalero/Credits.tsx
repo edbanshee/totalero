@@ -22,7 +22,7 @@ export function LoansSection({ defaultDate }: { defaultDate: string }) {
   const paidOf = (l: Loan) => s.txs.filter((x) => x.loanId === l.id && x.type === installmentType(l) && x.done && x.enabled).reduce((a, x) => a + (x.capital ?? 0), 0);
 
   return (
-    <section className="rounded-lg border bg-card p-4">
+    <section className="min-w-0 rounded-lg border bg-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="grid h-9 w-9 place-items-center rounded-md bg-primary/10 text-primary"><Landmark className="h-5 w-5" /></div>
@@ -85,7 +85,7 @@ function LoanDetail({ loan }: { loan: Loan }) {
   const extraDate = sim.base[idx]?.date;
 
   return (
-    <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_360px]">
+    <div className="mt-4 grid gap-4 2xl:grid-cols-[minmax(0,1fr)_340px]">
       <div className="rounded-lg border">
         <div className="flex items-center justify-between px-4 pt-3">
           <h4 className="font-semibold">{t.amort} · {loan.institution}</h4>

@@ -286,7 +286,7 @@ function AppPage() {
               </div>
             </section>
 
-            <div className="grid gap-4 xl:grid-cols-[1fr_400px]">
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
               <LoansSection defaultDate={makeDate(year, month, 15)} />
               <LinesSection cm={cm} monthLabel={`${t.months[month]} ${year}`} />
             </div>
