@@ -12,6 +12,11 @@ describe("engine", () => {
     expect(toCents("1.234,56")).toBe(123456);
     expect(toCents("0.1")).toBe(10);
   });
+  it("stores no category on a movement; the tag is the classification", () => {
+    const t = tx({ tagId: "t-hogar" });
+    expect(t).not.toHaveProperty("category");
+    expect(t.tagId).toBe("t-hogar");
+  });
   it("splits quincenas at day 15/16", () => {
     expect(quincenaOf("2026-10-15")).toBe(1);
     expect(quincenaOf("2026-10-16")).toBe(2);
