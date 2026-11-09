@@ -9,7 +9,7 @@ const defaults: Record<string, string> = {
   VITE_FIREBASE_PROJECT_ID: "totalero-finance",
   VITE_FIREBASE_APP_ID: "1:1065099817414:web:48511437075f3a7eb682c7",
 };
-const env: Record<string, string | undefined> = { ...defaults };
+const env: Record<string, string> = { ...defaults };
 for (const n of Object.keys(defaults)) { const v = import.meta.env[n]; if (v) env[n] = v; }
 export const firebaseConfigured = !!(env["VITE_FIREBASE_API_KEY"] && env["VITE_FIREBASE_PROJECT_ID"]);
 
