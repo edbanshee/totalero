@@ -314,6 +314,8 @@ export function computeCredit(txs: Tx[], loans: Loan[], lines: CreditLine[], tod
       if (t.done) loanCap.set(mk, (loanCap.get(mk) ?? 0) + c);
     }
   }
+  const loanFrom = new Map<string, string>(loans.map((l) => [l.id, l.startDate.slice(0, 7)]));
+  for (const t of txs) if (t.loanId && t.date.slice(0, 7) < (loanFrom.get(t.loanId) ?? "")) loanFrom.set(t.loanId, t.date.slice(0, 7));
   const out = new Map<string, CreditMonth>();
   const used = new Map<string, number>(lines.map((l) => [l.id, 0]));
   const paidLoan = new Map<string, number>(loans.map((l) => [l.id, 0]));
@@ -334,7 +336,7 @@ export function computeCredit(txs: Tx[], loans: Loan[], lines: CreditLine[], tod
       for (const l of loans) {
         const p = (paidLoan.get(l.id) ?? 0) + ((future ? loanCapAll : loanCap).get(`${l.id}|${key}`) ?? 0);
         paidLoan.set(l.id, p);
-        if (key >= l.startDate.slice(0, 7) || p > 0) loanDebt += Math.max(0, l.principal - p);
+        if (key >= (loanFrom.get(l.id) ?? l.startDate.slice(0, 7))) loanDebt += Math.max(0, l.principal - p);
       }
       out.set(key, {
         lines: lm,
