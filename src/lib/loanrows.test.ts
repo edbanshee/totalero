@@ -13,3 +13,14 @@ describe("loanRowBalances", () => {
     expect(m.get("c")).toEqual({ debt: 300000, left: 200000 });
   });
 });
+
+describe("deuda incluye intereses", () => {
+  it("12 cuotas de 6,262: la cuota 1 debe 75,144 y la cuota 4 debe 56,358", () => {
+    const l: Loan = { ...loan, principal: 5543351, term: 12 };
+    const rows = Array.from({ length: 12 }, (_, i) => tx(`i${i}`, `2026-${String(i + 1).padStart(2, "0")}-10`, { projected: 626200, capital: 400000, installment: i + 1 }));
+    const m = loanRowBalances(rows, [l]);
+    expect(m.get("i0")!.debt).toBe(7514400);
+    expect(m.get("i3")!.debt).toBe(5635800);
+    expect(m.get("i11")!.left).toBe(0);
+  });
+});
