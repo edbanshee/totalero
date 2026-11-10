@@ -9,6 +9,5 @@
 - [x] Guía de GitHub Pages (DEPLOY.md)
 - [x] Préstamos quincenales (ya existe en Frecuencia de pago)
 - [x] Configurar salida estática, ruta del repositorio y publicación automática en GitHub Pages
-- [x] Preparar destino Railway y documentar la separación con Firebase
 - [x] Verificar navegación de invitado/recarga, 35 pruebas y preparación de archivos con datos de prueba
-- [ ] Confirmar publicación real de Pages y Railway — requiere conectar los repositorios y activar los destinos externos; pasos en DEPLOY.md
+- [ ] Confirmar publicación real de Pages — requiere activar Pages en GitHub; pasos en DEPLOY.md
