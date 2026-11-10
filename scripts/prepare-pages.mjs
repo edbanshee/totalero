@@ -1,8 +1,16 @@
-import { access, copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, copyFile, cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { normalizeBasePath } from "./deployment.mjs";
 
 const output = resolve("dist/client");
+// Outside Lovable (e.g. GitHub Actions) Nitro writes static files to .output/public.
+const alt = resolve(".output/public");
+if (!existsSync(resolve(output, "_shell.html")) && existsSync(resolve(alt, "_shell.html"))) {
+  await rm(output, { recursive: true, force: true });
+  await mkdir(output, { recursive: true });
+  await cp(alt, output, { recursive: true });
+}
 const shell = resolve(output, "_shell.html");
 const html = await readFile(shell, "utf8");
 const base = normalizeBasePath(process.env.VITE_BASE_PATH);
