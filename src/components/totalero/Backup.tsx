@@ -36,12 +36,12 @@ export function BackupDialog({ open, onOpenChange, monthKey, monthLabel }: { ope
     try { const err = await fn(); if (err) toast.error(err === "empty" ? t.cloudEmpty : t.backupErr[err] ?? err); else toast.success(ok); }
     catch { toast.error(t.cloudErr); }
   };
-  const row = "w-full justify-start gap-2";
+  const row = "h-auto min-h-9 w-full min-w-0 justify-start gap-2 whitespace-normal text-left [&>span]:min-w-0 [&>span]:break-words";
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-lg">
         <DialogHeader><DialogTitle>{t.backup}</DialogTitle></DialogHeader>
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           <Button variant="outline" className={row} onClick={doExport}><Download className="h-4 w-4" />{t.exportJson}</Button>
           <Button variant="outline" className={row} onClick={() => file.current?.click()}><Upload className="h-4 w-4" />{t.importJson}</Button>
           <input ref={file} type="file" accept="application/json,.json" className="hidden" onChange={(e) => doImport(e.target.files?.[0])} />
