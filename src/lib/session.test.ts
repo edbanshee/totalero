@@ -3,7 +3,7 @@ import { getState, loadStore, setState } from "./store";
 import { signOutGoogle } from "./firebase";
 
 const firebase = vi.hoisted(() => ({ signOut: vi.fn(), auth: {} }));
-vi.mock("firebase/app", () => ({ getApps: () => [{}] }));
+vi.mock("firebase/app", () => ({ initializeApp: vi.fn(), getApps: () => [{}] }));
 vi.mock("firebase/auth", () => ({ getAuth: () => firebase.auth, signOut: firebase.signOut }));
 vi.mock("firebase/firestore", () => ({ getFirestore: () => ({}) }));
 
