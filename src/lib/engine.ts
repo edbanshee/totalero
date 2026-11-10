@@ -437,7 +437,9 @@ export function loanRowBalances(txs: Tx[], loans: Loan[]): Map<string, { debt: n
     // Debt = what is still left to pay (sum of remaining installments, interest included).
     const mine = txs.filter((x) => x.loanId === l.id).sort(sortTx);
     const isInst = (t: Tx) => t.enabled && t.type === ty && t.installment != null;
-    let bal = mine.filter(isInst).reduce((a, t) => a + t.projected, 0);
+    // Start from the full contract (all installments); skipped/disabled ones keep the debt owed.
+    const contract = l.payment > 0 ? l.payment * l.term : amortize(l).reduce((a, r) => a + r.payment, 0);
+    let bal = Math.max(contract, mine.filter(isInst).reduce((a, t) => a + t.projected, 0));
     for (const t of mine) {
       const before = bal;
       if (isInst(t)) bal = Math.max(0, bal - t.projected);
