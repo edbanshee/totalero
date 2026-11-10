@@ -38,6 +38,7 @@ export async function signInWithGoogle() {
 export async function signOutGoogle() {
   const { auth, a } = await sdk();
   await auth.signOut(a);
+  setState(() => ({ session: null, userName: null }));
 }
 
 async function currentUser() {

@@ -38,3 +38,4 @@ use the editor.
 - Deployment modes are isolated: Pages emits a client-only shell with repository-relative assets and the default retains Lovable hosting; one target must not change another's runtime.
 - Pages routing uses Vite BASE_URL, and prepare-pages emits a document for every concrete content route so GitHub Pages can serve direct links without a 404 fallback.
 - Firebase is the only backend (browser auth + backups); there is no separate server target because all logic runs in the browser.
+- Logout awaits Firebase sign-out before clearing local identity; the store strips profile data from non-Google sessions on load and update so guest mode cannot inherit a previous account.

@@ -58,12 +58,14 @@ export function loadStore() {
   } catch {
     /* corrupt storage: keep defaults */
   }
+  if (state.session !== "google") state = { ...state, userName: null };
   emit();
 }
 export const isLoaded = () => loaded;
 
 export function setState(fn: (s: AppState) => Partial<AppState>) {
   state = { ...state, ...fn(state) };
+  if (state.session !== "google") state = { ...state, userName: null };
   emit();
 }
 
