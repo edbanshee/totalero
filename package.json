@@ -7,8 +7,6 @@
     "dev": "vite dev",
     "build": "vite build",
     "build:pages": "vite build --mode pages && node scripts/prepare-pages.mjs",
-    "build:railway": "vite build --mode railway",
-    "start:railway": "node .output/server/index.mjs",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",

@@ -1,18 +1,17 @@
-# Totalero — GitHub Pages + Railway + Firebase
+# Totalero — GitHub Pages + Firebase
 
 ## Arquitectura y estado actual
 - **GitHub Pages:** sitio estático (bienvenida y dashboard), sin un servidor en GitHub.
 - **Firebase:** acceso con Google y respaldo privado por usuario.
-- **Railway:** destino de servidor separado, preparado para alojar el backend.
 
-Hoy los cálculos y los datos de invitado siguen en el navegador; Google y los respaldos llaman directamente a Firebase. **Todavía no existe una API de negocio en Railway ni llamadas de la app hacia Railway.** Esta configuración prepara los destinos sin duplicar los datos ni inventar servicios. Una futura API deberá verificar los tokens de Firebase y autorizar únicamente el origen del sitio mediante CORS; las claves privadas vivirán en Railway, nunca en variables `VITE_`.
+Hoy los cálculos y los datos de invitado siguen en el navegador; Google y los respaldos llaman directamente a Firebase. No hay servidor propio: no hace falta.
 
 La vista previa de Lovable conserva su configuración normal.
 
 ## 1. Firebase (Google + respaldo en la nube)
 1. Entra a https://console.firebase.google.com → **Agregar proyecto** → nombre "totalero" (Analytics opcional).
 2. **Authentication → Comenzar → Método de acceso → Google → Habilitar** y guarda.
-3. **Authentication → Configuración → Dominios autorizados**: agrega el dominio donde vivirá la app (p. ej. `tuusuario.github.io`, tu dominio de Railway o de Lovable).
+3. **Authentication → Configuración → Dominios autorizados**: agrega el dominio donde vivirá la app (p. ej. `tuusuario.github.io` o el de Lovable).
 4. **Firestore Database → Crear base de datos** (modo producción) y en **Reglas** pega:
    ```
    rules_version = '2';
@@ -35,14 +34,7 @@ La vista previa de Lovable conserva su configuración normal.
 
 Uso: "Continuar con Google" inicia sesión; en **Respaldo** aparecen "Guardar en la nube" y "Restaurar de la nube" (un documento por usuario).
 
-## 2. Railway — destino de backend
-1. En https://railway.com crea un proyecto → **Deploy from GitHub repo** y selecciona el mismo repositorio.
-2. `railway.json` ya define la compilación `bun run build:railway` y el inicio `bun run start:railway` (Node, `.output/server/index.mjs`). Railway instala las dependencias y suministra `PORT`.
-3. Genera el dominio en **Settings → Networking → Generate Domain**. No agregues `VITE_BASE_PATH` en Railway: el servidor usa `/`, no la ruta del repositorio.
-4. Este destino todavía expone la app con servidor, no una API financiera nueva. Por ahora GitHub Pages funciona sin depender de Railway. No necesitas copiar las claves de Firebase a Railway salvo que quieras probar también su interfaz allí.
-5. Al añadir operaciones de backend, configura allí sus credenciales privadas y la dirección permitida de GitHub Pages; nunca subas una cuenta de servicio de Firebase al repositorio.
-
-## 3. GitHub Pages
+## 2. GitHub Pages
 El flujo `.github/workflows/pages.yml` ya está creado. Publica automáticamente al recibir cambios en `main`, o manualmente desde **Actions → Publish Totalero to GitHub Pages → Run workflow**.
 1. Crea el repositorio en GitHub con el código (desde Lovable: Configuración → GitHub → Conectar).
 2. En el repo: **Settings → Secrets and variables → Actions** agrega las 4 `VITE_FIREBASE_*`.
@@ -64,4 +56,4 @@ En **Settings → Secrets and variables → Actions → Variables**, crea `PAGES
 4. Inicia sesión con Google y prueba guardar/restaurar un respaldo; requiere Firebase configurado.
 5. En **Actions**, confirma que las pruebas y la publicación estén en verde.
 
-Los cambios de claves públicas de Firebase requieren volver a ejecutar la publicación. Los destinos externos y sus permisos se activan en GitHub/Railway: crear los archivos aquí no los publica ni confirma que esas cuentas estén conectadas.
+Los cambios de claves públicas de Firebase requieren volver a ejecutar la publicación. Los destinos externos y sus permisos se activan en GitHub: crear los archivos aquí no los publica ni confirma que esas cuentas estén conectadas.

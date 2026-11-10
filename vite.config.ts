@@ -14,12 +14,10 @@ import type { ConfigEnv } from "vite";
 export default (env: ConfigEnv) => {
   const { mode } = env;
   const pages = mode === "pages";
-  const railway = mode === "railway";
   // Build-time only; ordinary Lovable builds keep the existing Worker target.
   const base = pages ? normalizeBasePath(process.env['VITE_BASE_PATH']) : "/";
   return defineConfig({
     vite: { base },
-    ...(pages || railway ? { nitro: { preset: "node-server" } } : {}),
     tanstackStart: {
       server: { entry: "server" },
       router: { basepath: base },
