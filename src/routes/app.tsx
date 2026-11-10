@@ -13,6 +13,7 @@ import { BackupDialog, HistoryDialog } from "@/components/totalero/Backup";
 import { computeAll, computeCredit, loanRowBalances, type CreditMonth, daysInMonth, FIRST_YEAR, formatMoney, formatNum, LAST_YEAR, tagTotals, type Tag, makeDate, monthKey, parseDate, quincenaOf, type Half, type Tx } from "@/lib/engine";
 import { duplicateTx, moveNextMonth, moveOtherHalf, setState, updateTx, useApp, useLoaded } from "@/lib/store";
 import { useT } from "@/lib/i18n";
+import { signOutGoogle } from "@/lib/firebase";
 
 export const Route = createFileRoute("/app")({
   head: () => ({
@@ -35,6 +36,7 @@ function AppPage() {
   const loaded = useLoaded();
   const t = useT();
   const nav = useNavigate();
+  const profileName = s.session === "google" ? s.userName ?? t.guestUser : t.guestUser;
   const now = new Date();
   const [year, setYear] = useState(Math.min(Math.max(now.getFullYear(), FIRST_YEAR), LAST_YEAR));
   const [month, setMonth] = useState(now.getMonth());
@@ -110,9 +112,9 @@ function AppPage() {
           </button>
           <DropdownMenu>
             <DropdownMenuTrigger className="ml-2 flex items-center gap-2 border-l pl-4">
-              <div className="grid h-9 w-9 place-items-center rounded-full bg-accent text-sm font-semibold text-accent-foreground">{(s.userName ?? t.guestUser)[0]}</div>
+              <div className="grid h-9 w-9 place-items-center rounded-full bg-accent text-sm font-semibold text-accent-foreground">{profileName[0]}</div>
               <div className="hidden text-left sm:block">
-                <div className="text-xs font-medium">{s.userName ?? t.guestUser}</div>
+                <div className="text-xs font-medium">{profileName}</div>
                 <div className="text-[10px] text-primary">{s.session === "google" ? t.cloudUser : t.local}</div>
               </div>
               <ChevronDown className="h-4 w-4 text-primary" />
@@ -121,7 +123,14 @@ function AppPage() {
               <DropdownMenuItem onClick={() => setTagsOpen(true)}>{t.tags}</DropdownMenuItem>
               <DropdownMenuItem onClick={() => setBackupOpen(true)}>{t.backup}</DropdownMenuItem>
               <DropdownMenuItem onClick={() => setHistoryOpen(true)}>{t.history}</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { setState(() => ({ session: null })); nav({ to: "/" }); }}>{t.logout}</DropdownMenuItem>
+              <DropdownMenuItem onClick={async () => {
+                try {
+                  await signOutGoogle();
+                  nav({ to: "/" });
+                } catch {
+                  toast.error(t.cloudErr);
+                }
+              }}>{t.logout}</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
