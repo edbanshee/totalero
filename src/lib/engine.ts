@@ -52,6 +52,13 @@ export function addMonths(date: string, n: number, keepDay?: number) {
   return makeDate(ny, nm, keepDay ?? d);
 }
 
+/** Occurrences that fit from `date` (inclusive) until the calendar end (LAST_YEAR-12). */
+export function maxPeriods(date: string, every: "monthly" | "yearly") {
+  const { y, m } = parseDate(date);
+  const months = (LAST_YEAR - y) * 12 + (11 - m) + 1;
+  return Math.max(1, every === "yearly" ? LAST_YEAR - y + 1 : months);
+}
+
 /** Parse a user amount ("1,234.56" / "1234,56") into integer cents. */
 export function toCents(input: string | number): number {
   if (typeof input === "number") return Math.round(input * 100);
