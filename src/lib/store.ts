@@ -265,8 +265,8 @@ export const deleteLine = (id: string) =>
   setState((s) => ({ lines: s.lines.filter((l) => l.id !== id), txs: s.txs.map((t) => (t.lineId === id ? { ...t, lineId: null } : t)) }));
 
 /* ---------- Credit cards ---------- */
-export function addCard(name: string, cutDay: number, payDay: number) {
-  setState((s) => ({ cards: [...s.cards, { id: uid(), name, cutDay, payDay }] }));
+export function addCard(name: string, cutDay: number, payDay: number, limit: number | null = null) {
+  setState((s) => ({ cards: [...s.cards, { id: uid(), name, cutDay, payDay, limit }] }));
   log(`Tarjeta creada: ${name}`);
 }
 export function deleteCard(id: string) {

@@ -483,6 +483,7 @@ export interface CreditCard {
   name: string;
   cutDay: number; // day of the month the statement closes
   payDay: number; // day of the month the payment is due
+  limit?: number | null; // cents, informational only; never used in calculations
 }
 export type CardStatus = "paid" | "pending" | "none";
 export interface CardMonth { card: CreditCard; cut: string; pay: string; amount: number; status: CardStatus; txs: Tx[] }

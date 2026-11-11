@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { cardMonth, formatMoney, parseDate, quincenaOf, type CardMonth } from "@/lib/engine";
+import { cardMonth, formatMoney, parseDate, quincenaOf, toCents, type CardMonth } from "@/lib/engine";
 import { addCard, addTx, deleteCard, useApp } from "@/lib/store";
 import { useT } from "@/lib/i18n";
 
@@ -12,7 +12,7 @@ export function CardsSection({ year, month }: { year: number; month: number }) {
   const s = useApp();
   const t = useT();
   const [open, setOpen] = useState(false);
-  const [f, setF] = useState({ name: "", cut: "5", pay: "25" });
+  const [f, setF] = useState({ name: "", cut: "5", pay: "25", limit: "" });
   const rows = s.cards.map((c) => cardMonth(c, s.txs, year, month));
   const fm = (c: number) => formatMoney(c, t.lang);
   const day = (d: string) => `${String(parseDate(d).d).padStart(2, "0")} ${t.monthsShort[parseDate(d).m]}`;
@@ -20,8 +20,8 @@ export function CardsSection({ year, month }: { year: number; month: number }) {
 
   const save = () => {
     if (!f.name.trim()) return;
-    addCard(f.name.trim(), clampDay(f.cut), clampDay(f.pay));
-    setF({ name: "", cut: "5", pay: "25" });
+    addCard(f.name.trim(), clampDay(f.cut), clampDay(f.pay), f.limit.trim() === "" ? null : Math.abs(toCents(f.limit)));
+    setF({ name: "", cut: "5", pay: "25", limit: "" });
     setOpen(false);
   };
   const quickPay = (r: CardMonth) =>
@@ -32,17 +32,18 @@ export function CardsSection({ year, month }: { year: number; month: number }) {
     return (
       <div className="min-w-0 overflow-x-auto rounded-md border">
         <div className="border-b bg-muted/60 px-3 py-2 text-xs font-medium">{half === 1 ? t.half1 : t.half2}</div>
-        <table className="w-full min-w-[460px] text-sm">
+        <table className="w-full min-w-[540px] text-sm">
           <thead className="text-[11px] uppercase text-muted-foreground">
-            <tr>{[t.cardName, t.payDate, t.cutDate, t.amountToPay, t.status, ""].map((h, i) => <th key={i} className={`px-3 py-2 font-medium ${i === 3 ? "text-right" : "text-left"}`}>{h}</th>)}</tr>
+            <tr>{[t.cardName, t.payDate, t.cutDate, t.cardLimit, t.amountToPay, t.status, ""].map((h, i) => <th key={i} className={`px-3 py-2 font-medium ${i === 3 || i === 4 ? "text-right" : "text-left"}`}>{h}</th>)}</tr>
           </thead>
           <tbody className="font-num tabular-nums">
-            {list.length === 0 && <tr><td colSpan={6} className="px-3 py-4 text-center font-sans text-xs text-muted-foreground">—</td></tr>}
+            {list.length === 0 && <tr><td colSpan={7} className="px-3 py-4 text-center font-sans text-xs text-muted-foreground">—</td></tr>}
             {list.map((r) => (
               <tr key={r.card.id} className="border-t">
                 <td className="px-3 py-2 font-sans font-medium">{r.card.name}</td>
                 <td className="px-3">{day(r.pay)}</td>
                 <td className="px-3 text-muted-foreground">{day(r.cut)}</td>
+                <td className="px-3 text-right text-muted-foreground">{r.card.limit ? fm(r.card.limit) : "—"}</td>
                 <td className="px-3 text-right">{r.status === "none" ? "—" : fm(r.amount)}</td>
                 <td className="px-3 font-sans">
                   {r.status === "none" ? (
@@ -83,6 +84,11 @@ export function CardsSection({ year, month }: { year: number; month: number }) {
             <div className="col-span-2"><Label>{t.cardName}</Label><Input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></div>
             <div><Label>{t.cutDay}</Label><Input type="number" min={1} max={31} value={f.cut} onChange={(e) => setF({ ...f, cut: e.target.value })} className="font-num tabular-nums" /></div>
             <div><Label>{t.payDay}</Label><Input type="number" min={1} max={31} value={f.pay} onChange={(e) => setF({ ...f, pay: e.target.value })} className="font-num tabular-nums" /></div>
+            <div className="col-span-2">
+              <Label>{t.cardLimit}</Label>
+              <Input inputMode="decimal" value={f.limit} onChange={(e) => setF({ ...f, limit: e.target.value })} className="font-num tabular-nums" />
+              <p className="mt-1 text-xs text-muted-foreground">{t.cardLimitHint}</p>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>{t.cancel}</Button>
