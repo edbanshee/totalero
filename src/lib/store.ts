@@ -316,3 +316,28 @@ export const getState = () => state;
 export function setLoanHidden(id: string, hidden: boolean) {
   setState((s) => ({ loans: s.loans.map((l) => (l.id === id ? { ...l, hidden } : l)) }));
 }
+
+export type EditScope = "one" | "forward" | "backward" | "all";
+/**
+ * Edits a recurring movement and, by scope, its siblings in the same series.
+ * Shared fields (concept, tag, type, amount, line/card) propagate; status (done/real)
+ * stays per-instance and siblings keep their own month, taking only the new day.
+ */
+export function updateSeries(id: string, patch: Partial<Tx>, scope: EditScope) {
+  const t = state.txs.find((x) => x.id === id);
+  if (!t) return;
+  if (scope === "one" || !t.seriesId || t.kind !== "recurring") return updateTx(id, patch);
+  const { done: _d, real: _r, date, ...shared } = patch;
+  const newDay = date ? parseDate(date).d : null;
+  const hit = (x: Tx) => x.seriesId === t.seriesId && x.id !== id &&
+    (scope === "all" || (scope === "forward" ? x.date > t.date : x.date < t.date));
+  setState((s) => ({
+    txs: s.txs.map((x) => {
+      if (x.id === id) return { ...x, ...patch };
+      if (!hit(x)) return x;
+      const { y, m } = parseDate(x.date);
+      return { ...x, ...shared, ...(newDay ? { date: makeDate(y, m, newDay) } : {}) };
+    }),
+  }));
+  log(`Edición de serie: ${t.concept} (${scope === "all" ? "toda" : scope === "forward" ? "siguientes" : "anteriores"})`);
+}

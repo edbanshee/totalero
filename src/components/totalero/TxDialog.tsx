@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { formatNum, maxPeriods, toCents, type Tx, type TxType } from "@/lib/engine";
-import { addLoan, addTx, updateTx, useApp } from "@/lib/store";
+import { addLoan, addTx, updateSeries, useApp, type EditScope } from "@/lib/store";
 import { useT } from "@/lib/i18n";
 import { Num } from "@/components/totalero/Num";
 import { emptyLoanForm, LoanFields, readLoanForm } from "@/components/totalero/LoanFields";
@@ -26,6 +26,8 @@ export function TxDialog({ open, onOpenChange, tx, defaultDate }: { open: boolea
     );
   }, [open, tx, defaultDate]);
 
+  const [scope, setScope] = useState<EditScope>("one");
+  useEffect(() => { if (open) setScope("one"); }, [open]);
   const [linkLoan, setLinkLoan] = useState(false);
   const [lf, setLf] = useState(emptyLoanForm(defaultDate));
   useEffect(() => { if (open) { setLinkLoan(false); setLf(emptyLoanForm(defaultDate)); } }, [open, defaultDate]);
@@ -54,7 +56,7 @@ export function TxDialog({ open, onOpenChange, tx, defaultDate }: { open: boolea
         capital: f.lineId && f.type === "expense" && f.capital.trim() !== "" ? Math.abs(toCents(f.capital)) : null,
       }),
     };
-    if (tx) updateTx(tx.id, data);
+    if (tx) updateSeries(tx.id, data, scope);
     else if (!addTx({ ...data, enabled: true, recurring: f.recurring, every: f.every, indefinite: f.indefinite, months: Number(f.months) || 1 })) {
       toast.error(t.duplicateWarn);
       return;
@@ -135,6 +137,17 @@ export function TxDialog({ open, onOpenChange, tx, defaultDate }: { open: boolea
           ))}
           {f.lineId && f.type === "expense" && <div className="col-span-2"><Label>{t.capitalPart}</Label><Input inputMode="decimal" value={f.capital} onChange={set("capital")} placeholder={f.projected} className="font-num" /></div>}
           <label className="col-span-2 flex items-center gap-2 text-sm"><Switch checked={f.done} onCheckedChange={(v) => setF({ ...f, done: v, real: v && f.real.trim() === "" ? f.projected : f.real })} />{t.done}</label>
+          {tx?.seriesId && tx.kind === "recurring" && (
+            <div className="col-span-2">
+              <Label>{t.editScope}</Label>
+              <select className={sel} value={scope} onChange={(e) => setScope(e.target.value as EditScope)}>
+                <option value="one">{t.scopeOne}</option>
+                <option value="forward">{t.scopeForward}</option>
+                <option value="backward">{t.scopeBackward}</option>
+                <option value="all">{t.scopeAll}</option>
+              </select>
+            </div>
+          )}
           {!tx && (
             <>
               <label className="flex items-center gap-2 text-sm"><Switch checked={f.recurring} onCheckedChange={(v) => setF({ ...f, recurring: v })} />{t.recurring}</label>
