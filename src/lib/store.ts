@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { addMonths, annuity, installmentType, makeDate, nextDay, parseDate, periodDate, periodRate, periodsPerMonth, schedule, type CreditCard, type CreditLine, type Loan, validateBackup, type Tag, type Tx } from "./engine";
+import { addMonths, maxPeriods, annuity, installmentType, makeDate, nextDay, parseDate, periodDate, periodRate, periodsPerMonth, schedule, type CreditCard, type CreditLine, type Loan, validateBackup, type Tag, type Tx } from "./engine";
 
 export type Lang = "es" | "en";
 export interface AppState {
@@ -89,10 +89,12 @@ export function log(msg: string) {
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
 /* ---------- Actions ---------- */
-export type TxInput = Omit<Tx, "id" | "seriesId" | "kind"> & { recurring?: boolean; months?: number; every?: "monthly" | "yearly" };
+export type TxInput = Omit<Tx, "id" | "seriesId" | "kind"> & { recurring?: boolean; months?: number; every?: "monthly" | "yearly"; indefinite?: boolean };
 
 export function addTx(input: TxInput) {
-  const { recurring, months = 12, every = "monthly", ...base } = input;
+  const { recurring, months: req = 12, every = "monthly", indefinite = false, ...base } = input;
+  const cap = maxPeriods(base.date, every);
+  const months = indefinite ? cap : Math.max(1, Math.min(cap, req));
   const dup = state.txs.find(
     (t) => t.date === base.date && t.concept === base.concept && t.projected === base.projected && t.type === base.type,
   );
