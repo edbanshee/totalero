@@ -35,6 +35,7 @@ use the editor.
 - Loans and credit lines are derived per month by `computeCredit` in engine.ts from the movements themselves (installments/draws/payments are ordinary Tx rows linked by loanId/lineId), so the cash flow never holds duplicate payments.
 - Loan math (rate solved from total/installment, or implied by the payoff amount) lives in `loanTerms` in engine.ts; a loan's `direction` decides whether its installments are expenses (payable) or income (receivable), so receivables never count as my debt.
 - Loan date calculations use `periodDate` for forward and backward semi-monthly offsets, so creation and intermediate-installment entry share the same calendar anchors rather than fixed 15-day arithmetic.
+- Same-day order uses `sortTx` (date, then `dayOrder`: manual sortOrder or income-before-expense); reordering rewrites sortOrder for that whole day so the running balance stays deterministic.
 - Credit cards (`cardMonth`), yearly tag totals and backup validation are pure functions in engine.ts; card payments are ordinary Tx rows linked by cardId, and every store action appends to `history` via `log()`.
 - Deployment modes are isolated: Pages emits a client-only shell with repository-relative assets and the default retains Lovable hosting; one target must not change another's runtime.
 - Pages routing uses Vite BASE_URL, and prepare-pages emits a document for every concrete content route so GitHub Pages can serve direct links without a 404 fallback.

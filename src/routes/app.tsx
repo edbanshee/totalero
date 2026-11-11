@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { HandCoins, BarChart3, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, CloudUpload, CornerDownRight, Eye, EyeOff, LayoutGrid, MoreHorizontal, Pencil, Plus, Search, SlidersHorizontal, Trash2, Wallet, BadgeDollarSign, CircleDollarSign, Check } from "lucide-react";
+import { HandCoins, BarChart3, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, CloudUpload, CornerDownRight, Eye, EyeOff, LayoutGrid, MoreHorizontal, Pencil, Plus, Search, SlidersHorizontal, Trash2, Wallet, BadgeDollarSign, CircleDollarSign, Check, ArrowUp, ArrowDown } from "lucide-react";
 import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Logo, TopIcons } from "@/components/totalero/common";
@@ -11,7 +11,7 @@ import { DeleteDialog, TagsDialog } from "@/components/totalero/Dialogs";
 import { CardsSection } from "@/components/totalero/Cards";
 import { BackupDialog, HistoryDialog } from "@/components/totalero/Backup";
 import { computeAll, computeCredit, loanRowBalances, type CreditMonth, daysInMonth, FIRST_YEAR, formatMoney, formatNum, LAST_YEAR, tagTotals, type Tag, makeDate, monthKey, parseDate, quincenaOf, type Half, type Tx } from "@/lib/engine";
-import { duplicateTx, moveNextMonth, moveOtherHalf, setState, updateTx, useApp, useLoaded } from "@/lib/store";
+import { duplicateTx, moveInDay, moveNextMonth, moveOtherHalf, setState, updateTx, useApp, useLoaded } from "@/lib/store";
 import { useT } from "@/lib/i18n";
 import { signOutGoogle } from "@/lib/firebase";
 
@@ -257,6 +257,8 @@ function AppPage() {
                       <tr><td colSpan={10} className="py-10 text-center font-sans text-muted-foreground">{t.empty}</td></tr>
                     )}
                     {rows.map(({ tx, balance, remaining }) => {
+                      const sameDay = mr.rows.filter((r) => r.tx.date === tx.date);
+                      const pos = sameDay.findIndex((r) => r.tx.id === tx.id);
                       const tag = tx.tagId ? tagMap.get(tx.tagId) : null;
                       const sign = tx.type === "income" ? 1 : -1;
                       const lb = loanBal.get(tx.id);
@@ -281,6 +283,12 @@ function AppPage() {
                           <td className={`px-2 text-right font-medium ${balance < 0 ? "text-destructive" : ""}`}>{fn(balance)}</td>
                           <td className="px-4">
                             <div className="flex items-center justify-end gap-1 text-muted-foreground">
+                              {sameDay.length > 1 && (
+                                <>
+                                  <button aria-label={t.moveUp} title={t.moveUp} disabled={pos === 0} onClick={() => moveInDay(tx.id, -1)} className="rounded p-1 hover:bg-muted disabled:opacity-30"><ArrowUp className="h-4 w-4" /></button>
+                                  <button aria-label={t.moveDown} title={t.moveDown} disabled={pos === sameDay.length - 1} onClick={() => moveInDay(tx.id, 1)} className="rounded p-1 hover:bg-muted disabled:opacity-30"><ArrowDown className="h-4 w-4" /></button>
+                                </>
+                              )}
                               <button aria-label={tx.enabled ? t.disable : t.enable} title={tx.enabled ? t.disable : t.enable} onClick={() => updateTx(tx.id, { enabled: !tx.enabled })} className={`rounded p-1 hover:bg-muted ${tx.enabled ? "text-primary" : ""}`}>
                                 {tx.enabled ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                               </button>
