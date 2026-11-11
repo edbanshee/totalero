@@ -2,7 +2,7 @@ import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { addMonths, FIRST_YEAR, formatMoney, inferPrincipal, LAST_YEAR, loanTerms, parseDate, periodRate, toCents, type Frequency, type Loan, type LoanDirection } from "@/lib/engine";
+import { FIRST_YEAR, formatMoney, inferPrincipal, LAST_YEAR, loanTerms, parseDate, periodDate, periodRate, toCents, type Frequency, type Loan, type LoanDirection } from "@/lib/engine";
 import { useT } from "@/lib/i18n";
 
 export interface LoanForm {
@@ -131,10 +131,7 @@ export function LoanFields({ f, setF, tags, showDate = true, showDeposit = true 
 /** Date of installment 1 when `date` is the date of installment k+1 (earlier ones get projected). */
 export function firstPaymentDate(date: string, f: Frequency, k: number) {
   if (k <= 0) return date;
-  if (f === "monthly") return addMonths(date, -k);
-  const d = new Date(date + "T12:00:00Z");
-  d.setUTCDate(d.getUTCDate() - 15 * k);
-  return d.toISOString().slice(0, 10);
+  return periodDate(date, f, -k);
 }
 
 const formatNumPlain = (c: number) => (c / 100).toFixed(2);
