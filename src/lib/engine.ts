@@ -27,6 +27,7 @@ export interface Tx {
   capital?: number | null; // cents of the amount that reduces debt (rest is interest)
   installment?: number | null; // loan installment number; null for extras/deposits
   cardId?: string | null; // payment of a credit card
+  sortOrder?: number | null; // manual order within the same day; default income 0, expense 100
 }
 
 export const FIRST_YEAR = 2024;
@@ -114,7 +115,22 @@ export interface MonthResult {
   count: number;
 }
 
-const sortTx = (a: Tx, b: Tx) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.id < b.id ? -1 : 1);
+/** Order within a day: manual sortOrder, else income before expense. */
+export const dayOrder = (t: Tx) => t.sortOrder ?? (t.type === "income" ? 0 : 100);
+export const sortTx = (a: Tx, b: Tx) =>
+  a.date < b.date ? -1 : a.date > b.date ? 1 : dayOrder(a) - dayOrder(b) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+
+/** Moves a movement up (-1) or down (+1) among those of the same day; returns new sortOrder per id. */
+export function reorderInDay(txs: Tx[], id: string, dir: -1 | 1): Map<string, number> | null {
+  const t = txs.find((x) => x.id === id);
+  if (!t) return null;
+  const day = txs.filter((x) => x.date === t.date).sort(sortTx);
+  const i = day.findIndex((x) => x.id === id);
+  const j = i + dir;
+  if (j < 0 || j >= day.length) return null;
+  [day[i], day[j]] = [day[j]!, day[i]!];
+  return new Map(day.map((x, k) => [x.id, k * 10]));
+}
 
 /** Computes every month 2024-01..2050-12 in chronological cascade. */
 export function computeAll(txs: Tx[], initialBalance: number): Map<string, MonthResult> {

@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { addMonths, maxPeriods, annuity, installmentType, makeDate, nextDay, parseDate, periodDate, periodRate, periodsPerMonth, schedule, type CreditCard, type CreditLine, type Loan, validateBackup, type Tag, type Tx } from "./engine";
+import { addMonths, maxPeriods, annuity, installmentType, makeDate, nextDay, reorderInDay, parseDate, periodDate, periodRate, periodsPerMonth, schedule, type CreditCard, type CreditLine, type Loan, validateBackup, type Tag, type Tx } from "./engine";
 
 export type Lang = "es" | "en";
 export interface AppState {
@@ -124,6 +124,14 @@ export function updateTx(id: string, patch: Partial<Tx>) {
   const t = state.txs.find((x) => x.id === id);
   setState((s) => ({ txs: s.txs.map((x) => (x.id === id ? { ...x, ...patch } : x)) }));
   if (t) log(`Edición: ${t.concept}${"done" in patch ? (patch.done ? " · hecho" : " · pendiente") : "enabled" in patch ? (patch.enabled ? " · habilitado" : " · deshabilitado") : ""}`);
+}
+
+export function moveInDay(id: string, dir: -1 | 1) {
+  const m = reorderInDay(state.txs, id, dir);
+  if (!m) return;
+  const t = state.txs.find((x) => x.id === id);
+  setState((s) => ({ txs: s.txs.map((x) => (m.has(x.id) ? { ...x, sortOrder: m.get(x.id)! } : x)) }));
+  if (t) log(`Orden del día: ${t.concept} ${dir < 0 ? "↑" : "↓"}`);
 }
 
 export const duplicateTx = (id: string) =>
