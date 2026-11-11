@@ -295,14 +295,19 @@ export function nextDay(s: string) {
   return d < daysInMonth(y, m) ? makeDate(y, m, d + 1) : addMonths(makeDate(y, m, 1), 1, 1);
 }
 
-/** Date of the i-th payment (0-based) from a first date. Bi-weekly pays on day d and d+15. */
+/** Semi-monthly dates alternate two day anchors; negative indices move backwards. */
 export function periodDate(first: string, f: Frequency, i: number) {
-  const { d } = parseDate(first);
+  const { y, m, d } = parseDate(first);
   if (f === "monthly") return addMonths(first, i, d);
-  const base = addMonths(first, Math.floor(i / 2), d);
-  if (i % 2 === 0) return base;
-  const { y, m } = parseDate(base);
-  return makeDate(y, m, Math.min(d + 15, daysInMonth(y, m)));
+  const secondHalf = d > 15;
+  // February's last day represents the clamped day-30 anchor, not a new cadence.
+  const anchor = secondHalf && m === 1 && d === daysInMonth(y, m) ? 30 : d;
+  const firstDay = secondHalf ? Math.min(15, anchor - 15) : anchor;
+  const secondDay = secondHalf ? anchor : anchor + 15;
+  const slot = (secondHalf ? 1 : 0) + i;
+  const month = parseDate(addMonths(first, Math.floor(slot / 2), 1));
+  const half = ((slot % 2) + 2) % 2;
+  return makeDate(month.y, month.m, half === 0 ? firstDay : secondDay);
 }
 
 export function schedule(o: {
