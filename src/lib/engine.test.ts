@@ -119,3 +119,9 @@ describe("revolving loans", () => {
     expect(c.get("2027-01")!.lineAvailable).toBe(130000);
   });
 });
+
+import { maxPeriods as mp } from "./engine";
+describe("recurring calendar limits", () => {
+  it("monthly from Nov 2026 fits 290 months until Dec 2050", () => expect(mp("2026-11-10", "monthly")).toBe(290));
+  it("yearly from 2026 fits 25 years until 2050", () => expect(mp("2026-11-10", "yearly")).toBe(25));
+});

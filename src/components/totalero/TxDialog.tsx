@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { formatNum, toCents, type Tx, type TxType } from "@/lib/engine";
+import { formatNum, maxPeriods, toCents, type Tx, type TxType } from "@/lib/engine";
 import { addLoan, addTx, updateTx, useApp } from "@/lib/store";
 import { useT } from "@/lib/i18n";
 import { Num } from "@/components/totalero/Num";

@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { addMonths, annuity, installmentType, makeDate, nextDay, parseDate, periodDate, periodRate, periodsPerMonth, schedule, type CreditCard, type CreditLine, type Loan, validateBackup, type Tag, type Tx } from "./engine";
+import { addMonths, maxPeriods, annuity, installmentType, makeDate, nextDay, parseDate, periodDate, periodRate, periodsPerMonth, schedule, type CreditCard, type CreditLine, type Loan, validateBackup, type Tag, type Tx } from "./engine";
 
 export type Lang = "es" | "en";
 export interface AppState {
