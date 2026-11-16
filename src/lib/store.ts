@@ -274,6 +274,16 @@ export function deleteCard(id: string) {
   setState((s) => ({ cards: s.cards.filter((x) => x.id !== id), txs: s.txs.map((t) => (t.cardId === id ? { ...t, cardId: null } : t)) }));
   if (c) log(`Tarjeta eliminada: ${c.name}`);
 }
+export function updateCard(id: string, patch: Pick<CreditCard, "name" | "cutDay" | "payDay" | "limit">) {
+  setState((s) => ({ cards: s.cards.map((c) => c.id === id ? { ...c, ...patch } : c) }));
+  log(`Tarjeta editada: ${patch.name}`);
+}
+export function setCardStatement(id: string, month: string, amount: number | null, paid: boolean) {
+  const card = state.cards.find((c) => c.id === id);
+  if (!card || (amount !== null && (!Number.isInteger(amount) || amount < 0))) return;
+  setState((s) => ({ cards: s.cards.map((c) => c.id === id ? { ...c, statements: { ...c.statements, [month]: { amount, paid } } } : c) }));
+  log(`Tarjeta ${paid ? "pagada" : "pendiente"}: ${card.name} · ${month}`);
+}
 
 /* ---------- Backups ---------- */
 const DATA_KEYS = ["txs", "loans", "lines", "cards", "tags", "initialBalance"] as const;

@@ -484,19 +484,21 @@ export interface CreditCard {
   cutDay: number; // day of the month the statement closes
   payDay: number; // day of the month the payment is due
   limit?: number | null; // cents, informational only; never used in calculations
+  statements?: Record<string, { amount: number | null; paid: boolean }>;
 }
 export type CardStatus = "paid" | "pending" | "none";
-export interface CardMonth { card: CreditCard; cut: string; pay: string; amount: number; status: CardStatus; txs: Tx[] }
+export interface CardMonth { card: CreditCard; cut: string; pay: string; amount: number | null; status: CardStatus; txs: Tx[] }
 
-/** A card's statement for a month: due date in that month, cut date before it, amount = its linked payments. */
+/** Monthly checklist, independent of cash flow; old linked payments remain a legacy fallback. */
 export function cardMonth(card: CreditCard, txs: Tx[], y: number, m: number): CardMonth {
   const pay = makeDate(y, m, card.payDay);
   const cutSame = makeDate(y, m, card.cutDay);
   const cut = card.cutDay < card.payDay ? cutSame : makeDate(...(m === 0 ? [y - 1, 11] as const : [y, m - 1] as const), card.cutDay);
   const key = monthKey(y, m);
   const mine = txs.filter((t) => t.cardId === card.id && t.enabled && t.date.startsWith(key));
-  const amount = mine.reduce((a, t) => a + (t.done && t.real !== null ? t.real : t.projected) * (t.type === "expense" ? 1 : -1), 0);
-  const status: CardStatus = mine.length === 0 ? "none" : mine.every((t) => t.done) ? "paid" : "pending";
+  const statement = card.statements?.[key];
+  const amount = statement ? statement.amount : mine.length ? mine.reduce((a, t) => a + (t.done && t.real !== null ? t.real : t.projected) * (t.type === "expense" ? 1 : -1), 0) : null;
+  const status: CardStatus = (statement ? statement.paid : mine.length > 0 && mine.every((t) => t.done)) ? "paid" : "pending";
   return { card, cut, pay, amount, status, txs: mine };
 }
 

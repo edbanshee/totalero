@@ -1,4 +1,5 @@
 # Totalero roadmap
+- [x] Tarjetas editables con saldo y estado pagado por mes, sin crear movimientos; formulario, persistencia y separación de meses verificados.
 - [x] Fase 1: landing, dashboard, quincenas, movimientos, etiquetas, motor
 - [x] Números siempre en Roboto (fuente de dígitos global + font-num en cifras)
 - [x] Quitar el campo "Categoría" del formulario: la clasificación es la etiqueta
