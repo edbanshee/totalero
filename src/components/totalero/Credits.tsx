@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Eye, EyeOff, Landmark, Pencil, Plus, Trash2, WalletCards } from "lucide-react";
+import { Check, Eye, EyeOff, Landmark, Pencil, RotateCcw, X, Plus, Trash2, WalletCards } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -200,16 +200,30 @@ export function LinesSection({ cm, monthLabel, month }: { cm: CreditMonth; month
   const [dlg, setDlg] = useState<null | { lineId: string | null }>(null);
   const fm = (c: number) => formatMoney(c, t.lang);
   const fn = (c: number) => formatNum(c, t.lang);
-  const editAvail = (lm: { id: string; available: number; manual?: boolean }) => {
-    const v = window.prompt(t.availPrompt, (lm.available / 100).toFixed(2));
-    if (v === null) return;
-    setAvailOverride(lm.id, month, v.trim() === "" ? null : Math.abs(toCents(v)));
+  const [edit, setEdit] = useState<null | { id: string; v: string }>(null);
+  const commit = (id: string, v: string | null) => {
+    setAvailOverride(id, month, v === null || v.trim() === "" ? null : Math.abs(toCents(v)));
+    setEdit(null);
   };
-  const availCell = (lm: { id: string; available: number; manual?: boolean }) => (
-    <button className="font-num font-medium tabular-nums text-positive hover:underline" title={lm.manual ? t.availManual : t.availEdit} onClick={() => editAvail(lm)}>
-      {fn(lm.available)}{lm.manual && <span className="ml-1 text-primary">•</span>}
-    </button>
-  );
+  const availCell = (lm: { id: string; available: number; manual?: boolean }) =>
+    edit?.id === lm.id ? (
+      <div className="flex items-center justify-end gap-1">
+        <Input autoFocus inputMode="decimal" value={edit.v} aria-label={t.availEdit}
+          onChange={(e) => setEdit({ id: lm.id, v: e.target.value })}
+          onKeyDown={(e) => { if (e.key === "Enter") commit(lm.id, edit.v); if (e.key === "Escape") setEdit(null); }}
+          className="h-8 w-28 text-right font-num tabular-nums" />
+        <button aria-label={t.save} onClick={() => commit(lm.id, edit.v)} className="rounded p-1 text-positive hover:bg-muted"><Check className="h-4 w-4" /></button>
+        {lm.manual && <button aria-label={t.availReset} title={t.availReset} onClick={() => commit(lm.id, null)} className="rounded p-1 text-muted-foreground hover:bg-muted"><RotateCcw className="h-4 w-4" /></button>}
+        <button aria-label={t.cancel} onClick={() => setEdit(null)} className="rounded p-1 text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
+      </div>
+    ) : (
+      <div className="flex items-center justify-end gap-1">
+        <span className="font-num font-medium tabular-nums text-positive" title={lm.manual ? t.availManual : undefined}>
+          {fn(lm.available)}{lm.manual && <span className="ml-1 text-primary">•</span>}
+        </span>
+        <button aria-label={t.availEdit} title={t.availEdit} onClick={() => setEdit({ id: lm.id, v: (lm.available / 100).toFixed(2) })} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"><Pencil className="h-3.5 w-3.5" /></button>
+      </div>
+    );
 
   return (
     <section className="h-fit rounded-lg border bg-card p-4">
