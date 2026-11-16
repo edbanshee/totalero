@@ -264,6 +264,18 @@ export const setLineLimit = (id: string, from: string, limit: number) =>
 export const deleteLine = (id: string) =>
   setState((s) => ({ lines: s.lines.filter((l) => l.id !== id), txs: s.txs.map((t) => (t.lineId === id ? { ...t, lineId: null } : t)) }));
 
+/** Sets (or clears with null) the manual available balance of a line or revolving loan for one month. */
+export function setAvailOverride(id: string, month: string, cents: number | null) {
+  const put = <T extends { id: string; availOverrides?: Record<string, number> }>(x: T): T => {
+    if (x.id !== id) return x;
+    const o = { ...x.availOverrides };
+    if (cents === null) delete o[month]; else o[month] = Math.max(0, Math.round(cents));
+    return { ...x, availOverrides: o };
+  };
+  setState((s) => ({ lines: s.lines.map(put), loans: s.loans.map(put) }));
+  log(`Disponible ${cents === null ? "automático" : "ajustado"} · ${month}`);
+}
+
 /* ---------- Credit cards ---------- */
 export function addCard(name: string, cutDay: number, payDay: number, limit: number | null = null) {
   setState((s) => ({ cards: [...s.cards, { id: uid(), name, cutDay, payDay, limit }] }));

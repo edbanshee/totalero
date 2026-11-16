@@ -211,6 +211,8 @@ export type Frequency = "monthly" | "biweekly";
 
 export interface Loan {
   id: string;
+  /** Manual available-balance anchors per YYYY-MM (cents); later months keep cascading from it. */
+  availOverrides?: Record<string, number>;
   institution: string;
   principal: number; // cents
   rate: number; // annual %, e.g. 18.5
@@ -282,6 +284,7 @@ export function inferPrincipal(o: { payment: number; term: number; current: numb
 
 export interface CreditLine {
   id: string;
+  availOverrides?: Record<string, number>;
   name: string;
   limits: { from: string; limit: number }[]; // from = YYYY-MM; condition changes over time
 }
@@ -372,7 +375,7 @@ export const lineLimit = (line: CreditLine, key: string) => {
   return lim;
 };
 
-export interface LineMonth { id: string; name: string; limit: number; used: number; available: number; drawn: number; paid: number }
+export interface LineMonth { id: string; name: string; limit: number; used: number; available: number; drawn: number; paid: number; manual?: boolean }
 export interface CreditMonth { lines: LineMonth[]; lineAvailable: number; lineUsed: number; loanDebt: number; loanReceivable: number }
 
 const absAmount = (t: Tx) => (t.done && t.real !== null ? t.real : t.projected);
@@ -417,11 +420,13 @@ export function computeCredit(txs: Tx[], loans: Loan[], lines: CreditLine[], tod
       const lm: LineMonth[] = [];
       for (const l of lines) {
         const mv = lineMove.get(`${l.id}|${key}`) ?? { drawn: 0, paid: 0 };
-        const u = Math.max(0, (used.get(l.id) ?? 0) + mv.drawn - mv.paid);
-        used.set(l.id, u);
+        let u = Math.max(0, (used.get(l.id) ?? 0) + mv.drawn - mv.paid);
         const lim = lineLimit(l, key);
+        const ov = l.availOverrides?.[key];
+        if (ov != null && lim !== null) u = Math.max(0, lim - ov);
+        used.set(l.id, u);
         if (lim === null) continue;
-        lm.push({ id: l.id, name: l.name, limit: lim, used: u, available: Math.max(0, lim - u), drawn: mv.drawn, paid: mv.paid });
+        lm.push({ id: l.id, name: l.name, limit: lim, used: u, available: Math.max(0, lim - u), drawn: mv.drawn, paid: mv.paid, manual: ov != null });
       }
       let loanDebt = 0;
       let loanReceivable = 0;
@@ -435,10 +440,12 @@ export function computeCredit(txs: Tx[], loans: Loan[], lines: CreditLine[], tod
         if (l.revolving) {
           // Revolving loan: repaid capital is available again; draws on it (lineId = loan id) use it up.
           const mv = lineMove.get(`${l.id}|${key}`) ?? { drawn: 0, paid: 0 };
-          const ru = Math.max(0, (used.get(l.id) ?? 0) + mv.drawn - mv.paid);
+          let ru = Math.max(0, (used.get(l.id) ?? 0) + mv.drawn - mv.paid);
+          const ov = l.availOverrides?.[key];
+          if (ov != null) ru = Math.max(0, l.principal - left - ov);
           used.set(l.id, ru);
           loanDebt += ru;
-          lm.push({ id: l.id, name: l.institution, limit: l.principal, used: left + ru, available: Math.max(0, l.principal - left - ru), drawn: mv.drawn, paid: mv.paid });
+          lm.push({ id: l.id, name: l.institution, limit: l.principal, used: left + ru, available: Math.max(0, l.principal - left - ru), drawn: mv.drawn, paid: mv.paid, manual: ov != null });
         }
       }
       out.set(key, {

@@ -318,7 +318,7 @@ function AppPage() {
             <CardsSection year={year} month={month} />
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
               <LoansSection defaultDate={makeDate(year, month, 15)} />
-              <LinesSection cm={cm} monthLabel={`${t.months[month]} ${year}`} />
+              <LinesSection cm={cm} month={key} monthLabel={`${t.months[month]} ${year}`} />
             </div>
           </>
         )}

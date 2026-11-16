@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Num } from "@/components/totalero/Num";
 import { emptyLoanForm, LoanFields, readLoanForm } from "@/components/totalero/LoanFields";
 import { formatMoney, formatNum, installmentType, monthKey, periodRate, simulateExtra, toCents, type CreditMonth, type Loan } from "@/lib/engine";
-import { addLine, addLoan, applyExtra, updateLoan, setLoanHidden, deleteLine, deleteLoan, setLineLimit, useApp } from "@/lib/store";
+import { addLine, addLoan, applyExtra, updateLoan, setLoanHidden, deleteLine, deleteLoan, setLineLimit, setAvailOverride, useApp } from "@/lib/store";
 import { useT } from "@/lib/i18n";
 
 /* ---------------- Loans ---------------- */
@@ -194,12 +194,22 @@ function LoanDialog({ open, onOpenChange, onCreated, defaultDate, edit }: { open
 }
 
 /* ---------------- Credit lines ---------------- */
-export function LinesSection({ cm, monthLabel }: { cm: CreditMonth; monthLabel: string }) {
+export function LinesSection({ cm, monthLabel, month }: { cm: CreditMonth; monthLabel: string; month: string }) {
   const s = useApp();
   const t = useT();
   const [dlg, setDlg] = useState<null | { lineId: string | null }>(null);
   const fm = (c: number) => formatMoney(c, t.lang);
   const fn = (c: number) => formatNum(c, t.lang);
+  const editAvail = (lm: { id: string; available: number; manual?: boolean }) => {
+    const v = window.prompt(t.availPrompt, (lm.available / 100).toFixed(2));
+    if (v === null) return;
+    setAvailOverride(lm.id, month, v.trim() === "" ? null : Math.abs(toCents(v)));
+  };
+  const availCell = (lm: { id: string; available: number; manual?: boolean }) => (
+    <button className="font-num font-medium tabular-nums text-positive hover:underline" title={lm.manual ? t.availManual : t.availEdit} onClick={() => editAvail(lm)}>
+      {fn(lm.available)}{lm.manual && <span className="ml-1 text-primary">•</span>}
+    </button>
+  );
 
   return (
     <section className="h-fit rounded-lg border bg-card p-4">
@@ -234,7 +244,7 @@ export function LinesSection({ cm, monthLabel }: { cm: CreditMonth; monthLabel: 
                     {lm && <div className="font-num text-[11px] text-muted-foreground tabular-nums">{t.limit}: {fn(lm.limit)}</div>}
                   </td>
                   <td className="text-right font-num tabular-nums text-destructive">{lm ? fn(lm.used) : "—"}</td>
-                  <td className="text-right font-num font-medium tabular-nums text-positive">{lm ? fn(lm.available) : "—"}</td>
+                  <td className="text-right">{lm ? availCell(lm) : "—"}</td>
                   <td className="w-8 text-right">
                     <button aria-label={t.deleteLine} onClick={() => deleteLine(line.id)} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"><Trash2 className="h-4 w-4" /></button>
                   </td>
@@ -248,7 +258,7 @@ export function LinesSection({ cm, monthLabel }: { cm: CreditMonth; monthLabel: 
                   <div className="font-num text-[11px] text-muted-foreground tabular-nums">{t.limit}: {fn(lm.limit)}</div>
                 </td>
                 <td className="text-right font-num tabular-nums text-destructive">{fn(lm.used)}</td>
-                <td className="text-right font-num font-medium tabular-nums text-positive">{fn(lm.available)}</td>
+                <td className="text-right">{availCell(lm)}</td>
                 <td />
               </tr>
             ))}
