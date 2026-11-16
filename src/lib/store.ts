@@ -276,6 +276,14 @@ export function setAvailOverride(id: string, month: string, cents: number | null
   log(`Disponible ${cents === null ? "automático" : "ajustado"} · ${month}`);
 }
 
+/** Changes the authorized limit of a line or revolving loan from a month on. */
+export function setCreditLimit(id: string, from: string, limit: number) {
+  const put = <T extends { id: string; limits?: { from: string; limit: number }[] }>(x: T): T =>
+    x.id === id ? { ...x, limits: [...(x.limits ?? []).filter((c) => c.from !== from), { from, limit }] } : x;
+  setState((s) => ({ lines: s.lines.map(put), loans: s.loans.map(put) }));
+  log(`Límite cambiado desde ${from}`);
+}
+
 /* ---------- Credit cards ---------- */
 export function addCard(name: string, cutDay: number, payDay: number, limit: number | null = null) {
   setState((s) => ({ cards: [...s.cards, { id: uid(), name, cutDay, payDay, limit }] }));

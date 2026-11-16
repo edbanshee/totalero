@@ -213,6 +213,8 @@ export interface Loan {
   id: string;
   /** Manual available-balance anchors per YYYY-MM (cents); later months keep cascading from it. */
   availOverrides?: Record<string, number>;
+  /** Revolving only: authorized-limit changes over time; defaults to principal. */
+  limits?: { from: string; limit: number }[];
   institution: string;
   principal: number; // cents
   rate: number; // annual %, e.g. 18.5
@@ -442,10 +444,11 @@ export function computeCredit(txs: Tx[], loans: Loan[], lines: CreditLine[], tod
           const mv = lineMove.get(`${l.id}|${key}`) ?? { drawn: 0, paid: 0 };
           let ru = Math.max(0, (used.get(l.id) ?? 0) + mv.drawn - mv.paid);
           const ov = l.availOverrides?.[key];
-          if (ov != null) ru = Math.max(0, l.principal - left - ov);
+          const rl = lineLimit({ id: l.id, name: "", limits: l.limits ?? [] }, key) ?? l.principal;
+          if (ov != null) ru = Math.max(0, rl - left - ov);
           used.set(l.id, ru);
           loanDebt += ru;
-          lm.push({ id: l.id, name: l.institution, limit: l.principal, used: left + ru, available: Math.max(0, l.principal - left - ru), drawn: mv.drawn, paid: mv.paid, manual: ov != null });
+          lm.push({ id: l.id, name: l.institution, limit: rl, used: left + ru, available: Math.max(0, rl - left - ru), drawn: mv.drawn, paid: mv.paid, manual: ov != null });
         }
       }
       out.set(key, {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, Eye, EyeOff, Landmark, Pencil, RotateCcw, X, Plus, Trash2, WalletCards } from "lucide-react";
+import { Eye, EyeOff, Landmark, Pencil, Plus, Trash2, WalletCards } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -7,8 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Num } from "@/components/totalero/Num";
 import { emptyLoanForm, LoanFields, readLoanForm } from "@/components/totalero/LoanFields";
-import { formatMoney, formatNum, installmentType, monthKey, periodRate, simulateExtra, toCents, type CreditMonth, type Loan } from "@/lib/engine";
-import { addLine, addLoan, applyExtra, updateLoan, setLoanHidden, deleteLine, deleteLoan, setLineLimit, setAvailOverride, useApp } from "@/lib/store";
+import { formatMoney, formatNum, installmentType, monthKey, periodRate, simulateExtra, toCents, type CreditMonth, type LineMonth, type Loan } from "@/lib/engine";
+import { addLine, addLoan, applyExtra, updateLoan, setLoanHidden, deleteLine, deleteLoan, setLineLimit, setAvailOverride, setCreditLimit, useApp } from "@/lib/store";
 import { useT } from "@/lib/i18n";
 
 /* ---------------- Loans ---------------- */
@@ -200,30 +200,15 @@ export function LinesSection({ cm, monthLabel, month }: { cm: CreditMonth; month
   const [dlg, setDlg] = useState<null | { lineId: string | null }>(null);
   const fm = (c: number) => formatMoney(c, t.lang);
   const fn = (c: number) => formatNum(c, t.lang);
-  const [edit, setEdit] = useState<null | { id: string; v: string }>(null);
-  const commit = (id: string, v: string | null) => {
-    setAvailOverride(id, month, v === null || v.trim() === "" ? null : Math.abs(toCents(v)));
-    setEdit(null);
-  };
-  const availCell = (lm: { id: string; available: number; manual?: boolean }) =>
-    edit?.id === lm.id ? (
-      <div className="flex items-center justify-end gap-1">
-        <Input autoFocus inputMode="decimal" value={edit.v} aria-label={t.availEdit}
-          onChange={(e) => setEdit({ id: lm.id, v: e.target.value })}
-          onKeyDown={(e) => { if (e.key === "Enter") commit(lm.id, edit.v); if (e.key === "Escape") setEdit(null); }}
-          className="h-8 w-28 text-right font-num tabular-nums" />
-        <button aria-label={t.save} onClick={() => commit(lm.id, edit.v)} className="rounded p-1 text-positive hover:bg-muted"><Check className="h-4 w-4" /></button>
-        {lm.manual && <button aria-label={t.availReset} title={t.availReset} onClick={() => commit(lm.id, null)} className="rounded p-1 text-muted-foreground hover:bg-muted"><RotateCcw className="h-4 w-4" /></button>}
-        <button aria-label={t.cancel} onClick={() => setEdit(null)} className="rounded p-1 text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
-      </div>
-    ) : (
-      <div className="flex items-center justify-end gap-1">
-        <span className="font-num font-medium tabular-nums text-positive" title={lm.manual ? t.availManual : undefined}>
-          {fn(lm.available)}{lm.manual && <span className="ml-1 text-primary">•</span>}
-        </span>
-        <button aria-label={t.availEdit} title={t.availEdit} onClick={() => setEdit({ id: lm.id, v: (lm.available / 100).toFixed(2) })} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"><Pencil className="h-3.5 w-3.5" /></button>
-      </div>
-    );
+  const [adj, setAdj] = useState<LineMonth | null>(null);
+  const availCell = (lm: LineMonth) => (
+    <div className="flex items-center justify-end gap-1">
+      <span className="font-num font-medium tabular-nums text-positive" title={lm.manual ? t.availManual : undefined}>
+        {fn(lm.available)}{lm.manual && <span className="ml-1 text-primary">•</span>}
+      </span>
+      <button aria-label={t.availEdit} title={t.availEdit} onClick={() => setAdj(lm)} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"><Pencil className="h-3.5 w-3.5" /></button>
+    </div>
+  );
 
   return (
     <section className="h-fit rounded-lg border bg-card p-4">
@@ -254,7 +239,7 @@ export function LinesSection({ cm, monthLabel, month }: { cm: CreditMonth; month
               return (
                 <tr key={line.id} className="border-b">
                   <td className="py-2.5 pr-2">
-                    <button className="text-left font-medium hover:underline" onClick={() => setDlg({ lineId: line.id })} title={t.changeLimit}>{line.name}</button>
+                    <div className="font-medium">{line.name}</div>
                     {lm && <div className="font-num text-[11px] text-muted-foreground tabular-nums">{t.limit}: {fn(lm.limit)}</div>}
                   </td>
                   <td className="text-right font-num tabular-nums text-destructive">{lm ? fn(lm.used) : "—"}</td>
@@ -280,6 +265,7 @@ export function LinesSection({ cm, monthLabel, month }: { cm: CreditMonth; month
         </table>
       )}
       <LineDialog state={dlg} onClose={() => setDlg(null)} />
+      <AdjustDialog lm={adj} month={month} monthLabel={monthLabel} onClose={() => setAdj(null)} />
     </section>
   );
 }
@@ -311,6 +297,45 @@ function LineDialog({ state, onClose }: { state: null | { lineId: string | null 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>{t.cancel}</Button>
           <Button onClick={save}>{t.save}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AdjustDialog({ lm, month, monthLabel, onClose }: { lm: LineMonth | null; month: string; monthLabel: string; onClose: () => void }) {
+  const t = useT();
+  const [f, setF] = useState({ limit: "", from: month, avail: "", manual: false });
+  useEffect(() => {
+    if (lm) setF({ limit: (lm.limit / 100).toFixed(2), from: month, avail: (lm.available / 100).toFixed(2), manual: !!lm.manual });
+  }, [lm, month]);
+  if (!lm) return null;
+  const lim = Math.abs(toCents(f.limit));
+  const save = () => {
+    if (lim && lim !== lm.limit && /^\d{4}-\d{2}$/.test(f.from)) setCreditLimit(lm.id, f.from, lim);
+    const av = f.avail.trim() === "" ? null : Math.abs(toCents(f.avail));
+    if (av !== null && (lm.manual || av !== lm.available)) setAvailOverride(lm.id, month, av);
+    onClose();
+  };
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>{t.availEdit} · {lm.name}</DialogTitle></DialogHeader>
+        <div className="grid gap-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>{t.limit}</Label><Input inputMode="decimal" value={f.limit} onChange={(e) => setF({ ...f, limit: e.target.value })} className="font-num tabular-nums" /></div>
+            <div><Label>{t.fromMonth}</Label><Input type="month" min="2024-01" max="2050-12" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} className="font-num tabular-nums" /></div>
+          </div>
+          <div>
+            <Label><Num>{`${t.available} · ${monthLabel}`}</Num></Label>
+            <Input inputMode="decimal" value={f.avail} onChange={(e) => setF({ ...f, avail: e.target.value })} className="font-num tabular-nums" />
+            <p className="mt-1 text-xs text-muted-foreground">{t.availHint}</p>
+          </div>
+        </div>
+        <DialogFooter className="gap-2">
+          {lm.manual && <Button variant="ghost" className="sm:mr-auto" onClick={() => { setAvailOverride(lm.id, month, null); onClose(); }}>{t.availReset}</Button>}
+          <Button variant="outline" onClick={onClose}>{t.cancel}</Button>
+          <Button disabled={!lim} onClick={save}>{t.save}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
