@@ -257,8 +257,10 @@ export function LinesSection({ cm, monthLabel, month }: { cm: CreditMonth; month
                   <div className="font-num text-[11px] text-muted-foreground tabular-nums">{t.limit}: {fn(lm.limit)}</div>
                 </td>
                 <td className="text-right font-num tabular-nums text-destructive">{fn(lm.used)}</td>
-                <td className="text-right">{availCell(lm)}</td>
-                <td />
+                 <td className="text-right">{availCell(lm)}</td>
+                <td className="w-8 text-right">
+                  <button aria-label={t.deleteLoan} onClick={() => window.confirm(t.deleteLoanConfirm) && deleteLoan(lm.id)} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"><Trash2 className="h-4 w-4" /></button>
+                </td>
               </tr>
             ))}
           </tbody>
