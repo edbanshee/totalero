@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Num } from "@/components/totalero/Num";
 import { emptyLoanForm, LoanFields, readLoanForm } from "@/components/totalero/LoanFields";
 import { formatMoney, formatNum, installmentType, monthKey, periodRate, simulateExtra, toCents, type CreditMonth, type LineMonth, type Loan } from "@/lib/engine";
-import { addLine, addLoan, applyExtra, updateLoan, setLoanHidden, deleteLine, deleteLoan, setLineLimit, setAvailOverride, setCreditLimit, useApp } from "@/lib/store";
+import { addLine, addLoan, applyExtra, updateLoan, setLoanHidden, deleteLine, deleteLoan, removeRevolvingLine, setLineLimit, setAvailOverride, setCreditLimit, useApp } from "@/lib/store";
 import { useT } from "@/lib/i18n";
 
 /* ---------------- Loans ---------------- */
@@ -259,7 +259,7 @@ export function LinesSection({ cm, monthLabel, month }: { cm: CreditMonth; month
                 <td className="text-right font-num tabular-nums text-destructive">{fn(lm.used)}</td>
                  <td className="text-right">{availCell(lm)}</td>
                 <td className="w-8 text-right">
-                  <button aria-label={t.deleteLoan} onClick={() => window.confirm(t.deleteLoanConfirm) && deleteLoan(lm.id)} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"><Trash2 className="h-4 w-4" /></button>
+                  <button aria-label={t.deleteLine} onClick={() => removeRevolvingLine(lm.id)} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"><Trash2 className="h-4 w-4" /></button>
                 </td>
               </tr>
             ))}

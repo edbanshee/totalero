@@ -264,6 +264,12 @@ export const setLineLimit = (id: string, from: string, limit: number) =>
 export const deleteLine = (id: string) =>
   setState((s) => ({ lines: s.lines.filter((l) => l.id !== id), txs: s.txs.map((t) => (t.lineId === id ? { ...t, lineId: null } : t)) }));
 
+/** Stops treating a revolving loan as a credit line; the loan and its installments stay untouched. */
+export function removeRevolvingLine(id: string) {
+  log(`Línea eliminada: ${state.loans.find((l) => l.id === id)?.institution ?? ""}`);
+  setState((s) => ({ loans: s.loans.map((l) => (l.id === id ? { ...l, revolving: false } : l)), txs: s.txs.map((t) => (t.lineId === id ? { ...t, lineId: null } : t)) }));
+}
+
 /** Sets (or clears with null) the manual available balance of a line or revolving loan for one month. */
 export function setAvailOverride(id: string, month: string, cents: number | null) {
   const put = <T extends { id: string; availOverrides?: Record<string, number> }>(x: T): T => {
